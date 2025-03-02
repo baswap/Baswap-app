@@ -1,9 +1,9 @@
-name: thingspeak retrieval
+name: thingspeak daily retrieval
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 * * * *' # Run once every 10 minutes
+    - cron: '00 17 * * *' # Run once every 10 minutes
 
 jobs:
   build:
