@@ -24,9 +24,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      #     pip3 install torch torchvision torchaudio
           
       - name: execute py script
         env:
             SERVICE_ACCOUNT: ${{ secrets.SECRET_SERVICE_ACCOUNT }}
+        working-directory: /home/runner/work/Baswap-app
         run: python thinkspeak_retrieve.py
