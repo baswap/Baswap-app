@@ -28,5 +28,4 @@ jobs:
       - name: execute py script
         env:
             SERVICE_ACCOUNT: ${{ secrets.SECRET_SERVICE_ACCOUNT }}
-        working-directory: /home/runner/work/Baswap-app
-        run: python thinkspeak_retrieve.py
+        run: python thingspeak_retrieve.py
