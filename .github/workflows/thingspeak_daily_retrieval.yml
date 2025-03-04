@@ -3,7 +3,7 @@ name: thingspeak daily retrieval
 on:
   workflow_dispatch:
   schedule:
-    - cron: '00 17 * * *' # Run once every 10 minutes
+    - cron: '05 17 * * *' # Run once at 0:00 every day
 
 jobs:
   build:
@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: execute py script
+      - name: retrieve daily data
         env:
             SERVICE_ACCOUNT: ${{ secrets.SECRET_SERVICE_ACCOUNT }}
         run: python thingspeak_retrieve.py

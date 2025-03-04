@@ -5,7 +5,9 @@ import json
 import csv
 import os
 import pytz
+import pandas as pd
 from datetime import date, timedelta, datetime
+
 from drive_handler import DriveManager
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,13 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(messag
 logger_file_handler.setFormatter(formatter)
 logger.addHandler(logger_file_handler)
 
+COMBINED_FILENAME = "combined_data.csv"
+COMBINED_ID = "1-2egCgGVsVMPcRrqjvcF0LCSMk1Q1KO0"
+
 if __name__ == "__main__":
+    drive_handler = DriveManager(os.environ["SERVICE_ACCOUNT"] )
+    df = drive_handler.read_csv_file(COMBINED_ID)
+
     extracted_date = date.today()  # Default time zone is UTC so at 1am in UTC+7, it is still counted as yesterday
     # extracted_date = date.today() - timedelta(days=1) # Default extracted_date to yesterday 
 
@@ -32,9 +40,8 @@ if __name__ == "__main__":
     # Generate a dynamic filename by the current day
     csv_filename = os.path.join(f'{extracted_date.strftime("%Y-%m-%d")}.csv')
 
-    # approximately 1440 measurements a day
-    url = f"https://api.thingspeak.com/channels/2652379/feeds.json?results={2880 * date_difference}" 
-    stored_do_values = []
+    # approximately 150 measurements a day
+    url = f"https://api.thingspeak.com/channels/2652379/feeds.json?results={150 * date_difference}" 
     csv_data = [['Timestamp (GMT+7)', 'DO Value', 'DO Temperature', 'EC Value (us/cm)', 'EC Temperature', 'Battery Voltage']]  # CSV header
 
     response = requests.get(url)
@@ -68,12 +75,25 @@ if __name__ == "__main__":
                     feed.get('field5', '')   # Battery Voltage
                 ])
 
+            ''' Combine data '''
+            if (gmt_plus_7_time > pd.to_datetime(df.iloc[-1, 0])):
+                df.loc[len(df)] = [
+                        gmt_plus_7_time,         # Timestamp in GMT
+                        feed.get('field1', ''),  # DO value
+                        feed.get('field2', ''),  # DO temperature
+                        feed.get('field3', ''),  # EC value (us/cm)
+                        feed.get('field4', ''),  # EC temperature
+                        feed.get('field5', '')   # Battery Voltage
+                    ]
+
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(csv_data)
 
+    df.to_csv(COMBINED_FILENAME, index=False)  # Save without the index column
+
     print(f'Data successfully saved to {csv_filename}')
     logger.info(f'Data of thinkspeak successfully saved to {csv_filename}')
 
-    drive_handler = DriveManager()
     drive_handler.upload_file(csv_filename, "1YtqvPlqmHrxI5oHlBBq_FgO2vQhi76A-")
+    drive_handler.upload_file(COMBINED_FILENAME, "1YtqvPlqmHrxI5oHlBBq_FgO2vQhi76A-", COMBINED_ID)

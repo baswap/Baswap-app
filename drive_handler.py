@@ -1,17 +1,19 @@
 import base64
+import io
 import os
 import json
+import pandas as pd
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 
 class DriveManager:
-    def __init__(self, scopes=None):
+    def __init__(self, secret, scopes=None):
         """Initialize the DriveManager with service account credentials."""
         print("[INFO] Initializing DriveManager...")
 
-        base64_string = os.environ["SERVICE_ACCOUNT"]
+        base64_string = secret
         base64_bytes = base64_string.encode("ascii")
 
         json_bytes = base64.b64decode(base64_bytes)
@@ -49,25 +51,39 @@ class DriveManager:
         print(f"[SUCCESS] Folder '{folder_name}' created with ID: {created_folder['id']}")
         return created_folder["id"]
 
-    def upload_file(self, file_path, folder_id=None):
-        """Upload a file to Google Drive."""
-        print(f"[INFO] Uploading file '{file_path}'...")
-        file_metadata = {
-            'name': os.path.basename(file_path),
-            'parents': [folder_id] if folder_id else []
-        }
+    def upload_file(self, file_path, folder_id=None, file_id=None):
+        """Upload a file to Google Drive, overwriting if file ID is provided."""
+        file_name = os.path.basename(file_path)
+        print(f"[INFO] Uploading file '{file_name}'...")
 
-        print(f"[INFO] Preparing file upload metadata and media...")
-        media = MediaFileUpload(file_path, mimetype='text/csv')
+        # Prepare media upload
+        media = MediaFileUpload(file_path, mimetype='text/csv', resumable=True)
 
-        uploaded_file = self.drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id'
-        ).execute()
+        if file_id:
+            # Overwrite existing file
+            print(f"[INFO] Updating existing file with ID: {file_id}...")
+            updated_file = self.drive_service.files().update(
+                fileId=file_id,
+                media_body=media
+            ).execute()
+            print(f"[SUCCESS] File '{file_name}' updated successfully.")
+            return updated_file['id']
+        else:
+            # Create a new file
+            print(f"[INFO] Creating a new file...")
+            file_metadata = {
+                'name': file_name,
+                'parents': [folder_id] if folder_id else []
+            }
 
-        print(f"[SUCCESS] File '{os.path.basename(file_path)}' uploaded with ID: {uploaded_file['id']}")
-        return uploaded_file['id']
+            uploaded_file = self.drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id'
+            ).execute()
+
+            print(f"[SUCCESS] File '{file_name}' uploaded with ID: {uploaded_file['id']}")
+            return uploaded_file['id']
 
     def list_files(self, folder_id=None):
         """List files in a folder or in the root directory if no folder is specified."""
@@ -97,3 +113,22 @@ class DriveManager:
             print(f"[SUCCESS] Successfully deleted file/folder with ID: {file_id}")
         except Exception as e:
             print(f"[ERROR] Failed to delete file/folder with ID: {file_id}. Error: {str(e)}")
+
+    def read_csv_file(self, file_id):
+        """Read a CSV file from Google Drive given its file ID."""
+        print(f"[INFO] Reading CSV file with ID: {file_id}...")
+        try:
+            request = self.drive_service.files().get_media(fileId=file_id)
+            file_content = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_content, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+
+            file_content.seek(0)
+            df = pd.read_csv(file_content)
+            print(f"[SUCCESS] CSV file read successfully.")
+            return df
+        except Exception as e:
+            print(f"[ERROR] Failed to read CSV file with ID: {file_id}. Error: {str(e)}")
+            return None
