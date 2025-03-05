@@ -75,16 +75,16 @@ if __name__ == "__main__":
                     feed.get('field5', '')   # Battery Voltage
                 ])
 
-            ''' Combine data '''
-            if (gmt_plus_7_time > pd.to_datetime(df.iloc[-1, 0])):
-                df.loc[len(df)] = [
-                        gmt_plus_7_time,         # Timestamp in GMT
-                        feed.get('field1', ''),  # DO value
-                        feed.get('field2', ''),  # DO temperature
-                        feed.get('field3', ''),  # EC value (us/cm)
-                        feed.get('field4', ''),  # EC temperature
-                        feed.get('field5', '')   # Battery Voltage
-                    ]
+                ''' Combine data '''
+                if (gmt_plus_7_time > pd.to_datetime(df.iloc[-1, 0])):
+                    df.loc[len(df)] = [
+                            gmt_plus_7_time,         # Timestamp in GMT
+                            feed.get('field1', ''),  # DO value
+                            feed.get('field2', ''),  # DO temperature
+                            feed.get('field3', ''),  # EC value (us/cm)
+                            feed.get('field4', ''),  # EC temperature
+                            feed.get('field5', '')   # Battery Voltage
+                        ]
 
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
