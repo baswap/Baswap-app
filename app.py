@@ -72,15 +72,15 @@ def thingspeak_retrieve(df):
 # Sidebar Input Features
 def sidebar_inputs(df):
     col_names = [col for col in df.columns if col != "Timestamp (GMT+7)"]
-    selected_cols = st.sidebar.multiselect("Columns", col_names, [name for name in col_names if name not in ["DO Value", "DO Temperature"]])
+    selected_cols = st.sidebar.multiselect("Columns to display in detailed dataset", col_names, [name for name in col_names if name not in ["DO Value", "DO Temperature"]])
     selected_cols.insert(0, "Timestamp (GMT+7)")
+
+    target_col = st.sidebar.selectbox("Choose a column to analyze:", [col for col in selected_cols if col != 'Timestamp (GMT+7)'], index = 0)
 
     min_date = df["Timestamp (GMT+7)"].min().date()
     max_date = df["Timestamp (GMT+7)"].max().date()
     date_from = st.sidebar.date_input("Date from:", min_value=min_date, max_value=max_date, value=max_date)
     date_to = st.sidebar.date_input("Date to:", min_value=min_date, max_value=max_date, value=max_date)# Filtering data
-    
-    target_col = st.sidebar.selectbox("Choose a column:", [col for col in selected_cols if col != 'Timestamp (GMT+7)'], index = 0)
 
     return selected_cols, date_from, date_to, target_col
 
