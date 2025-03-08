@@ -91,16 +91,28 @@ def filter_data(df, date_from, date_to, selected_cols):
     return filtered_df[selected_cols]
 
 def plot_line_chart(df, col):
-    # Convert to string format for detailed hover
-    # df["Timestamp_str"] = df["Timestamp (GMT+7)"].dt.strftime(r"%Y-%m-%d %H:%M:%S") 
+    # Ensure column exists
+    if col not in df.columns:
+        st.error(f"Column '{col}' not found in DataFrame.")
+        return
+
+    # Create a copy of the DataFrame to avoid modifying the original
+    df_filtered = df.copy()
+
+    # Convert Timestamp to string format for detailed hover
+    df_filtered["Timestamp (UTC+7)"] = df_filtered["Timestamp (GMT+7)"].dt.strftime(r"%Y-%m-%d %H:%M:%S")
+
+    # Reorder columns: Move Timestamp_str to the beginning and exclude Timestamp (GMT+7)
+    df_filtered = df_filtered[["Timestamp (UTC+7)"] + [c for c in df_filtered.columns if c != "Timestamp (GMT+7)" and c != "Timestamp_str"]]
+
     # Altair Chart
     chart = (
-        alt.Chart(df)
+        alt.Chart(df_filtered)
         .mark_line(point=True)  # Add points to the line
         .encode(
-            x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
+            x=alt.X("Timestamp (UTC+7):T", title="Timestamp"),
             y=alt.Y(f"{col}:Q", title="Value"),
-            tooltip=["Timestamp (GMT+7):N", f"{col}:Q"],  # Hover tooltip
+            tooltip=["Timestamp (UTC+7)", f"{col}:Q"],  # Hover tooltip with formatted timestamp
         )
         .interactive()  # Enable zooming & panning
     )
