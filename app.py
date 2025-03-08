@@ -103,7 +103,7 @@ def plot_line_chart(df, col):
     df_filtered["Timestamp (UTC+7)"] = df_filtered["Timestamp (GMT+7)"].dt.strftime(r"%Y-%m-%d %H:%M:%S")
 
     # Reorder columns: Move Timestamp_str to the beginning and exclude Timestamp (GMT+7)
-    df_filtered = df_filtered[["Timestamp (UTC+7)"] + [c for c in df_filtered.columns if c != "Timestamp (GMT+7)" and c != "Timestamp_str"]]
+    df_filtered = df_filtered[["Timestamp (UTC+7)"] + [c for c in df_filtered.columns if c != "Timestamp (GMT+7)" and c != "Timestamp (UTC+7)"]]
 
     # Altair Chart
     chart = (
