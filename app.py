@@ -112,7 +112,8 @@ def plot_line_chart(df, col):
         .encode(
             x=alt.X("Timestamp (UTC+7):T", title="Timestamp"),
             y=alt.Y(f"{col}:Q", title="Value"),
-            tooltip=["Timestamp (UTC+7)", f"{col}:Q"],  # Hover tooltip with formatted timestamp
+            tooltip=[alt.Tooltip("Timestamp_str:N", title="Time"),  # Explicitly set as Nominal
+                 alt.Tooltip(f"{col}:Q", title="Value")],
         )
         .interactive()  # Enable zooming & panning
     )
