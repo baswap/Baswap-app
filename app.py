@@ -92,7 +92,7 @@ def filter_data(df, date_from, date_to, selected_cols):
 
 def plot_line_chart(df, col):
     # Convert to string format for detailed hover
-    df["Timestamp_str"] = df["Timestamp (GMT+7)"].dt.strftime(r"%Y-%m-%d %H:%M:%S") 
+    # df["Timestamp_str"] = df["Timestamp (GMT+7)"].dt.strftime(r"%Y-%m-%d %H:%M:%S") 
     # Altair Chart
     chart = (
         alt.Chart(df)
@@ -100,7 +100,7 @@ def plot_line_chart(df, col):
         .encode(
             x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
             y=alt.Y(f"{col}:Q", title="Value"),
-            tooltip=["Timestamp_str:N", f"{col}:Q"],  # Hover tooltip
+            tooltip=["Timestamp (GMT+7):N", f"{col}:Q"],  # Hover tooltip
         )
         .interactive()  # Enable zooming & panning
     )
