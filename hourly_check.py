@@ -59,5 +59,5 @@ if __name__ == "__main__":
             # Check if the timestamp is within the last hour
             time_difference = current_time_utc - utc_time
 
-            if time_difference.total_seconds() >= 1:
+            if time_difference.total_seconds() >= 3600:
                 alert_email(utc_time)

@@ -28,7 +28,7 @@ def send_email(subject, body, to_email):
         print(f"❌ Failed to send email: {e}")
 
 def alert_email(last_recorded_time):
-    """Send an alert email if data has not been recorded in the last hour."""
+    """Send an alert email if data has not been recorded in the last period."""
     mailing_list = ["10422050@student.vgu.edu.vn"]
 
     gmt_plus_7_tz = pytz.timezone('Asia/Bangkok')  # GMT+7
