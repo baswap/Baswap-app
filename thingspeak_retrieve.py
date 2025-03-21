@@ -26,7 +26,7 @@ COMBINED_FILENAME = "combined_data.csv"
 COMBINED_ID = "1-2egCgGVsVMPcRrqjvcF0LCSMk1Q1KO0"
 
 if __name__ == "__main__":
-    drive_handler = DriveManager(os.environ["SERVICE_ACCOUNT"] )
+    drive_handler = DriveManager(os.environ["SERVICE_ACCOUNT"])
     df = drive_handler.read_csv_file(COMBINED_ID)
 
     extracted_date = date.today()  # Default time zone is UTC so at 1am in UTC+7, it is still counted as yesterday
