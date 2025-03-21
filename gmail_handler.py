@@ -38,6 +38,8 @@ def alert_email(last_recorded_time):
 
      # Get current time in GMT+7
     current_time_gmt_plus_7 = datetime.now(gmt_plus_7_tz)
+
+    time_difference = current_time_gmt_plus_7 - gmt_plus_7_time
     
     subject = "⚠️ Alert: No Data Recorded in the Last Hour"
     body = f"""

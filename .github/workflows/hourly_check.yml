@@ -27,5 +27,6 @@ jobs:
           
       - name: hourly check
         env:
-            SERVICE_ACCOUNT: ${{ secrets.SECRET_SERVICE_ACCOUNT }}
+            BASWAP_EMAIL: ${{ secrets.BASWAP_EMAIL }}
+            BASWAP_EMAIL_PWD: ${{ secrets.BASWAP_EMAIL_PWD }}
         run: python hourly_check.py
