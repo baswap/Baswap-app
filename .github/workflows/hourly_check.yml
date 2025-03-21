@@ -3,7 +3,7 @@ name: Hourly check
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */1 * * *' # Run once at 0:00 every day
+    - cron: '0 */3 * * *' # Run once at 0:00 every day
 
 jobs:
   build:
