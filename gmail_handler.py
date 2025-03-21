@@ -29,7 +29,7 @@ def send_email(subject, body, to_email):
 
 def alert_email(last_recorded_time):
     """Send an alert email if data has not been recorded in the last period."""
-    mailing_list = ["10422050@student.vgu.edu.vn"]
+    mailing_list = ["10422050@student.vgu.edu.vn", "10222034@student.vgu.edu.vn"]
 
     gmt_plus_7_tz = pytz.timezone('Asia/Bangkok')  # GMT+7
 
