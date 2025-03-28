@@ -23,8 +23,7 @@ def convert_utc_to_GMT7(timestamp):
 # Data Retrieval from Google Drive
 @st.cache_data(ttl=86400)
 def combined_data_retrieve():
-    secret = "ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAiYmFzd2FwIiwKICAicHJpdmF0ZV9rZXlfaWQiOiAiMThhMjVlNDRiNDIxMjQxMmYwMDQ0YzYyZTliNGY4ZWIzMmM5ZDdhNCIsCiAgInByaXZhdGVfa2V5IjogIi0tLS0tQkVHSU4gUFJJVkFURSBLRVktLS0tLVxuTUlJRXZnSUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS2d3Z2dTa0FnRUFBb0lCQVFDWklnM3VwWHdoUWdRM1xuWFpzVnQzRCtXNHpYdFV3U1J1ejZVWFhlQUZIcDR5Wm8vbkpYRE5sRzdPaDdIWW1oSHlGeHlUc2N3b09hSVNQR1xuOER1R2w1R3Ewd0ZQcDJ6V3pTNXlYb3FMdEp3Q2QvU0xTbjc2cDJBRlZtZUg5cXJDcVkrUXhIYnlWMnlPTml0RFxuTEVqeVlPNEFCQ20rdU53UXZrTi9Sc1RDaHlOWEhlYUlPSUp1MEIrbHd4ejdhVGxWWkhOalMzT3BGaFgycE80Vlxub3VxMEh6eUdzQTZYQ3FVM3ZoOHlJeU1CbEd3THpSRUVIeUluMytpbHZkaS94OGYvSEZnODlHQll6VDlWQjNYWFxueU1UTksySU5IV2RxbW54WENSdUNXSEIxRmxObVd5STAyVElCb0Q3cXplYjBIb1lKTldYSWJzNVY0N2tKYmxOaFxuTkh6dU9sTFBBZ01CQUFFQ2dnRUFDQ0dleThWTnloWlBVd0ZOY3VIQ3hqN21RNjRFMUJPZ0VjcXhqNUJFeVQ2ZVxuazRTdlhaLzVDYU1hMVM3RVdDSG5ETHU2djlRMFdNTFp1MzZXS3BkeHpMaFhvWHNxZEYyQTBlSGpTWGZWc092ZFxudUdmRVJsc001anVvVTdmdGFWakhudEJQNEo1enpUbGpJclgvU1orTUE4UTAwMFBOcTdYdXI1dDZaem4xem5KYVxuNjY3eFhHMzQvV1dTQTB5THZ1K1RsWUZ0WFRpNmhLUlNQVnNSMVhwVk1BdWdEdzArdzVYUmQxY3lvUFJsY1dReFxuSDRrVDFPem9UT2htU1lCWHFrd2tVd3l5c291NldRY3ZEcUdaTldaeDY0WUthRUsremlyU3p2UUhweDlidkxiOFxuQW91NUkzbXlXR3JiNkd2V09hVXdHUGxFaUpWbmdhZ1lVUFNFbWVydGdRS0JnUURXUUROeTlDTFlRZDhsSTNSRFxua1RuejdPSldoK0lWN3IwQUQyK2ZGeXlldlZLNmExbXdIVlFnUkpoNkNCcHh6c2ZxU0hQcTZodkxuem1jcWZYb1xuZ2NEcTIrTDBMOTJTdkpyd2FyQTRFVnJKRUVxZ25tOHlSL2RGdk1tcGMzSkFOWDJDMjVJM2NGR1oyNXBCMEVpeFxucm82M1kyQ3hEcEhINHV3RTJiRm1wMTJUSndLQmdRQzIrUVhkeS9DTzhLWTM3VC9GUUs5UW1NT0lWazhYTFJFMVxuSEN4SysvcW95eEgrRFVtS2hjWUZCWjhjNWlDa2VyRm1CSHRNa3d1RzBxMHg4TmhDd01GWEUwOWhuMWQ2ejZGNlxuL21pWktucTV6SkdheU5qM21kWlMvaVBGbVBXcXVjbVBXTFZZeVpoZVNINFJMd2toQzRwT0E5bnJ0VHBsSjdjZ1xuakhQM00zbnNHUUtCZ1FETU9XcFJXeEdUM2taY1drMUswclhSSTY0a0dXYVN6WHp1LzhmQWVCQ2FSNUVDRGEzeVxuU0NLV2w0eFlWajBPMnJLSlNnTGttNzllK3ltcGdnRGJYa09NRzRsY2hmdkpFV3NIWEVzWlJzR3BBcFNBUWtWd1xuUWxVYjduYXp4VTNVa3FoUEFnbUFPdG90dEx4M201aVBkZnFvS0Z4VXFiU2dPbGdMejQ1Z2NZeXE1UUtCZ0ZESFxuNUtVbGt0RW93ZG5UTHVKaFNvVmt6SDcyeS9oSmQxMWhVTlRTSnJvNjNYaXlXUk9GT0FXams3bm9oK1RXSGxnU1xuQm5XcVBkNktTTmpSb2tqbVhQV2FtdU5ZdkFDR2hwNk1qNVYvd2FzaCsrN0FXYm9HK3k2czhSSWVFK2dLR2tqbFxuT3pzMTFjVmFiLzRhTEFlZzFyRFcxbkZRRTdYeE1OSjM4QUxsZ1NDUkFvR0JBTks2SnJFb0JhVzgrdCtnY3hQOVxuUXQvS0FFWW1xKy81d1YzOGJGbGhvSDhCS0swTURwVTZUUDc2VnR6aUVpcDFxSjY3VFg2bi9idVZ6aWJJai85SVxuZ1hJRFNlRDVWWHhHdkQ3cFArUm9kOTZ2cWNNREgycUF4aEs1WDk4S0FCRlZnR2tSQ2pxaXBhdStrOVpyOU1OL1xueHZieUU1Q3JqY1I5aEtMQndTSjJ3cDlJXG4tLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tXG4iLAogICJjbGllbnRfZW1haWwiOiAiYmFzd2FwLWRyaXZlQGJhc3dhcC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsCiAgImNsaWVudF9pZCI6ICIxMTMzOTQ5MjM5MjM1ODY4Mjg3ODQiLAogICJhdXRoX3VyaSI6ICJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20vby9vYXV0aDIvYXV0aCIsCiAgInRva2VuX3VyaSI6ICJodHRwczovL29hdXRoMi5nb29nbGVhcGlzLmNvbS90b2tlbiIsCiAgImF1dGhfcHJvdmlkZXJfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjEvY2VydHMiLAogICJjbGllbnRfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9yb2JvdC92MS9tZXRhZGF0YS94NTA5L2Jhc3dhcC1kcml2ZSU0MGJhc3dhcC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsCiAgInVuaXZlcnNlX2RvbWFpbiI6ICJnb29nbGVhcGlzLmNvbSIKfQo="
-    # drive_handler = DriveManager(st.secrets["SERVICE_ACCOUNT"])
+    drive_handler = DriveManager(st.secrets["SERVICE_ACCOUNT"])
     drive_handler = DriveManager(secret)
     df = drive_handler.read_csv_file(COMBINED_ID)
     df["Timestamp (GMT+7)"] = pd.to_datetime(df["Timestamp (GMT+7)"], utc=True).dt.tz_convert("Asia/Bangkok")
@@ -106,14 +105,14 @@ def sidebar_inputs(df):
     return selected_cols, date_from, date_to, target_col, resample_freq, agg_function
 
 # Data Filtering
-def filter_data(df, date_from, date_to, selected_cols, resample_freq, agg_function):
+def filter_data(df, date_from, date_to, selected_cols):
     # Filter data by selected date range
     filtered_df = df[(df["Timestamp (GMT+7)"].dt.date >= date_from) & 
                      (df["Timestamp (GMT+7)"].dt.date <= date_to)].copy()
 
     return filtered_df[selected_cols]
 
-def apply_aggregation(df, target_col, resample_freq, agg_function):
+def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function):
     if resample_freq == "None":
         return df  # No resampling, return original dataframe
 
@@ -140,7 +139,7 @@ def apply_aggregation(df, target_col, resample_freq, agg_function):
         df_resampled = df_resampled.loc[idx].reset_index()
 
     elif agg_function == "Median":
-        df_resampled = df_resampled.groupby(pd.Grouper(freq=rule_map[resample_freq]))[target_col].median().reset_index()
+        df_resampled = df_resampled.groupby(pd.Grouper(freq=rule_map[resample_freq]))[selected_cols].median().reset_index()
 
     return df_resampled
 
@@ -188,39 +187,33 @@ def app():
         df = thingspeak_retrieve(df)
 
         selected_cols, date_from, date_to, target_col, resample_freq, agg_function = sidebar_inputs(df)
-        filtered_df = filter_data(df, date_from, date_to, selected_cols, resample_freq, agg_function)
+        filtered_df = filter_data(df, date_from, date_to, selected_cols)
 
-        col = st.columns((1.5, 4.5), gap='medium')
+        col1, col2 = st.columns((1.2, 4), gap='medium')
 
-        with col[0]:
-            st.markdown('#### Key numbers')
+        aggregated_df = apply_aggregation(filtered_df, selected_cols, target_col, resample_freq, agg_function)
 
-            # Compute statistics
-            max_value = filtered_df[target_col].max()
-            min_value = filtered_df[target_col].min()
-            average_value = filtered_df[target_col].mean()
-            std_dev_value = filtered_df[target_col].std()
+        with col1:
+            st.subheader('📊 Statistics')
+            st.metric(label="Maximum", value=f"{aggregated_df[target_col].max():.2f}")
+            st.metric(label="Minimum", value=f"{aggregated_df[target_col].min():.2f}")
+            st.metric(label="Average", value=f"{aggregated_df[target_col].mean():.2f}")
+            st.metric(label="Std Dev", value=f"{aggregated_df[target_col].std():.2f}")
 
-            # Display metrics
-            st.metric(label="Maximum Value", value=f"{max_value:.2f}")
-            st.metric(label="Minimum Value", value=f"{min_value:.2f}")
-            st.metric(label="Average Value", value=f"{average_value:.2f}")
-            st.metric(label="Standard Deviation", value=f"{std_dev_value:.2f}")
+        with col2:
+            st.subheader("📈 Water Quality Graph")
+            plot_line_chart(aggregated_df, target_col)
 
-        with col[1]:
-            st.markdown('#### Graphs')
+    # Show only the data points plotted in the graph but with all selected columns
+    detailed_df = filtered_df[filtered_df["Timestamp (GMT+7)"].isin(aggregated_df["Timestamp (GMT+7)"])].reset_index(drop=True)
 
+    st.subheader("🔍 Data Table")
+    st.write(f"Data Dimension: {detailed_df.shape[0]} rows and {detailed_df.shape[1]} columns.")
+    st.dataframe(detailed_df, use_container_width=True)
 
-            plot_line_chart(apply_aggregation(filtered_df, target_col, resample_freq, agg_function), target_col)
-
-            st.markdown('###### Detailed Dataset')
-            st.write(f"Data Dimension: {filtered_df.shape[0]} rows and {filtered_df.shape[1]} columns.")
-            st.dataframe(filtered_df)
-
-    # Further Information Section (Moved Below)
-    st.markdown('#### Further Information')
     st.button("Clear Cache", help="This clears all cached data, ensuring the app fetches the latest available information.", on_click=st.cache_data.clear)
 
 
 if __name__ == "__main__":
     app()
+
