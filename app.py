@@ -24,7 +24,6 @@ def convert_utc_to_GMT7(timestamp):
 @st.cache_data(ttl=86400)
 def combined_data_retrieve():
     drive_handler = DriveManager(st.secrets["SERVICE_ACCOUNT"])
-    drive_handler = DriveManager(secret)
     df = drive_handler.read_csv_file(COMBINED_ID)
     df["Timestamp (GMT+7)"] = pd.to_datetime(df["Timestamp (GMT+7)"], utc=True).dt.tz_convert("Asia/Bangkok")
     return df
