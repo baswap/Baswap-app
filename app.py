@@ -188,7 +188,7 @@ def app():
         selected_cols, date_from, date_to, target_col, resample_freq, agg_function = sidebar_inputs(df)
         filtered_df = filter_data(df, date_from, date_to, selected_cols)
 
-        col1, col2 = st.columns((1.2, 4), gap='medium')
+        col1, col2 = st.columns((1.5, 4), gap='medium')
 
         aggregated_df = apply_aggregation(filtered_df, selected_cols, target_col, resample_freq, agg_function)
 
