@@ -15,6 +15,7 @@ UTC = pytz.utc
 THINGSPEAK_URL = "https://api.thingspeak.com/channels/2652379/feeds.json"
 COMBINED_FILENAME = "combined_data.csv"
 COMBINED_ID = st.secrets["FILE_ID"]
+SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
 
 def convert_utc_to_GMT7(timestamp):
     """Convert UTC timestamp to GMT+7."""
@@ -23,8 +24,7 @@ def convert_utc_to_GMT7(timestamp):
 # Data Retrieval from Google Drive
 @st.cache_data(ttl=86400)
 def combined_data_retrieve():
-    secret = st.secrets["SERVICE_ACCOUNT"]
-    drive_handler = DriveManager(secret)
+    drive_handler = DriveManager(SECRET_ACC)
     df = drive_handler.read_csv_file(COMBINED_ID)
     df["Timestamp (GMT+7)"] = pd.to_datetime(df["Timestamp (GMT+7)"], utc=True).dt.tz_convert("Asia/Bangkok")
     return df
