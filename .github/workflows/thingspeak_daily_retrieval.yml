@@ -28,4 +28,5 @@ jobs:
       - name: retrieve daily data
         env:
             SERVICE_ACCOUNT: ${{ secrets.SECRET_SERVICE_ACCOUNT }}
+            FILE_ID: ${{ secrets.FILE_ID }}
         run: python thingspeak_retrieve.py

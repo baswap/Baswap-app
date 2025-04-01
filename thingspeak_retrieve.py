@@ -23,7 +23,7 @@ logger_file_handler.setFormatter(formatter)
 logger.addHandler(logger_file_handler)
 
 COMBINED_FILENAME = "combined_data.csv"
-COMBINED_ID = "1-2egCgGVsVMPcRrqjvcF0LCSMk1Q1KO0"
+COMBINED_ID = os.environ["FILE_ID"]
 
 if __name__ == "__main__":
     drive_handler = DriveManager(os.environ["SERVICE_ACCOUNT"])
@@ -72,7 +72,8 @@ if __name__ == "__main__":
                     feed.get('field2', ''),  # DO temperature
                     feed.get('field3', ''),  # EC value (us/cm)
                     feed.get('field4', ''),  # EC temperature
-                    feed.get('field5', '')   # Battery Voltage
+                    feed.get('field5', ''),   # Battery Voltage
+                    feed.get('field3', '') / 2000,  # EC value (g/l)
                 ])
 
                 ''' Combine data '''
@@ -83,7 +84,8 @@ if __name__ == "__main__":
                             feed.get('field2', ''),  # DO temperature
                             feed.get('field3', ''),  # EC value (us/cm)
                             feed.get('field4', ''),  # EC temperature
-                            feed.get('field5', '')   # Battery Voltage
+                            feed.get('field5', ''),   # Battery Voltage
+                            feed.get('field3', '') / 2000,  # EC value (g/l)
                         ]
 
     with open(csv_filename, mode='w', newline='') as file:
