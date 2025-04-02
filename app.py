@@ -199,24 +199,26 @@ def plot_line_chart(df, col, resample_freq="None"):
 
     st.altair_chart(chart, use_container_width=True)
 
+def display_statistics(df, target_col):
+    """Display statistics based on raw data."""
+    st.subheader("**📊 Overall Statistics (Raw Data)**")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric(label="Maximum", value=f"{df[target_col].max():.2f}")
+    col2.metric(label="Minimum", value=f"{df[target_col].min():.2f}")
+    col3.metric(label="Average", value=f"{df[target_col].mean():.2f}")
+    col4.metric(label="Std Dev", value=f"{df[target_col].std():.2f}")
+
+
 def display_view(df, target_col, view_title, resample_freq, selected_cols, agg_functions):
+    """Display a view with a line chart only."""
     st.subheader(view_title)
     if resample_freq == "None":
-        # Raw data, no aggregation needed
         view_df = df.copy()
     else:
         view_df = apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions)
     
-    col1, col2 = st.columns((1.5, 4), gap='medium')
-    with col1:
-        st.markdown("**📊 Statistics**")
-        st.metric(label="Maximum", value=f"{view_df[target_col].max():.2f}")
-        st.metric(label="Minimum", value=f"{view_df[target_col].min():.2f}")
-        st.metric(label="Average", value=f"{view_df[target_col].mean():.2f}")
-        st.metric(label="Std Dev", value=f"{view_df[target_col].std():.2f}")
-    with col2:
-        st.markdown("**📈 Line Chart**")
-        plot_line_chart(view_df, target_col, resample_freq)
+    plot_line_chart(view_df, target_col, resample_freq)
+
 
 # Streamlit Layout
 def app():
@@ -233,11 +235,12 @@ def app():
     selected_cols, date_from, date_to, target_col, agg_functions = sidebar_inputs(df)
     filtered_df = filter_data(df, date_from, date_to, selected_cols)
 
+    # Display overall statistics from raw data only
+    display_statistics(filtered_df, target_col)
+
     # Display three views: Raw, Hourly, and Daily.
     display_view(filtered_df, target_col, f"Raw Data View of {target_col}", resample_freq="None", selected_cols=selected_cols, agg_functions=agg_functions)
-
     display_view(filtered_df, target_col, f"Hourly Data View of {target_col}", resample_freq="Hour", selected_cols=selected_cols, agg_functions=agg_functions)
-
     display_view(filtered_df, target_col, f"Daily Data View of {target_col}", resample_freq="Day", selected_cols=selected_cols, agg_functions=agg_functions)
 
     # Show detailed table for the raw filtered data
@@ -246,6 +249,7 @@ def app():
     st.dataframe(filtered_df, use_container_width=True)
 
     st.button("Clear Cache", help="This clears all cached data, ensuring the app fetches the latest available information.", on_click=st.cache_data.clear)
+
 
 if __name__ == "__main__":
     app()
