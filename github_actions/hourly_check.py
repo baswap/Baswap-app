@@ -4,6 +4,10 @@ import requests
 import json
 import pytz
 from datetime import datetime
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils")))
 from gmail_handler import alert_email
 
 logger = logging.getLogger(__name__)
