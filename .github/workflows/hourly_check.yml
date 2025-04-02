@@ -29,4 +29,4 @@ jobs:
         env:
             BASWAP_EMAIL: ${{ secrets.BASWAP_EMAIL }}
             BASWAP_EMAIL_PWD: ${{ secrets.BASWAP_EMAIL_PWD }}
-        run: python hourly_check.py
+        run: python github_actions/hourly_check.py

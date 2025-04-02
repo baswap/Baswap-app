@@ -29,4 +29,4 @@ jobs:
         env:
             SERVICE_ACCOUNT: ${{ secrets.SECRET_SERVICE_ACCOUNT }}
             FILE_ID: ${{ secrets.FILE_ID }}
-        run: python thingspeak_retrieve.py
+        run: python github_actions/thingspeak_retrieve.py
