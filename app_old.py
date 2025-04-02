@@ -73,7 +73,7 @@ def thingspeak_retrieve(df):
     feeds = fetch_thingspeak_data(results)
     return append_new_data(df, feeds)
 
-# Sidebar Input Features (Aggregation and Date Range Only)
+# Sidebar Input Features
 def sidebar_inputs(df):
     col_names = [col for col in df.columns if col != "Timestamp (GMT+7)"]
     selected_cols = st.sidebar.multiselect("Columns to display in detail", col_names, [name for name in col_names if name not in ["DO Value", "DO Temperature"]])
@@ -101,10 +101,11 @@ def sidebar_inputs(df):
     date_from = st.sidebar.date_input("Date from:", min_value=min_date, max_value=max_date, value=st.session_state.date_from)
     date_to = st.sidebar.date_input("Date to:", min_value=min_date, max_value=max_date, value=st.session_state.date_to)
 
-    # Aggregation options
+    # Resampling options
+    resample_freq = st.sidebar.selectbox("Resample Frequency:", ["None", "Hour", "Day", "Month"], index=0)
     agg_functions = st.sidebar.multiselect("Aggregation Functions:", ["Min", "Max", "Median"], ["Min", "Max"])
 
-    return selected_cols, date_from, date_to, target_col, agg_functions
+    return selected_cols, date_from, date_to, target_col, resample_freq, agg_functions
 
 # Data Filtering
 def filter_data(df, date_from, date_to, selected_cols):
@@ -114,12 +115,11 @@ def filter_data(df, date_from, date_to, selected_cols):
 
     return filtered_df[selected_cols]
 
-# Aggregation / Resampling Function
 def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions):
     if resample_freq == "None":
         return df  # No resampling, return original dataframe
 
-    rule_map = {"Hour": "h", "Day": "d"}
+    rule_map = {"Hour": "H", "Day": "D", "Month": "M"}
     agg_map = {"Min": "min", "Max": "max", "Median": "median"}
 
     # Ensure only valid aggregation functions are selected
@@ -133,21 +133,22 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
     agg_results = []
     for agg_function in agg_functions:
         if agg_function in ["Min", "Max"]:
+            # Handle Min/Max aggregation
             idx_func = "idxmin" if agg_function == "Min" else "idxmax"
             grouped = df_resampled.groupby(pd.Grouper(freq=rule_map[resample_freq]))[target_col]
             idx = grouped.apply(lambda x: getattr(x, idx_func)() if not x.empty else None).dropna()
             agg_df = df_resampled.loc[idx].reset_index()
         elif agg_function == "Median":
-            agg_series = df_resampled[target_col].resample(rule_map[resample_freq]).median()
-            agg_df = agg_series.reset_index()
+            # Handle Median aggregation
+            agg_df = df_resampled.groupby(pd.Grouper(freq=rule_map[resample_freq]))[selected_cols].median().reset_index()
 
+        # Add an aggregation column to distinguish between Min/Max/Median
         agg_df["Aggregation"] = agg_function
         agg_results.append(agg_df)
 
     return pd.concat(agg_results, ignore_index=True)
 
-# Plotting Function
-def plot_line_chart(df, col, resample_freq="None"):
+def plot_line_chart(df, col, resample_freq=None):
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
@@ -155,45 +156,50 @@ def plot_line_chart(df, col, resample_freq="None"):
     df_filtered = df.copy()
 
     if resample_freq == "None":
-        df_filtered["Aggregation"] = "Raw"
+        df_filtered["Legend"] = f"{col}: Raw data"
         chart = (
             alt.Chart(df_filtered)
             .mark_line(point=True)
             .encode(
                 x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
                 y=alt.Y(f"{col}:Q", title="Value"),
-                color=alt.Color("Aggregation:N", title="Aggregation"),
+                color=alt.Color("Legend:N", title="Legend"),
                 tooltip=[
-                    alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
+                    alt.Tooltip("Timestamp (UTC+7):N", title="Exact Time"),
                     alt.Tooltip(f"{col}:Q", title="Value")
                 ],
             )
             .interactive()
         )
     else:
+        # Define resampling method
         if resample_freq == "Hour":
-            df_filtered["Timestamp (Rounded)"] = df_filtered["Timestamp (GMT+7)"].dt.floor('h')
+            df_filtered["Timestamp (Rounded)"] = df_filtered["Timestamp (GMT+7)"].dt.floor('H')
         elif resample_freq == "Day":
-            df_filtered["Timestamp (Rounded)"] = df_filtered["Timestamp (GMT+7)"].dt.floor('d')
+            df_filtered["Timestamp (Rounded)"] = df_filtered["Timestamp (GMT+7)"].dt.floor('D')
+        elif resample_freq == "Month":
+            df_filtered["Timestamp (Rounded)"] = df_filtered["Timestamp (GMT+7)"].dt.to_period('M').dt.start_time
         else:
             df_filtered["Timestamp (Rounded)"] = df_filtered["Timestamp (GMT+7)"]
 
+        df_filtered["Timestamp (UTC+7)"] = df_filtered["Timestamp (GMT+7)"].dt.strftime(r"%Y-%m-%d %H:%M:%S")
         df_filtered["Timestamp (Rounded Display)"] = df_filtered["Timestamp (Rounded)"].dt.strftime(
             r"%H:%M:%S" if resample_freq == "Hour" else "%d/%m/%Y"
         )
 
+        df_final = df_filtered
+
         chart = (
-            alt.Chart(df_filtered)
+            alt.Chart(df_final)
             .mark_line(point=True)
             .encode(
                 x=alt.X("Timestamp (Rounded):T", title="Timestamp"),
                 y=alt.Y(f"{col}:Q", title="Value"),
-                color=alt.Color("Aggregation:N", title="Aggregation"),
+                color=alt.Color("Legend:N", title="Legend"),
                 tooltip=[
                     alt.Tooltip("Timestamp (Rounded Display):N", title="Rounded Time"),
-                    alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
                     alt.Tooltip(f"{col}:Q", title="Value"),
-                    alt.Tooltip("Aggregation:N", title="Aggregation")
+                    alt.Tooltip("Aggregation:N", title="Aggregation"),
                 ]
             )
             .interactive()
@@ -201,53 +207,49 @@ def plot_line_chart(df, col, resample_freq="None"):
 
     st.altair_chart(chart, use_container_width=True)
 
-def display_view(df, target_col, view_title, resample_freq, selected_cols, agg_functions):
-    st.subheader(view_title)
-    if resample_freq == "None":
-        # Raw data, no aggregation needed
-        view_df = df.copy()
-    else:
-        view_df = apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions)
-    
-    col1, col2 = st.columns((1.5, 4), gap='medium')
-    with col1:
-        st.markdown("**📊 Statistics**")
-        st.metric(label="Maximum", value=f"{view_df[target_col].max():.2f}")
-        st.metric(label="Minimum", value=f"{view_df[target_col].min():.2f}")
-        st.metric(label="Average", value=f"{view_df[target_col].mean():.2f}")
-        st.metric(label="Std Dev", value=f"{view_df[target_col].std():.2f}")
-    with col2:
-        st.markdown("**📈 Line Chart**")
-        plot_line_chart(view_df, target_col, resample_freq)
-
 # Streamlit Layout
 def app():
     st.set_page_config(page_title="BASWAP-APP", page_icon="💧", layout="wide")
     st.title("BASWAP APP")
+
     st.markdown("""
-    This app retrieves water quality data from a buoy-based monitoring system in Vinh Long, Vietnam.
+    This app retrieves the water quality from a buoy-based monitoring system in Vinh Long, Vietnam.
     * **Data source:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
     """)
 
-    df = combined_data_retrieve()
-    df = thingspeak_retrieve(df)
+    placeholder = st.empty()
+    with placeholder.container():
+        df = combined_data_retrieve()
+        df = thingspeak_retrieve(df)
 
-    selected_cols, date_from, date_to, target_col, agg_functions = sidebar_inputs(df)
-    filtered_df = filter_data(df, date_from, date_to, selected_cols)
+        selected_cols, date_from, date_to, target_col, resample_freq, agg_functions = sidebar_inputs(df)
+        filtered_df = filter_data(df, date_from, date_to, selected_cols)
 
-    # Display three views: Raw, Hourly, and Daily.
-    display_view(filtered_df, target_col, f"Raw Data View of {target_col}", resample_freq="None", selected_cols=selected_cols, agg_functions=agg_functions)
+        col1, col2 = st.columns((1.5, 4), gap='medium')
 
-    display_view(filtered_df, target_col, f"Hourly Data View of {target_col}", resample_freq="Hour", selected_cols=selected_cols, agg_functions=agg_functions)
+        aggregated_df = apply_aggregation(filtered_df, selected_cols, target_col, resample_freq, agg_functions)
 
-    display_view(filtered_df, target_col, f"Daily Data View of {target_col}", resample_freq="Day", selected_cols=selected_cols, agg_functions=agg_functions)
+        with col1:
+            st.subheader('📊 Statistics')
+            st.metric(label="Maximum", value=f"{aggregated_df[target_col].max():.2f}")
+            st.metric(label="Minimum", value=f"{aggregated_df[target_col].min():.2f}")
+            st.metric(label="Average", value=f"{aggregated_df[target_col].mean():.2f}")
+            st.metric(label="Std Dev", value=f"{aggregated_df[target_col].std():.2f}")
 
-    # Show detailed table for the raw filtered data
+        with col2:
+            st.subheader("📈 Water Quality Graph")
+            plot_line_chart(aggregated_df, target_col)
+
+    # Show only the data points plotted in the graph but with all selected columns
+    detailed_df = filtered_df[filtered_df["Timestamp (GMT+7)"].isin(aggregated_df["Timestamp (GMT+7)"])].reset_index(drop=True)
+
     st.subheader("🔍 Data Table")
-    st.write(f"Data Dimension: {filtered_df.shape[0]} rows and {filtered_df.shape[1]} columns.")
-    st.dataframe(filtered_df, use_container_width=True)
+    st.write(f"Data Dimension: {detailed_df.shape[0]} rows and {detailed_df.shape[1]} columns.")
+    st.dataframe(detailed_df, use_container_width=True)
 
     st.button("Clear Cache", help="This clears all cached data, ensuring the app fetches the latest available information.", on_click=st.cache_data.clear)
 
+
 if __name__ == "__main__":
     app()
+
