@@ -4,10 +4,12 @@ import requests
 import json
 import csv
 import os
+import sys
 import pytz
 import pandas as pd
 from datetime import date, timedelta, datetime
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils")))
 from drive_handler import DriveManager
 
 logger = logging.getLogger(__name__)
