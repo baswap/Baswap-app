@@ -8,7 +8,7 @@ def sidebar_inputs(df):
     selected_cols = st.sidebar.multiselect("Columns to display in detail", col_names, [name for name in col_names if name not in ["DO Value", "DO Temperature"]])
     selected_cols.insert(0, "Timestamp (GMT+7)")
 
-    target_col = st.sidebar.selectbox("Choose a column to analyze:", [col for col in selected_cols if col != 'Timestamp (GMT+7)'], index=0)
+    target_col = st.sidebar.selectbox("Choose a column to analyze:", [col for col in selected_cols if col != 'Timestamp (GMT+7)'], index=3)
 
     min_date = datetime(2025, 1, 17).date()  # Fixed first date
     max_date = datetime.now(GMT7).date()

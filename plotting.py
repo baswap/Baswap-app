@@ -67,7 +67,7 @@ def plot_line_chart(df, col, resample_freq="None"):
             .interactive()
         )
 
-        if resample_freq == "Hour":
+        if resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]:
             # Filter the "Max" aggregation points.
             max_data = df_filtered[df_filtered["Aggregation"] == "Max"]
 
@@ -78,8 +78,14 @@ def plot_line_chart(df, col, resample_freq="None"):
             last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
             last_value = max_values_numeric.iloc[-1][col]
 
+            if (col == "EC Value (g/l)"):
+                max_values_numeric = max_values_numeric * 2000
+
             # Call your prediction function, which now returns a list of predicted values.
             predictions_list = make_predictions(max_values_numeric, mode="Max")
+
+            if (col == "EC Value (g/l)"):
+                predictions_list = [x/2000 for x in predictions_list]
             
             # Create new timestamps for each prediction by adding one hour for each prediction.
             prediction_timestamps = [
@@ -113,7 +119,7 @@ def plot_line_chart(df, col, resample_freq="None"):
             )
             
             # Combine the main chart with the predictions chart.
-            combined_chart = alt.layer(main_chart, predictions_chart).resolve_scale(
+            combined_chart = alt.layer(predictions_chart, main_chart).resolve_scale(
                 color='independent'
             )
             st.altair_chart(combined_chart, use_container_width=True)
