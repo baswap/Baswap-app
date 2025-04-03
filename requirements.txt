@@ -1,0 +1,5 @@
+streamlit
+torch
+pytorch_lightning
+torchmetrics
+scikit-learn==1.5.2
