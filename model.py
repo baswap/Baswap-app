@@ -95,8 +95,6 @@ def make_predictions(df, mode=None):
         prediction = model(input_seq)[:, -1, :]  # Get the last time step prediction
 
     rescaled_prediction = scaler.inverse_transform(prediction)
-    print("Prediction:", prediction.item())
-    print("Inverse Prediction:", rescaled_prediction.item())
     return [rescaled_prediction.item()]
 
     

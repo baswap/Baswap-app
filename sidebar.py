@@ -1,14 +1,21 @@
 import streamlit as st
 from datetime import datetime
-from config import GMT7
+from config import GMT7, COL_NAMES
 
 def sidebar_inputs(df):
-    col_names = [col for col in df.columns if col != "Timestamp (GMT+7)"]
+    col_names = COL_NAMES
     # Exclude certain columns by default if necessary
-    selected_cols = st.sidebar.multiselect("Columns to display in detail", col_names, [name for name in col_names if name not in ["DO Value", "DO Temperature"]])
-    selected_cols.insert(0, "Timestamp (GMT+7)")
+    # selected_cols = st.sidebar.multiselect("Columns to display in detail", col_names, [name for name in col_names if name not in ["DO Value", "DO Temperature"]])
+    # selected_cols.insert(0, "Timestamp (GMT+7)")
 
-    target_col = st.sidebar.selectbox("Choose a column to analyze:", [col for col in selected_cols if col != 'Timestamp (GMT+7)'], index=3)
+    # Sidebar header and description
+    st.sidebar.markdown("## ⚙️ Graph Settings")
+    st.sidebar.markdown(
+        "Use the options below to customize how the data is shown in the charts.\n\n"
+        "You can choose what measurement to analyze, set a date range, and select which summary statistics to display in the hourly and daily view."
+    )
+
+    target_col = st.sidebar.selectbox("Choose a column to plot:", col_names, index=1)
 
     min_date = datetime(2025, 1, 17).date()  # Fixed first date
     max_date = datetime.now(GMT7).date()
@@ -19,14 +26,14 @@ def sidebar_inputs(df):
         st.session_state.date_to = max_date
 
     col1, col2 = st.sidebar.columns(2)
-    if col1.button("First Day"):
+    if col1.button("First Recorded Day"):
         st.session_state.date_from = min_date  
     if col2.button("Today"):
         st.session_state.date_from, st.session_state.date_to = max_date, max_date
 
-    date_from = st.sidebar.date_input("Date from:", min_value=min_date, max_value=max_date, value=st.session_state.date_from)
-    date_to = st.sidebar.date_input("Date to:", min_value=min_date, max_value=max_date, value=st.session_state.date_to)
+    date_from = st.sidebar.date_input(" Start Date (From):", min_value=min_date, max_value=max_date, value=st.session_state.date_from)
+    date_to = st.sidebar.date_input("End Date (To):", min_value=min_date, max_value=max_date, value=st.session_state.date_to)
 
-    agg_functions = st.sidebar.multiselect("Aggregation Functions:", ["Min", "Max", "Median"], ["Min", "Max", "Median"])
+    agg_functions = st.sidebar.multiselect("Choose summary statistics to calculate (applied in Hourly and Daily views):", ["Min", "Max", "Median"], ["Min", "Max", "Median"])
 
-    return selected_cols, date_from, date_to, target_col, agg_functions
+    return date_from, date_to, target_col, agg_functions

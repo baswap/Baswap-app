@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-def filter_data(df, date_from, date_to, selected_cols):
+def filter_data(df, date_from, date_to):
     filtered_df = df[(df["Timestamp (GMT+7)"].dt.date >= date_from) & 
                      (df["Timestamp (GMT+7)"].dt.date <= date_to)].copy()
-    return filtered_df[selected_cols]
+    return filtered_df
 
 def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions):
     if resample_freq == "None":
