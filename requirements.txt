@@ -1,4 +1,7 @@
+pytz
+requests
 streamlit
+altair
 torch
 pytorch_lightning
 torchmetrics
