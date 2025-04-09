@@ -82,6 +82,7 @@ selected_table_cols = st.multiselect(
     options=col_names,
     default=col_names
 )
+selected_table_cols.insert(0, "Timestamp (GMT+7)")
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(selected_table_cols)}).")
 st.dataframe(filtered_df[selected_table_cols], use_container_width=True)
 
