@@ -19,7 +19,7 @@ def update_language():
 
 # Initialize session state for language if not set.
 if "language" not in st.session_state:
-    st.session_state.language = "en"
+    st.session_state.language = "vi"
 lang = st.session_state.language
 texts = APP_TEXTS[lang]
 
