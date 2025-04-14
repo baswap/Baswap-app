@@ -63,8 +63,8 @@ SIDE_TEXTS = {
             "You can choose what measurement to analyze, set a date range, and select which summary statistics to display in the hourly and daily view."
         ),
         "sidebar_choose_column": "Choose a column to plot:",
-        "sidebar_first_day": "First\nRecorded Day",
-        "sidebar_today": "Today",
+        "sidebar_first_day": "First Recorded Day",
+        "sidebar_today": "Last Recorded Day",
         "sidebar_start_date": "Start Date (From):",
         "sidebar_end_date": "End Date (To):",
         "sidebar_summary_stats": "Choose summary statistics to calculate (applied in Hourly and Daily views):"
@@ -76,8 +76,8 @@ SIDE_TEXTS = {
             "Bạn có thể chọn chỉ số cần phân tích, khoảng thời gian, và chọn các thống kê để hiển thị trong biểu đồ theo giờ và theo ngày."
         ),
         "sidebar_choose_column": "Chọn cột để lập biểu đồ:",
-        "sidebar_first_day": "Ngày đo\nđầu tiên",
-        "sidebar_today": "Hôm nay",
+        "sidebar_first_day": "Ngày đo đầu tiên",
+        "sidebar_today": "Ngày đo gần nhất",
         "sidebar_start_date": "Ngày bắt đầu (Từ):",
         "sidebar_end_date": "Ngày kết thúc (Đến):",
         "sidebar_summary_stats": "Chọn các thống kê tóm tắt để tính (áp dụng cho chế độ theo giờ và ngày):"
