@@ -1,8 +1,7 @@
 import streamlit as st
-from datetime import datetime
 from config import GMT7, COL_NAMES, SIDE_TEXTS
 
-def sidebar_inputs(df, lang):
+def sidebar_inputs(df, lang, first_date, last_date):
     texts = SIDE_TEXTS[lang]
     col_names = COL_NAMES
 
@@ -13,8 +12,8 @@ def sidebar_inputs(df, lang):
     # Column selection for plotting
     target_col = st.sidebar.selectbox(texts["sidebar_choose_column"], col_names, index=1)
 
-    min_date = datetime(2025, 1, 17).date()  # Fixed first date
-    max_date = datetime.now(GMT7).date()
+    min_date = first_date
+    max_date = last_date
 
     if "date_from" not in st.session_state:
         st.session_state.date_from = max_date

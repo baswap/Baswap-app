@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import datetime
 
 # Must be the very first Streamlit command
 st.set_page_config(page_title="BASWAP-APP", page_icon="💧", layout="wide")
@@ -51,9 +52,11 @@ st.markdown(texts["description"])
 df = combined_data_retrieve()
 df = thingspeak_retrieve(df)
 col_names = COL_NAMES
+first_date = datetime(2025, 1, 17).date()  # Fixed first date
+last_date = df['Timestamp (GMT+7)'].max().date()
 
 # Sidebar inputs.
-date_from, date_to, target_col, agg_functions = sidebar_inputs(df, lang)
+date_from, date_to, target_col, agg_functions = sidebar_inputs(df, lang, last_date)
 filtered_df = filter_data(df, date_from, date_to)
 
 # Display statistics.
