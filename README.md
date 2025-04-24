@@ -47,7 +47,7 @@ We would like to express our deepest gratitude to the following individuals whos
 - **Bui Ngoc Long**
 - **Thai Minh Kien**   
 - **Le Viet Tin** 
-- **Ho Ngoc Nhuy** 
+- **Ho Ngoc Nhu Y** 
 - **Nguyen Gia Khiem** 
 
 Thank you for your guidance, creativity, and unwavering support. 
