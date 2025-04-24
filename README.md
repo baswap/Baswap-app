@@ -1,4 +1,4 @@
-# BAswap App
+# Baswap App
 
 ## 📑 Table of Contents
 - [🗒️ Summary](#-summary)
@@ -11,7 +11,7 @@
 
 ## 🗒️ Summary
 
-BAswap is a bilingual (English/Việt) Streamlit dashboard that fetches real-time environmental data from our buoy in Vinh Long, and presents in an interactive, user-friendly way. Users can filter by date, measurement type, and aggregation functions, then export to CSV for offline analysis.
+This website is part of our Buoy-based AIoT system for water quality monitor and prediction (BASWAP) project. This repository features a bilingual (English/Việt) Streamlit dashboard that fetches real-time environmental data from our buoy in Vinh Long, and presents in an interactive, user-friendly way. Users can filter by date, measurement type, and aggregation functions, then export to CSV for offline analysis.
 
 ## 👥 Team Members
 
