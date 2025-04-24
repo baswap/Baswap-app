@@ -1,7 +1,7 @@
 # Baswap App
 
 ## 📑 Table of Contents
-- [🗒️ Summary](#-summary)
+- [Summary](#summary)
 - [👥 Team Members](#-team-members)  
 - [🌐 Live Demo](#-live-demo)  
 - [🚀 Features](#-features)    
@@ -40,7 +40,18 @@ This website is part of our Buoy-based AIoT system for water quality monitor and
 - **ThingSpeak Channel:** [https://thingspeak.mathworks.com/channels/2652379](link)
 
 ## 🙏 Acknowledgements
+## 🙏 Special Thanks to Our Former Team Members
 
+We would like to express our deepest gratitude to the following individuals whose early contributions and dedication laid the foundation for Baswap. Their hard work, insight, and passion were instrumental in shaping our project during its formative stages:
+
+- **Dr. Vo Bich Hien** — Mentor 
+- **Bui Ngoc Long**
+- **Thai Minh Kien**   
+- **Le Viet Tin** 
+- **Ho Ngoc Nhuy** 
+- **Nguyen Gia Khiem** 
+
+Thank you for your guidance, creativity, and unwavering support. 
 
 ## 🛠 Support
 If you need to contact about the project, please reach out via **minhtonthatnhat@gmail.com**.
