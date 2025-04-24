@@ -40,7 +40,6 @@ This website is part of our Buoy-based AIoT system for water quality monitor and
 - **ThingSpeak Channel:** [https://thingspeak.mathworks.com/channels/2652379](link)
 
 ## 🙏 Acknowledgements
-## 🙏 Special Thanks to Our Former Team Members
 
 We would like to express our deepest gratitude to the following individuals whose early contributions and dedication laid the foundation for Baswap. Their hard work, insight, and passion were instrumental in shaping our project during its formative stages:
 
