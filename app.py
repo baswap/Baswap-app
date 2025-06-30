@@ -1,19 +1,20 @@
 import streamlit as st
+import base64
+import binascii
+import folium
+from streamlit_folium import st_folium
 from datetime import datetime
+from googleapiclient.errors import HttpError
 
-# Must be the very first Streamlit command
-st.set_page_config(page_title="BASWAP-APP", page_icon="💧", layout="wide")
-
+from config import SECRET_ACC, COMBINED_ID, APP_TEXTS, COL_NAMES
+from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 from sidebar import sidebar_inputs
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
-from config import COL_NAMES, APP_TEXTS
 
-# Define text dictionaries for English and Vietnamese, including toggle tooltip texts.
+st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-
-# Callback function to update language immediately.
 def update_language():
     st.session_state.language = "vi" if st.session_state.language == "en" else "en"
     # st.rerun()
