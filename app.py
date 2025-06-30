@@ -103,6 +103,5 @@ if page == "Overview":
 else:
     st.title("About")
     st.markdown("""
-**BASWAP** is a buoy-based water-quality monitoring dashboard for Vinh Long, Vietnam.
-You can add team info, data sources, contact details, or whatever you like here.
+**BASWAP** is a buoy-based water-quality monitoring dashboard for Vinh Long, Vietnam...
 """)
