@@ -1,107 +1,94 @@
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
 from datetime import datetime
 
-from config import SECRET_ACC, COMBINED_ID, APP_TEXTS, COL_NAMES
-from utils.drive_handler import DriveManager
+# Must be the very first Streamlit command
+st.set_page_config(page_title="BASWAP-APP", page_icon="💧", layout="wide")
+
 from data import combined_data_retrieve, thingspeak_retrieve
 from sidebar import sidebar_inputs
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
+from config import COL_NAMES, APP_TEXTS
 
-st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
+# Define text dictionaries for English and Vietnamese, including toggle tooltip texts.
 
-# ── Initialize DriveManager ───────────────────────────────────────────────────
-dm = DriveManager(SECRET_ACC)
 
-# ── UI Header & Navigation ────────────────────────────────────────────────────
-st.markdown("""
-<style>
-header { visibility: hidden; }
-.custom-header {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: 4.5rem; display: flex; align-items: center;
-    padding: 0 1rem; background: #fff;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    z-index: 1000; gap: 2rem;
-}
-.custom-header .logo {
-    font-size: 1.65rem; font-weight: 600; color: #000;
-}
-.custom-header .nav { display: flex; gap: 1rem; }
-.custom-header .nav a {
-    text-decoration: none; color: #262730;
-    font-size: 0.9rem; padding-bottom: 0.25rem;
-    border-bottom: 2px solid transparent;
-}
-.custom-header .nav a.active { color: #09c; border-bottom-color: #09c; }
-body > .main { margin-top: 4.5rem; }
-</style>
-""", unsafe_allow_html=True)
+# Callback function to update language immediately.
+def update_language():
+    st.session_state.language = "vi" if st.session_state.language == "en" else "en"
+    # st.rerun()
 
-qs = st.query_params
-page = qs.get("page", "Overview")
-lang = qs.get("lang", "vi")
-if page not in ("Overview", "About"): page = "Overview"
-if lang not in ("en", "vi"): lang = "vi"
-toggle_lang  = "en" if lang == "vi" else "vi"
-toggle_label = APP_TEXTS[lang]["toggle_button"]
-
-st.markdown(f"""
-<div class="custom-header">
-  <div class="logo">BASWAP</div>
-  <div class="nav">
-    <a href="?page=Overview&lang={lang}" class="{'active' if page=='Overview' else ''}" target="_self">Overview</a>
-    <a href="?page=About&lang={lang}" class="{'active' if page=='About'    else ''}" target="_self">About</a>
-  </div>
-  <div class="nav" style="margin-left:auto;">
-    <a href="?page={page}&lang={toggle_lang}" target="_self">{toggle_label}</a>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
+# Initialize session state for language if not set.
+if "language" not in st.session_state:
+    st.session_state.language = "vi"
+lang = st.session_state.language
 texts = APP_TEXTS[lang]
 
-if page == "Overview":
-    m = folium.Map(location=[10.231140, 105.980999], zoom_start=8)
-    st_folium(m, width="100%", height=400)
+# Add CSS to position the toggle button at the top right corner.
+st.markdown(
+    """
+    <style>
+        .lang-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+        }
+    </style>
+    """, unsafe_allow_html=True
+)
 
-    st.title(texts["app_title"])
-    st.markdown(texts["description"])
+# Render the toggle button using a callback and assign the tooltip via the help parameter.
+st.markdown('<div class="lang-toggle">', unsafe_allow_html=True)
+st.button(label=texts["toggle_button"], 
+          on_click=update_language, 
+          help=texts["toggle_tooltip"])
+st.markdown('</div>', unsafe_allow_html=True)
 
-    df = combined_data_retrieve()
-    df = thingspeak_retrieve(df)
-    first_date = datetime(2025, 1, 17).date()
-    last_date  = df["Timestamp (GMT+7)"].max().date()
+st.title(texts["app_title"])
+st.markdown(texts["description"])
 
-    date_from, date_to, target_col, agg_functions = sidebar_inputs(
-        df, lang, first_date, last_date
-    )
-    filtered_df = filter_data(df, date_from, date_to)
-    display_statistics(filtered_df, target_col)
+# Data retrieval.
+df = combined_data_retrieve()
+df = thingspeak_retrieve(df)
+col_names = COL_NAMES
+first_date = datetime(2025, 1, 17).date()  # Fixed first date
+last_date = df['Timestamp (GMT+7)'].max().date()
 
-    def display_view(df, target_col, view_title, resample_freq, selected_cols, agg_functions):
-        st.subheader(view_title)
-        if resample_freq == "None":
-            view_df = df.copy()
-        else:
-            view_df = apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions)
-        plot_line_chart(view_df, target_col, resample_freq)
+# Sidebar inputs.
+date_from, date_to, target_col, agg_functions = sidebar_inputs(df, lang, first_date, last_date)
+filtered_df = filter_data(df, date_from, date_to)
 
-    display_view(filtered_df, target_col, f"{texts['raw_view']} {target_col}", "None", COL_NAMES, agg_functions)
-    display_view(filtered_df, target_col, f"{texts['hourly_view']} {target_col}", "Hour", COL_NAMES, agg_functions)
-    display_view(filtered_df, target_col, f"{texts['daily_view']} {target_col}", "Day", COL_NAMES, agg_functions)
+# Display statistics.
+display_statistics(filtered_df, target_col)
 
-    st.subheader(texts["data_table"])
-    selected_table_cols = st.multiselect(texts["columns_select"], options=COL_NAMES, default=COL_NAMES)
-    selected_table_cols.insert(0, "Timestamp (GMT+7)")
-    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(selected_table_cols)}).")
-    st.dataframe(filtered_df[selected_table_cols], use_container_width=True)
+# Display views: Raw, Hourly, Daily.
+def display_view(df, target_col, view_title, resample_freq, selected_cols, agg_functions):
+    st.subheader(view_title)
+    if resample_freq == "None":
+        view_df = df.copy()
+    else:
+        view_df = apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions)
+    plot_line_chart(view_df, target_col, resample_freq)
 
-    st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.", on_click=st.cache_data.clear)
-else:
-    st.title("About")
-    st.markdown("""
-**BASWAP** is a buoy-based water-quality monitoring dashboard for Vinh Long, Vietnam...
-""")
+display_view(filtered_df, target_col, f"{texts['raw_view']} {target_col}",
+             resample_freq="None", selected_cols=col_names, agg_functions=agg_functions)
+display_view(filtered_df, target_col, f"{texts['hourly_view']} {target_col}",
+             resample_freq="Hour", selected_cols=col_names, agg_functions=agg_functions)
+display_view(filtered_df, target_col, f"{texts['daily_view']} {target_col}",
+             resample_freq="Day", selected_cols=col_names, agg_functions=agg_functions)
+
+# Data table section with column selector.
+st.subheader(texts["data_table"])
+selected_table_cols = st.multiselect(
+    texts["columns_select"],
+    options=col_names,
+    default=col_names
+)
+selected_table_cols.insert(0, "Timestamp (GMT+7)")
+st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(selected_table_cols)}).")
+st.dataframe(filtered_df[selected_table_cols], use_container_width=True)
+
+st.button(texts["clear_cache"], 
+          help="This clears all cached data, ensuring the app fetches the latest available information.", 
+          on_click=st.cache_data.clear)
