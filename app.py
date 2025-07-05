@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime
-
+st.cache_data.clear()
 # Must be the very first Streamlit command
 st.set_page_config(page_title="BASWAP-APP", page_icon="💧", layout="wide")
 
