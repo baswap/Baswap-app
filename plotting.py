@@ -128,7 +128,6 @@ def plot_line_chart(df, col, resample_freq="None"):
 
 
 def display_statistics(df, target_col):
-    st.subheader("**📊 Overall Statistics (Raw Data)**")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(label="Maximum", value=f"{df[target_col].max():.2f}")
     col2.metric(label="Minimum", value=f"{df[target_col].min():.2f}")
