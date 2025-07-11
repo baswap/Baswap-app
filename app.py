@@ -88,7 +88,7 @@ def settings_panel(first_date, last_date):
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=9),
+    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=12),
               width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
@@ -129,11 +129,3 @@ if page == "Overview":
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
               on_click=st.cache_data.clear)
-
-else:
-    st.title(texts["app_title"])
-    st.markdown(texts["description"])
-    st.markdown("""
-**BASWAP** là nền tảng giám sát chất lượng nước dựa trên phao ở Vĩnh Long, Việt Nam.  
-- Nguồn dữ liệu: [Thingspeak](https://thingspeak.com)
-""")
