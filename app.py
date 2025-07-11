@@ -11,7 +11,7 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-params = st.experimental_get_query_params()
+params = st.query_params()
 page   = params.get("page", ["Overview"])[0]
 lang   = params.get("lang", ["vi"])[0]
 if page not in ("Overview", "About"): page = "Overview"
