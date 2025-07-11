@@ -74,8 +74,7 @@ dm = DriveManager(SECRET_ACC)
 
 def settings_panel(df, first_date, last_date):
     st.markdown("### ⚙️ Graph Settings")
-    col_sel = st.selectbox("Measurement", COL_NAMES, index=COL_NAMES.index(st.session_state.target_col))
-    st.session_state.target_col = col_sel
+    st.session_state.target_col = st.selectbox("Measurement", COL_NAMES, index=COL_NAMES.index(st.session_state.target_col))
 
     c1, c2 = st.columns(2)
     if c1.button("First Recorded Day"):
@@ -88,12 +87,13 @@ def settings_panel(df, first_date, last_date):
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
 
-    date_from = st.date_input("Start Date", min_value=first_date, max_value=last_date, value=st.session_state.date_from)
-    date_to   = st.date_input("End Date",   min_value=first_date, max_value=last_date, value=st.session_state.date_to)
-    st.session_state.date_from, st.session_state.date_to = date_from, date_to
+    st.session_state.date_from = st.date_input("Start Date", min_value=first_date, max_value=last_date, value=st.session_state.date_from)
+    st.session_state.date_to   = st.date_input("End Date",   min_value=first_date, max_value=last_date, value=st.session_state.date_to)
 
-    agg_functions = st.multiselect("Summary Statistics", ["Min", "Max", "Median"], default=st.session_state.agg_functions)
-    st.session_state.agg_functions = agg_functions
+    st.session_state.agg_functions = st.multiselect("Summary Statistics", ["Min", "Max", "Median"], default=st.session_state.agg_functions)
+    if not st.session_state.agg_functions:
+        st.warning("Select at least one statistic.")
+        st.stop()
 
 if page == "Overview":
     st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8), width="100%", height=400)
