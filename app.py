@@ -31,12 +31,13 @@ defaults = {
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
+# ── GLOBAL STYLES + SCROLL-TOP BTN ────────────────────────────────────────────
 st.markdown(
     """
     <style>
         header{visibility:hidden;}
-        .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;
-            align-items:center;gap:2rem;padding:0 1rem;background:#09c;
+        .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;
+            display:flex;align-items:center;gap:2rem;padding:0 1rem;background:#09c;
             box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;}
         .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
         .custom-header .nav{display:flex;gap:1rem;}
@@ -45,18 +46,31 @@ st.markdown(
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
 
-        /* ── scroll-to-top button ─────────────────────────────────────────── */
-        #toTopBtn{
-            position:fixed;bottom:40px;left:50%;transform:translateX(-50%);
-            background:#09c;color:#fff;border:none;border-radius:50%;
-            padding:0.6rem 0.85rem;font-size:1.35rem;cursor:pointer;
-            box-shadow:0 2px 4px rgba(0,0,0,0.25);z-index:1000;
+        /* scroll-top button */
+        .scroll-top{
+            position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+            width:48px;height:48px;border-radius:50%;background:#09c;color:#fff;
+            display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+            cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,.25);z-index:1000;
+            transition:background .2s ease;display:none;
         }
+        .scroll-top:hover{background:#067;}
     </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const btn = document.querySelector('.scroll-top');
+        const toggle = () => btn.style.display = window.scrollY > 200 ? 'flex' : 'none';
+        toggle();
+        window.addEventListener('scroll', toggle);
+        btn.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+    });
+    </script>
     """,
     unsafe_allow_html=True,
 )
 
+# ── HEADER BAR ────────────────────────────────────────────────────────────────
 st.markdown(
     f"""
     <div class="custom-header">
@@ -72,9 +86,8 @@ st.markdown(
       </div>
     </div>
 
-    <!-- scroll-to-top button -->
-    <button id="toTopBtn"
-            onclick="window.scrollTo({top:0,behavior:'smooth'});">▲</button>
+    <!-- scroll-top button -->
+    <div class="scroll-top">↑</div>
     """,
     unsafe_allow_html=True,
 )
@@ -94,12 +107,17 @@ def settings_panel(first_date, last_date):
         st.session_state.date_to = last_date
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
-    st.multiselect("Summary Statistics", ["Min", "Max", "Median"],
-                   default=["Min", "Max", "Median"], key="agg_stats")
+    st.multiselect(
+        "Summary Statistics",
+        ["Min", "Max", "Median"],
+        default=["Min", "Max", "Median"],
+        key="agg_stats",
+    )
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
 
+# ── PAGE ROUTING ──────────────────────────────────────────────────────────────
 if page == "Overview":
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
     folium.Marker(
