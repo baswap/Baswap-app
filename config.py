@@ -34,8 +34,11 @@ APP_TEXTS = {
         "columns_select": "Select columns to display in the table:",
         "data_dimensions": "Data Dimension (row, column):",
         "clear_cache": "Clear Cache",
-        "toggle_button": "Tiếng Việt",  # Label to switch language to Vietnamese.
-        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ"  # Tooltip in Vietnamese.
+        "toggle_button": "English",  # Label to switch language to Vietnamese.
+        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ",  # Tooltip in Vietnamese.
+        "nav_overview": "Overview",
+        "nav_about":    "About",
+        "overall_stats_title": "Overall Statistics"
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -50,8 +53,11 @@ APP_TEXTS = {
         "columns_select": "Chọn các cột để hiển thị trong bảng:",
         "data_dimensions": "Kích thước dữ liệu (hàng, cột):",
         "clear_cache": "Xóa Bộ Nhớ Cache",
-        "toggle_button": "English",  # Label to switch language to English.
-        "toggle_tooltip": "Click to change language"  # Tooltip in English.
+        "toggle_button": "Tiếng Việt",  # Label to switch language to English.
+        "toggle_tooltip": "Click to change language",
+        "nav_overview": "Tổng quan",
+        "nav_about":    "Giới thiệu",
+        "overall_stats_title": "Thống kê chung" 
     }
 }
 
