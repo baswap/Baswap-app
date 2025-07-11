@@ -34,15 +34,18 @@ st.markdown(
     """
     <style>
         header{visibility:hidden;}
-        .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;
-            align-items:center;gap:2rem;padding:0 1rem;background:#fff;
-            box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;}
-        .custom-header .logo{font-size:1.65rem;font-weight:600;}
+        .custom-header{
+            position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;
+            align-items:center;gap:2rem;padding:0 1rem;background:#09c;
+            box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
+        }
+        .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
         .custom-header .nav{display:flex;gap:1rem;}
-        .custom-header .nav a{text-decoration:none;color:#262730;font-size:0.9rem;
-            padding-bottom:0.25rem;border-bottom:2px solid transparent;}
-        .custom-header .nav a.active{color:#09c;border-bottom-color:#09c;}
-        body, .stApp{background:#ffffff;}
+        .custom-header .nav a{
+            text-decoration:none;font-size:0.9rem;color:#fff;
+            padding-bottom:0.25rem;border-bottom:2px solid transparent;
+        }
+        .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
     </style>
     """,
@@ -69,24 +72,30 @@ dm = DriveManager(SECRET_ACC)
 
 def settings_panel(first_date, last_date):
     st.selectbox("Measurement", COL_NAMES, key="target_col")
+
     c1, c2 = st.columns(2)
     if c1.button("First Recorded Day"):
         st.session_state.date_from = first_date
     if c2.button("Today"):
         st.session_state.date_from = st.session_state.date_to = last_date
+
     if st.session_state.date_from is None:
         st.session_state.date_from = last_date
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
+
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
+
     st.multiselect("Summary Statistics", ["Min", "Max", "Median"], key="agg_stats")
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8), width="100%", height=400)
+    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8),
+              width="100%", height=400)
+
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
@@ -94,24 +103,25 @@ if page == "Overview":
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
 
-    metrics_container = st.container()
-
-    with st.expander("⚙️ Graph Settings", expanded=False):
-        settings_panel(first_date, last_date)
-
-    date_from  = st.session_state.date_from
-    date_to    = st.session_state.date_to
+    date_from  = st.session_state.date_from or last_date
+    date_to    = st.session_state.date_to   or last_date
     target_col = st.session_state.target_col
     agg_funcs  = st.session_state.agg_stats
 
     filtered_df = filter_data(df, date_from, date_to)
+    display_statistics(filtered_df, target_col)
 
-    with metrics_container:
-        display_statistics(filtered_df, target_col)
+    with st.expander("⚙️ Graph Settings", expanded=False):
+        settings_panel(first_date, last_date)
+
+    filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    target_col  = st.session_state.target_col
+    agg_funcs   = st.session_state.agg_stats
 
     def view_block(freq, label):
         st.subheader(f"{label} {target_col}")
-        data = filtered_df if freq == "None" else apply_aggregation(filtered_df, COL_NAMES, target_col, freq, agg_funcs)
+        data = (filtered_df if freq == "None"
+                else apply_aggregation(filtered_df, COL_NAMES, target_col, freq, agg_funcs))
         plot_line_chart(data, target_col, freq)
 
     view_block("None",  texts["raw_view"])
