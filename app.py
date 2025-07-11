@@ -163,7 +163,3 @@ if page == "Overview":
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
               on_click=st.cache_data.clear)
 
-# ── About page ───────────────────────────────────────────────────────────────
-else:
-    st.title(texts["app_title"])
-    st.markdown(texts["description"])
