@@ -45,9 +45,9 @@ st.markdown(
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
 
-        /* ── scroll-to-top button ────────────────────────────────*/
+        /* ── scroll-to-top button ─────────────────────────────── */
         #scroll-top{
-            position:fixed;bottom:2rem;right:2rem;display:none;
+            position:fixed;bottom:6rem;right:2rem;display:none;      /* moved up */
             width:40px;height:40px;border:none;border-radius:50%;
             background:#09c;color:#fff;font-size:22px;cursor:pointer;
             box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:9999;
@@ -73,13 +73,11 @@ st.markdown(
       </div>
     </div>
 
-    <!-- anchor for scroll target -->
     <div id="top"></div>
     """,
     unsafe_allow_html=True,
 )
 
-# ── scroll-to-top button + JS ────────────────────────────────────────────────
 st.markdown(
     """
     <button id="scroll-top" aria-label="Scroll to top">⬆</button>
