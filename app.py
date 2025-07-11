@@ -11,26 +11,25 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-qs = st.query_params
+qs   = st.query_params
 page = qs.get("page", "Overview")
-lang = qs.get("lang", "vi")
+lang = qs.get("lang",  "vi")
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
 
-toggle_lang = "en" if lang == "vi" else "vi"
+toggle_lang  = "en" if lang == "vi" else "vi"
 toggle_label = APP_TEXTS[lang]["toggle_button"]
-texts = APP_TEXTS[lang]
+texts        = APP_TEXTS[lang]
 
-for key, default in {
+for k, v in {
     "target_col": COL_NAMES[0],
-    "date_from": None,
-    "date_to": None,
+    "date_from":  None,
+    "date_to":    None,
     "agg_functions": ["Min", "Max", "Median"],
 }.items():
-    if key not in st.session_state:
-        st.session_state[key] = default
+    st.session_state.setdefault(k, v)
 
 st.markdown(
     """
@@ -41,7 +40,7 @@ st.markdown(
             display:flex;align-items:center;gap:2rem;padding:0 1rem;
             background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
         }
-        .custom-header .logo{font-size:1.65rem;font-weight:600;color:#000;}
+        .custom-header .logo{font-size:1.65rem;font-weight:600;}
         .custom-header .nav{display:flex;gap:1rem;}
         .custom-header .nav a{
             text-decoration:none;color:#262730;font-size:0.9rem;
@@ -72,8 +71,7 @@ st.markdown(
 
 dm = DriveManager(SECRET_ACC)
 
-def settings_panel(df, first_date, last_date):
-    st.markdown("### ⚙️ Graph Settings")
+def settings_panel(first_date, last_date):
     st.session_state.target_col = st.selectbox("Measurement", COL_NAMES, index=COL_NAMES.index(st.session_state.target_col))
 
     c1, c2 = st.columns(2)
@@ -101,32 +99,35 @@ if page == "Overview":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
-    df = thingspeak_retrieve(combined_data_retrieve())
+    df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
-    last_date = df["Timestamp (GMT+7)"].max().date()
+    last_date  = df["Timestamp (GMT+7)"].max().date()
 
-    filtered_df = filter_data(df, st.session_state.date_from or last_date, st.session_state.date_to or last_date)
-    display_statistics(filtered_df, st.session_state.target_col)
+    with st.expander("⚙️ Graph Settings", expanded=False):
+        settings_panel(first_date, last_date)
 
-    with st.expander("Graph Settings", expanded=False):
-        settings_panel(df, first_date, last_date)
+    date_from  = st.session_state.date_from or last_date
+    date_to    = st.session_state.date_to   or last_date
+    target_col = st.session_state.target_col
+    agg_funcs  = st.session_state.agg_functions
 
-    filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    filtered_df = filter_data(df, date_from, date_to)
+    display_statistics(filtered_df, target_col)
 
     def show_view(df_view, title, freq):
         st.subheader(title)
-        view_df = df_view if freq == "None" else apply_aggregation(df_view, COL_NAMES, st.session_state.target_col, freq, st.session_state.agg_functions)
-        plot_line_chart(view_df, st.session_state.target_col, freq)
+        view_df = df_view if freq == "None" else apply_aggregation(df_view, COL_NAMES, target_col, freq, agg_funcs)
+        plot_line_chart(view_df, target_col, freq)
 
-    show_view(filtered_df, f"{texts['raw_view']} {st.session_state.target_col}", "None")
-    show_view(filtered_df, f"{texts['hourly_view']} {st.session_state.target_col}", "Hour")
-    show_view(filtered_df, f"{texts['daily_view']} {st.session_state.target_col}", "Day")
+    show_view(filtered_df, f"{texts['raw_view']} {target_col}", "None")
+    show_view(filtered_df, f"{texts['hourly_view']} {target_col}", "Hour")
+    show_view(filtered_df, f"{texts['daily_view']} {target_col}", "Day")
 
     st.subheader(texts["data_table"])
-    selected_cols = st.multiselect(texts["columns_select"], options=COL_NAMES, default=COL_NAMES)
-    selected_cols.insert(0, "Timestamp (GMT+7)")
-    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(selected_cols)}).")
-    st.dataframe(filtered_df[selected_cols], use_container_width=True)
+    table_cols = st.multiselect(texts["columns_select"], options=COL_NAMES, default=COL_NAMES)
+    table_cols.insert(0, "Timestamp (GMT+7)")
+    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
+    st.dataframe(filtered_df[table_cols], use_container_width=True)
 
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.", on_click=st.cache_data.clear)
 
