@@ -11,7 +11,7 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# ── Query-param routing ──────────────────────────────────────────────────────
+# ── routing & i18n ───────────────────────────────────────────────────────────
 qs   = st.query_params
 page = qs.get("page", "Overview")
 lang = qs.get("lang", "vi")
@@ -22,7 +22,7 @@ toggle_lang  = "en" if lang == "vi" else "vi"
 toggle_label = APP_TEXTS[lang]["toggle_button"]
 texts        = APP_TEXTS[lang]
 
-# ── Session defaults ─────────────────────────────────────────────────────────
+# ── session defaults ─────────────────────────────────────────────────────────
 defaults = {
     "target_col": COL_NAMES[0],
     "date_from":  None,
@@ -33,7 +33,7 @@ defaults = {
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
-# ── Top bar ──────────────────────────────────────────────────────────────────
+# ── fixed top-header CSS ─────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
@@ -72,7 +72,7 @@ st.markdown(
 
 dm = DriveManager(SECRET_ACC)
 
-# ── Graph-settings panel ─────────────────────────────────────────────────────
+# ── reusable settings panel ──────────────────────────────────────────────────
 def settings_panel(first_date, last_date):
     st.selectbox("Measurement", COL_NAMES, key="target_col")
 
@@ -102,7 +102,7 @@ def settings_panel(first_date, last_date):
 
 # ── Overview page ────────────────────────────────────────────────────────────
 if page == "Overview":
-    # Map with buoy marker
+    # Map & marker
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
     folium.Marker(
         [10.099833, 106.208306],
@@ -111,11 +111,18 @@ if page == "Overview":
     ).add_to(m)
     st_folium(m, width="100%", height=400)
 
-    # Data prep
+    # --- shrink default bottom gap under the map ---
+    st.markdown(
+        "<style>.folium-map {margin-bottom:-1.5rem !important;}</style>",
+        unsafe_allow_html=True,
+    )
+
+    # Data
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
 
+    # Current selections
     date_from  = st.session_state.date_from or last_date
     date_to    = st.session_state.date_to   or last_date
     target_col = st.session_state.target_col
@@ -123,20 +130,20 @@ if page == "Overview":
     filtered_df = filter_data(df, date_from, date_to)
     display_statistics(filtered_df, target_col)
 
-    # first separator line between metrics and settings
+    # separator before settings
     st.divider()
     st.markdown("&nbsp;")
 
-    # Graph-settings expander
+    # Settings
     with st.expander("⚙️ Graph Settings", expanded=False):
         settings_panel(first_date, last_date)
 
-    # Updated data after settings change
+    # refresh after settings
     filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     target_col  = st.session_state.target_col
     agg_funcs   = st.session_state.agg_stats
 
-    # Unified chart with tabs
+    # Charts
     st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
     with tab_raw:
@@ -148,11 +155,11 @@ if page == "Overview":
         day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
         plot_line_chart(day_df, target_col, "Day")
 
-    # second separator line between chart and data table
+    # separator before table
     st.divider()
     st.markdown("&nbsp;")
 
-    # Data table
+    # Table
     st.subheader(texts["data_table"])
     st.multiselect(texts["columns_select"], options=COL_NAMES,
                    default=st.session_state.table_cols, key="table_cols")
@@ -163,3 +170,7 @@ if page == "Overview":
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
               on_click=st.cache_data.clear)
 
+# ── About page ───────────────────────────────────────────────────────────────
+else:
+    st.title(texts["app_title"])
+    st.markdown(texts["description"])
