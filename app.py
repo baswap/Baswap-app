@@ -135,6 +135,4 @@ else:
     st.title(texts["app_title"])
     st.markdown(texts["description"])
     st.markdown("""
-**BASWAP** là nền tảng giám sát chất lượng nước dựa trên phao ở Vĩnh Long, Việt Nam.
-- Nguồn dữ liệu: [Thingspeak](https://thingspeak.com)
 """)
