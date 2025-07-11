@@ -45,14 +45,13 @@ st.markdown(
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
 
-        /* ── scroll-to-top button ─────────────────────────────── */
-        #scroll-top{
-            position:fixed;bottom:6rem;right:2rem;display:none;      /* moved up */
-            width:40px;height:40px;border:none;border-radius:50%;
-            background:#09c;color:#fff;font-size:22px;cursor:pointer;
-            box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:9999;
+        /* ── scroll-to-top button ─────────────────────────────────────────── */
+        #toTopBtn{
+            position:fixed;bottom:40px;left:50%;transform:translateX(-50%);
+            background:#09c;color:#fff;border:none;border-radius:50%;
+            padding:0.6rem 0.85rem;font-size:1.35rem;cursor:pointer;
+            box-shadow:0 2px 4px rgba(0,0,0,0.25);z-index:1000;
         }
-        #scroll-top:hover{background:#0076b6;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -73,23 +72,9 @@ st.markdown(
       </div>
     </div>
 
-    <div id="top"></div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <button id="scroll-top" aria-label="Scroll to top">⬆</button>
-    <script>
-      const btn = document.getElementById('scroll-top');
-      window.addEventListener('scroll', () => {
-        btn.style.display = window.scrollY > 400 ? 'block' : 'none';
-      });
-      btn.addEventListener('click', () => {
-        window.scrollTo({top: 0, behavior: 'smooth'});
-      });
-    </script>
+    <!-- scroll-to-top button -->
+    <button id="toTopBtn"
+            onclick="window.scrollTo({top:0,behavior:'smooth'});">▲</button>
     """,
     unsafe_allow_html=True,
 )
@@ -109,10 +94,8 @@ def settings_panel(first_date, last_date):
         st.session_state.date_to = last_date
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
-    st.multiselect(
-        "Summary Statistics", ["Min", "Max", "Median"],
-        default=["Min", "Max", "Median"], key="agg_stats"
-    )
+    st.multiselect("Summary Statistics", ["Min", "Max", "Median"],
+                   default=["Min", "Max", "Median"], key="agg_stats")
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
