@@ -53,17 +53,23 @@ st.markdown(f"""
   <div class="logo">BASWAP</div>
   <div class="nav">
     <a href="?page=Overview&lang={lang}" target="_self"
-       class="{{'active' if page=='Overview' else ''}}">{texts['nav_overview']}</a>
+       class="{ 'active' if page=='Overview' else '' }">
+       {texts['nav_overview']}
+    </a>
     <a href="?page=About&lang={lang}" target="_self"
-       class="{{'active' if page=='About' else ''}}">{texts['nav_about']}</a>
+       class="{ 'active' if page=='About' else '' }">
+       {texts['nav_about']}
+    </a>
   </div>
   <div class="nav" style="margin-left:auto;">
-    <a href="?page={page}&lang={toggle_lang}" target="_self" title="{toggle_tip}">
-      {toggle_label}
+    <a href="?page={page}&lang={toggle_lang}" target="_self"
+       title="{toggle_tooltip}">
+       {toggle_label}
     </a>
   </div>
 </div>
 """, unsafe_allow_html=True)
+
 
 dm = DriveManager(SECRET_ACC)
 
