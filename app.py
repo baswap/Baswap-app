@@ -12,27 +12,27 @@ from plotting import plot_line_chart, display_statistics
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 params = st.query_params
-page   = params.get("page", ["Overview"])[0]
-lang   = params.get("lang", ["vi"])[0]
+page = params.get("page", ["Overview"])[0]
+lang = params.get("lang", ["vi"])[0]
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
 
-texts      = APP_TEXTS[lang]
+texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
-toggle_lang   = "en" if lang == "vi" else "vi"
-toggle_label  = texts["toggle_button"]
+toggle_lang = "en" if lang == "vi" else "vi"
+toggle_label = texts["toggle_button"]
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-for key, val in {
+for k, v in {
     "target_col": COL_NAMES[0],
     "date_from": None,
     "date_to": None,
     "agg_stats": ["Min", "Max", "Median"],
     "table_cols": COL_NAMES,
 }.items():
-    st.session_state.setdefault(key, val)
+    st.session_state.setdefault(k, v)
 
 st.markdown("""
 <style>
@@ -51,11 +51,11 @@ st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
   <div class="nav">
-    <a href="?page={page}&lang={lang}" class="{{'active' if page=='Overview' else ''}}">{texts['nav_overview']}</a>
-    <a href="?page={page}&lang={lang}" class="{{'active' if page=='About' else ''}}">{texts['nav_about']}</a>
+    <a href="?page=Overview&lang={lang}" target="_self" class="{{'active' if page=='Overview' else ''}}">{texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" target="_self" class="{{'active' if page=='About' else ''}}">{texts['nav_about']}</a>
   </div>
   <div class="nav" style="margin-left:auto;">
-    <a href="?page={page}&lang={toggle_lang}" title="{toggle_tooltip}">{toggle_label}</a>
+    <a href="?page={page}&lang={toggle_lang}" target="_self" title="{toggle_tooltip}">{toggle_label}</a>
   </div>
 </div>
 """, unsafe_allow_html=True)
