@@ -51,24 +51,24 @@ st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
   <div class="nav">
-    <!-- ALWAYS link to the real destination page -->
-    <a href="?page=Overview&lang={lang}"
+    <a href="?page=Overview&lang={lang}" target="_self"
        class="{{'active' if page=='Overview' else ''}}">
        {texts['nav_overview']}
     </a>
-    <a href="?page=About&lang={lang}"
+    <a href="?page=About&lang={lang}" target="_self"
        class="{{'active' if page=='About' else ''}}">
        {texts['nav_about']}
     </a>
   </div>
   <div class="nav" style="margin-left:auto;">
-    <!-- keep the same page but flip the language -->
-    <a href="?page={page}&lang={toggle_lang}" title="{toggle_tooltip}">
-      {toggle_label}
+    <a href="?page={page}&lang={toggle_lang}" target="_self"
+       title="{toggle_tooltip}">
+       {toggle_label}
     </a>
   </div>
 </div>
 """, unsafe_allow_html=True)
+
 
 dm = DriveManager(SECRET_ACC)
 
