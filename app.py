@@ -11,6 +11,7 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
+# ── Query-param routing ──────────────────────────────────────────────────────
 qs   = st.query_params
 page = qs.get("page", "Overview")
 lang = qs.get("lang", "vi")
@@ -21,6 +22,7 @@ toggle_lang  = "en" if lang == "vi" else "vi"
 toggle_label = APP_TEXTS[lang]["toggle_button"]
 texts        = APP_TEXTS[lang]
 
+# ── Session defaults ─────────────────────────────────────────────────────────
 defaults = {
     "target_col": COL_NAMES[0],
     "date_from":  None,
@@ -31,13 +33,13 @@ defaults = {
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
-# ── GLOBAL STYLES + SCROLL-TOP BTN ────────────────────────────────────────────
+# ── Top bar ──────────────────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
         header{visibility:hidden;}
-        .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;
-            display:flex;align-items:center;gap:2rem;padding:0 1rem;background:#09c;
+        .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;
+            align-items:center;gap:2rem;padding:0 1rem;background:#09c;
             box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;}
         .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
         .custom-header .nav{display:flex;gap:1rem;}
@@ -45,32 +47,11 @@ st.markdown(
             padding-bottom:0.25rem;border-bottom:2px solid transparent;}
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
-
-        /* scroll-top button */
-        .scroll-top{
-            position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
-            width:48px;height:48px;border-radius:50%;background:#09c;color:#fff;
-            display:flex;align-items:center;justify-content:center;font-size:1.4rem;
-            cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,.25);z-index:1000;
-            transition:background .2s ease;display:none;
-        }
-        .scroll-top:hover{background:#067;}
     </style>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const btn = document.querySelector('.scroll-top');
-        const toggle = () => btn.style.display = window.scrollY > 200 ? 'flex' : 'none';
-        toggle();
-        window.addEventListener('scroll', toggle);
-        btn.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
-    });
-    </script>
     """,
     unsafe_allow_html=True,
 )
 
-# ── HEADER BAR ────────────────────────────────────────────────────────────────
 st.markdown(
     f"""
     <div class="custom-header">
@@ -85,28 +66,30 @@ st.markdown(
         <a href="?page={page}&lang={toggle_lang}" target="_self">{toggle_label}</a>
       </div>
     </div>
-
-    <!-- scroll-top button -->
-    <div class="scroll-top">↑</div>
     """,
     unsafe_allow_html=True,
 )
 
 dm = DriveManager(SECRET_ACC)
 
+# ── Graph-settings panel ─────────────────────────────────────────────────────
 def settings_panel(first_date, last_date):
     st.selectbox("Measurement", COL_NAMES, key="target_col")
+
     c1, c2 = st.columns(2)
     if c1.button("First Recorded Day"):
         st.session_state.date_from = first_date
     if c2.button("Today"):
         st.session_state.date_from = st.session_state.date_to = last_date
+
     if st.session_state.date_from is None:
         st.session_state.date_from = last_date
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
+
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
+
     st.multiselect(
         "Summary Statistics",
         ["Min", "Max", "Median"],
@@ -117,8 +100,9 @@ def settings_panel(first_date, last_date):
         st.warning("Select at least one statistic.")
         st.stop()
 
-# ── PAGE ROUTING ──────────────────────────────────────────────────────────────
+# ── Overview page ────────────────────────────────────────────────────────────
 if page == "Overview":
+    # Map with buoy marker
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
     folium.Marker(
         [10.099833, 106.208306],
@@ -127,6 +111,7 @@ if page == "Overview":
     ).add_to(m)
     st_folium(m, width="100%", height=400)
 
+    # Data prep
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
@@ -134,18 +119,24 @@ if page == "Overview":
     date_from  = st.session_state.date_from or last_date
     date_to    = st.session_state.date_to   or last_date
     target_col = st.session_state.target_col
-    agg_funcs  = st.session_state.agg_stats
 
     filtered_df = filter_data(df, date_from, date_to)
     display_statistics(filtered_df, target_col)
 
+    # ── separator line & spacing ────────────────────────────────────────────
+    st.divider()          # thin horizontal rule
+    st.markdown("&nbsp;") # small vertical gap
+
+    # Graph-settings expander
     with st.expander("⚙️ Graph Settings", expanded=False):
         settings_panel(first_date, last_date)
 
+    # Updated data after settings change
     filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     target_col  = st.session_state.target_col
     agg_funcs   = st.session_state.agg_stats
 
+    # Unified chart with tabs
     st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
     with tab_raw:
@@ -157,15 +148,18 @@ if page == "Overview":
         day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
         plot_line_chart(day_df, target_col, "Day")
 
+    # Data table
     st.subheader(texts["data_table"])
     st.multiselect(texts["columns_select"], options=COL_NAMES,
                    default=st.session_state.table_cols, key="table_cols")
     table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
+
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
               on_click=st.cache_data.clear)
 
+# ── About page ───────────────────────────────────────────────────────────────
 else:
     st.title(texts["app_title"])
     st.markdown(texts["description"])
