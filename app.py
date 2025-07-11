@@ -130,8 +130,8 @@ if page == "Overview":
 
     # ── Overall Statistics (now localized)
     filtered_df = filter_data(df, date_from, date_to)
-    st.markdown(f"### {texts['overall_stats_title']}")
-    display_statistics(filtered_df, target_col)
+    st.markdown(f"### 📊 {texts['overall_stats_title']}")
+    display_statistics(filtered_df, target_col))
 
     # ── Charts
     st.divider()
