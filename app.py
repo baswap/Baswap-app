@@ -112,7 +112,6 @@ if page == "Overview":
         day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
         plot_line_chart(day_df, target_col, "Day")
 
-    st.divider()
     exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(exp_label, expanded=False):
         settings_panel(first_date, last_date)
