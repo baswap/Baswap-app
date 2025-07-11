@@ -42,6 +42,7 @@ st.markdown(
         .custom-header .nav a{text-decoration:none;color:#262730;font-size:0.9rem;
             padding-bottom:0.25rem;border-bottom:2px solid transparent;}
         .custom-header .nav a.active{color:#09c;border-bottom-color:#09c;}
+        body, .stApp{background:#ffffff;}
         body>.main{margin-top:4.5rem;}
     </style>
     """,
@@ -68,36 +69,32 @@ dm = DriveManager(SECRET_ACC)
 
 def settings_panel(first_date, last_date):
     st.selectbox("Measurement", COL_NAMES, key="target_col")
-
     c1, c2 = st.columns(2)
     if c1.button("First Recorded Day"):
         st.session_state.date_from = first_date
     if c2.button("Today"):
         st.session_state.date_from = st.session_state.date_to = last_date
-
     if st.session_state.date_from is None:
         st.session_state.date_from = last_date
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
-
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
-
     st.multiselect("Summary Statistics", ["Min", "Max", "Median"], key="agg_stats")
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8),
-              width="100%", height=400)
-
+    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8), width="100%", height=400)
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
+
+    metrics_container = st.container()
 
     with st.expander("⚙️ Graph Settings", expanded=False):
         settings_panel(first_date, last_date)
@@ -108,12 +105,13 @@ if page == "Overview":
     agg_funcs  = st.session_state.agg_stats
 
     filtered_df = filter_data(df, date_from, date_to)
-    display_statistics(filtered_df, target_col)
+
+    with metrics_container:
+        display_statistics(filtered_df, target_col)
 
     def view_block(freq, label):
         st.subheader(f"{label} {target_col}")
-        data = (filtered_df if freq == "None"
-                else apply_aggregation(filtered_df, COL_NAMES, target_col, freq, agg_funcs))
+        data = filtered_df if freq == "None" else apply_aggregation(filtered_df, COL_NAMES, target_col, freq, agg_funcs)
         plot_line_chart(data, target_col, freq)
 
     view_block("None",  texts["raw_view"])
