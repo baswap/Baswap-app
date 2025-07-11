@@ -13,7 +13,7 @@ st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 qs   = st.query_params
 page = qs.get("page", "Overview")
-lang = qs.get("lang",  "vi")
+lang = qs.get("lang", "vi")
 page = page if page in ("Overview", "About") else "Overview"
 lang = lang if lang in ("en", "vi") else "vi"
 
@@ -35,21 +35,15 @@ st.markdown(
     """
     <style>
         header{visibility:hidden;}
-        .custom-header{
-            position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;
+        .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;
             align-items:center;gap:2rem;padding:0 1rem;background:#09c;
-            box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
-        }
+            box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;}
         .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
         .custom-header .nav{display:flex;gap:1rem;}
-        .custom-header .nav a{
-            text-decoration:none;font-size:0.9rem;color:#fff;
-            padding-bottom:0.25rem;border-bottom:2px solid transparent;
-        }
+        .custom-header .nav a{text-decoration:none;font-size:0.9rem;color:#fff;
+            padding-bottom:0.25rem;border-bottom:2px solid transparent;}
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
-        .chart-card{background:#f8f9fa;border:1px solid #dee2e6;
-            border-radius:10px;padding:1rem;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -60,11 +54,13 @@ st.markdown(
     <div class="custom-header">
       <div class="logo">BASWAP</div>
       <div class="nav">
-        <a href="?page=Overview&lang={lang}" class="{ 'active' if page=='Overview' else '' }">Overview</a>
-        <a href="?page=About&lang={lang}"     class="{ 'active' if page=='About'    else '' }">About</a>
+        <a href="?page=Overview&lang={lang}" target="_self"
+           class="{{'active' if '{page}'=='Overview' else ''}}">Overview</a>
+        <a href="?page=About&lang={lang}" target="_self"
+           class="{{'active' if '{page}'=='About' else ''}}">About</a>
       </div>
       <div class="nav" style="margin-left:auto;">
-        <a href="?page={page}&lang={toggle_lang}">{toggle_label}</a>
+        <a href="?page={page}&lang={toggle_lang}" target="_self">{toggle_label}</a>
       </div>
     </div>
     """,
@@ -92,7 +88,8 @@ def settings_panel(first_date, last_date):
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8), width="100%", height=400)
+    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=9),
+              width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
@@ -113,7 +110,7 @@ if page == "Overview":
     target_col  = st.session_state.target_col
     agg_funcs   = st.session_state.agg_stats
 
-    st.markdown(f"#### 📈 {target_col}")
+    st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
     with tab_raw:
         plot_line_chart(filtered_df, target_col, "None")
@@ -125,8 +122,18 @@ if page == "Overview":
         plot_line_chart(day_df, target_col, "Day")
 
     st.subheader(texts["data_table"])
-    st.multiselect(texts["columns_select"], options=COL_NAMES, default=st.session_state.table_cols, key="table_cols")
+    st.multiselect(texts["columns_select"], options=COL_NAMES,
+                   default=st.session_state.table_cols, key="table_cols")
     table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
-    st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.", on_click=st.cache_data.clear)
+    st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
+              on_click=st.cache_data.clear)
+
+else:
+    st.title(texts["app_title"])
+    st.markdown(texts["description"])
+    st.markdown("""
+**BASWAP** là nền tảng giám sát chất lượng nước dựa trên phao ở Vĩnh Long, Việt Nam.  
+- Nguồn dữ liệu: [Thingspeak](https://thingspeak.com)
+""")
