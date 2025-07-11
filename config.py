@@ -22,36 +22,54 @@ COL_NAMES = [
 
 APP_TEXTS = {
     "en": {
+        "toggle_button": "Tiếng Việt",
+        "toggle_tooltip": "Nhấn để chuyển sang tiếng Việt",
         "app_title": "BASWAP APP",
         "description": """
             This app retrieves water quality data from a buoy-based monitoring system in Vinh Long, Vietnam.
             * **Data source:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
         """,
-        "raw_view": "Raw Data View of",
-        "hourly_view": "Hourly Data View of",
-        "daily_view": "Daily Data View of",
+        "measurement_label": "Measurement",
+        "first_day_button": "First Recorded Day",
+        "today_button": "Latest Recorded Day",
+        "start_date_label": "Start Date",
+        "end_date_label": "End Date",
+        "summary_stats_label": "Summary Statistics",
+        "graph_settings_title": "⚙️ Graph Settings",
+        "raw_tab": "Raw",
+        "hourly_tab": "Hourly",
+        "daily_tab": "Daily",
+        "chart_header_prefix": "📈",
         "data_table": "🔍 Data Table",
         "columns_select": "Select columns to display in the table:",
-        "data_dimensions": "Data Dimension (row, column):",
+        "data_dimensions": "Data Dimensions (rows, columns):",
         "clear_cache": "Clear Cache",
-        "toggle_button": "Tiếng Việt",  # Label to switch language to Vietnamese.
-        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ"  # Tooltip in Vietnamese.
+        "marker_tooltip": "BASWAP Buoy"
     },
     "vi": {
+        "toggle_button": "English",
+        "toggle_tooltip": "Click to switch to English",
         "app_title": "ỨNG DỤNG BASWAP",
         "description": """
             Ứng dụng này truy xuất dữ liệu chất lượng nước từ hệ thống theo dõi trên phao ở Vĩnh Long, Việt Nam.
             * **Nguồn dữ liệu:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
         """,
-        "raw_view": "Biểu đồ dữ liệu gốc cho",
-        "hourly_view": "Biểu đồ dữ liệu theo giờ cho",
-        "daily_view": "Biểu đồ dữ liệu theo ngày cho",
+        "measurement_label": "Chỉ số",
+        "first_day_button": "Ngày đo đầu tiên",
+        "today_button": "Ngày đo gần nhất",
+        "start_date_label": "Ngày bắt đầu",
+        "end_date_label": "Ngày kết thúc",
+        "summary_stats_label": "Thống kê tóm tắt",
+        "graph_settings_title": "⚙️ Điều chỉnh biểu đồ",
+        "raw_tab": "Gốc",
+        "hourly_tab": "Theo giờ",
+        "daily_tab": "Theo ngày",
+        "chart_header_prefix": "📈",
         "data_table": "🔍 Bảng Dữ Liệu",
         "columns_select": "Chọn các cột để hiển thị trong bảng:",
         "data_dimensions": "Kích thước dữ liệu (hàng, cột):",
         "clear_cache": "Xóa Bộ Nhớ Cache",
-        "toggle_button": "English",  # Label to switch language to English.
-        "toggle_tooltip": "Click to change language"  # Tooltip in English.
+        "marker_tooltip": "Phao BASWAP"
     }
 }
 
@@ -64,7 +82,7 @@ SIDE_TEXTS = {
         ),
         "sidebar_choose_column": "Choose a column to plot:",
         "sidebar_first_day": "First Recorded Day",
-        "sidebar_today": "Last Recorded Day",
+        "sidebar_today": "Latest Recorded Day",
         "sidebar_start_date": "Start Date (From):",
         "sidebar_end_date": "End Date (To):",
         "sidebar_summary_stats": "Choose summary statistics to calculate (applied in Hourly and Daily views):"
@@ -79,7 +97,4 @@ SIDE_TEXTS = {
         "sidebar_first_day": "Ngày đo đầu tiên",
         "sidebar_today": "Ngày đo gần nhất",
         "sidebar_start_date": "Ngày bắt đầu (Từ):",
-        "sidebar_end_date": "Ngày kết thúc (Đến):",
-        "sidebar_summary_stats": "Chọn các thống kê tóm tắt để tính (áp dụng cho chế độ theo giờ và ngày):"
-    }
-}
+        "sidebar_end_date": "Ngày kết thúc (Đến):
