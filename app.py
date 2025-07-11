@@ -11,13 +11,16 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-params = st.query_params
-page   = params.get("page", ["Overview"])[0]
-lang   = params.get("lang", ["vi"])[0]
+# correct parsing of the URL
+params = st.query_params         # returns a dict-like object :contentReference[oaicite:0]{index=0}
+page   = params.get("page", "Overview")   # already a string, no [0] needed :contentReference[oaicite:1]{index=1}
+lang   = params.get("lang", "vi")
+
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
+
 
 texts      = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
