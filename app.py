@@ -88,8 +88,15 @@ def settings_panel(first_date, last_date):
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=10),
-              width="100%", height=400)
+    # ── interactive map with buoy marker ──────────────────────────────────────
+    m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
+    buoy_icon = folium.Icon(icon="tint", prefix="fa", color="blue")   # droplet icon
+    folium.Marker(
+        location=[10.099833, 106.208306],
+        tooltip="BASWAP Buoy",
+        icon=buoy_icon,
+    ).add_to(m)
+    st_folium(m, width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
@@ -129,3 +136,11 @@ if page == "Overview":
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
               on_click=st.cache_data.clear)
+
+else:
+    st.title(texts["app_title"])
+    st.markdown(texts["description"])
+    st.markdown("""
+**BASWAP** là nền tảng giám sát chất lượng nước dựa trên phao ở Vĩnh Long, Việt Nam.  
+- Nguồn dữ liệu: [Thingspeak](https://thingspeak.com)
+""")
