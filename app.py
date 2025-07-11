@@ -21,13 +21,14 @@ toggle_lang  = "en" if lang == "vi" else "vi"
 toggle_label = APP_TEXTS[lang]["toggle_button"]
 texts        = APP_TEXTS[lang]
 
-state_defaults = {
+defaults = {
     "target_col": COL_NAMES[0],
     "date_from":  None,
     "date_to":    None,
     "agg_stats":  ["Min", "Max", "Median"],
+    "table_cols": COL_NAMES,
 }
-for k, v in state_defaults.items():
+for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
 st.markdown(
@@ -47,6 +48,8 @@ st.markdown(
         }
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
+        .chart-card{background:#f8f9fa;border:1px solid #dee2e6;
+            border-radius:10px;padding:1rem;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -72,32 +75,24 @@ dm = DriveManager(SECRET_ACC)
 
 def settings_panel(first_date, last_date):
     st.selectbox("Measurement", COL_NAMES, key="target_col")
-
     c1, c2 = st.columns(2)
     if c1.button("First Recorded Day"):
         st.session_state.date_from = first_date
     if c2.button("Today"):
         st.session_state.date_from = st.session_state.date_to = last_date
-
     if st.session_state.date_from is None:
         st.session_state.date_from = last_date
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
-
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
-
     st.multiselect("Summary Statistics", ["Min", "Max", "Median"], key="agg_stats")
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8),
-              width="100%", height=400)
-
-    st.title(texts["app_title"])
-    st.markdown(texts["description"])
+    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=8), width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
@@ -118,27 +113,28 @@ if page == "Overview":
     target_col  = st.session_state.target_col
     agg_funcs   = st.session_state.agg_stats
 
-    def view_block(freq, label):
-        st.subheader(f"{label} {target_col}")
-        data = (filtered_df if freq == "None"
-                else apply_aggregation(filtered_df, COL_NAMES, target_col, freq, agg_funcs))
-        plot_line_chart(data, target_col, freq)
-
-    view_block("None",  texts["raw_view"])
-    view_block("Hour",  texts["hourly_view"])
-    view_block("Day",   texts["daily_view"])
+    st.markdown(f"#### 📈 {target_col}")
+    tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
+    with tab_raw:
+        plot_line_chart(filtered_df, target_col, "None")
+    with tab_hr:
+        hr_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
+        plot_line_chart(hr_df, target_col, "Hour")
+    with tab_day:
+        day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
+        plot_line_chart(day_df, target_col, "Day")
 
     st.subheader(texts["data_table"])
-    table_cols = st.multiselect(texts["columns_select"], options=COL_NAMES, default=COL_NAMES, key="table_cols")
-    table_cols.insert(0, "Timestamp (GMT+7)")
+    st.multiselect(texts["columns_select"], options=COL_NAMES, default=st.session_state.table_cols, key="table_cols")
+    table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
-
-    st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
-              on_click=st.cache_data.clear)
+    st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.", on_click=st.cache_data.clear)
 
 else:
-    st.title("About")
+    st.title(texts["app_title"])
+    st.markdown(texts["description"])
     st.markdown("""
-**BASWAP** is a buoy-based water-quality monitoring dashboard for Vinh Long, Vietnam…
+**BASWAP** là nền tảng giám sát chất lượng nước dựa trên phao ở Vĩnh Long, Việt Nam.
+- Nguồn dữ liệu: [Thingspeak](https://thingspeak.com)
 """)
