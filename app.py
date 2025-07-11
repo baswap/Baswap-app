@@ -88,7 +88,7 @@ def settings_panel(first_date, last_date):
         st.stop()
 
 if page == "Overview":
-    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=12),
+    st_folium(folium.Map(location=[10.231140, 105.980999], zoom_start=10),
               width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
