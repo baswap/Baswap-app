@@ -12,17 +12,17 @@ from plotting import plot_line_chart, display_statistics
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 params = st.query_params
-page   = params.get("page", ["Overview"])[0]
-lang   = params.get("lang", ["vi"])[0]
+page = params.get("page", ["Overview"])[0]
+lang = params.get("lang", ["vi"])[0]
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
 
-texts      = APP_TEXTS[lang]
+texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
-toggle_lang   = "en" if lang == "vi" else "vi"
-toggle_label  = texts["toggle_button"]
+toggle_lang = "en" if lang == "vi" else "vi"
+toggle_label = texts["toggle_button"]
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
 for key, val in {
@@ -51,8 +51,8 @@ st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
   <div class="nav">
-    <a href="?page={page}&lang={lang}" class="{{'active' if page=='Overview' else ''}}">{texts['nav_overview']}</a>
-    <a href="?page={page}&lang={lang}" class="{{'active' if page=='About' else ''}}">{texts['nav_about']}</a>
+    <a href="?page=Overview&lang={lang}" class="{{'active' if page=='Overview' else ''}}">{texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" class="{{'active' if page=='About' else ''}}">{texts['nav_about']}</a>
   </div>
   <div class="nav" style="margin-left:auto;">
     <a href="?page={page}&lang={toggle_lang}" title="{toggle_tooltip}">{toggle_label}</a>
@@ -66,7 +66,7 @@ def settings_panel(first_date, last_date):
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
-    c1, c2 = st.columns([1, 1])
+    c1, c2 = st.columns(2)
     if c1.button(side_texts["sidebar_first_day"]):
         st.session_state.date_from = first_date
     if c2.button(side_texts["sidebar_today"]):
@@ -112,6 +112,7 @@ if page == "Overview":
         day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
         plot_line_chart(day_df, target_col, "Day")
 
+    st.divider()
     exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(exp_label, expanded=False):
         settings_panel(first_date, last_date)
