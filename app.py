@@ -94,8 +94,8 @@ if page == "Overview":
     folium.Marker(
         location=[10.099833, 106.208306],
         tooltip="BASWAP Buoy",
-        icon=buoy_icon,
-    ).add_to(m)
+        icon=folium.Icon(icon="info-sign", prefix="glyphicon", color="blue")
+).add_to(m)
     st_folium(m, width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
