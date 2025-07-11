@@ -11,7 +11,6 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# ── Query-param routing ──────────────────────────────────────────────────────
 qs   = st.query_params
 page = qs.get("page", "Overview")
 lang = qs.get("lang", "vi")
@@ -22,7 +21,6 @@ toggle_lang  = "en" if lang == "vi" else "vi"
 toggle_label = APP_TEXTS[lang]["toggle_button"]
 texts        = APP_TEXTS[lang]
 
-# ── Session defaults ─────────────────────────────────────────────────────────
 defaults = {
     "target_col": COL_NAMES[0],
     "date_from":  None,
@@ -33,7 +31,6 @@ defaults = {
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
-# ── Top bar ──────────────────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
@@ -72,7 +69,6 @@ st.markdown(
 
 dm = DriveManager(SECRET_ACC)
 
-# ── Graph-settings panel ─────────────────────────────────────────────────────
 def settings_panel(first_date, last_date):
     st.selectbox("Measurement", COL_NAMES, key="target_col")
 
@@ -100,7 +96,6 @@ def settings_panel(first_date, last_date):
         st.warning("Select at least one statistic.")
         st.stop()
 
-# ── Overview page ────────────────────────────────────────────────────────────
 if page == "Overview":
     # Map with buoy marker
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
@@ -116,50 +111,67 @@ if page == "Overview":
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
 
-    date_from  = st.session_state.date_from or last_date
-    date_to    = st.session_state.date_to   or last_date
-    target_col = st.session_state.target_col
+    filtered_df = filter_data(
+        df,
+        st.session_state.date_from or last_date,
+        st.session_state.date_to   or last_date,
+    )
+    display_statistics(filtered_df, st.session_state.target_col)
 
-    filtered_df = filter_data(df, date_from, date_to)
-    display_statistics(filtered_df, target_col)
+    # Separator between stats and settings
+    st.divider()
+    st.markdown("&nbsp;")
 
-    # ── separator line & spacing ────────────────────────────────────────────
-    st.divider()          # thin horizontal rule
-    st.markdown("&nbsp;") # small vertical gap
-
-    # Graph-settings expander
+    # Settings expander
     with st.expander("⚙️ Graph Settings", expanded=False):
         settings_panel(first_date, last_date)
 
-    # Updated data after settings change
+    # Refresh with selections
     filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     target_col  = st.session_state.target_col
     agg_funcs   = st.session_state.agg_stats
 
-    # Unified chart with tabs
+    # Chart tabs
     st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
     with tab_raw:
         plot_line_chart(filtered_df, target_col, "None")
     with tab_hr:
-        hr_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-        plot_line_chart(hr_df, target_col, "Hour")
+        plot_line_chart(
+            apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs),
+            target_col,
+            "Hour",
+        )
     with tab_day:
-        day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-        plot_line_chart(day_df, target_col, "Day")
+        plot_line_chart(
+            apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs),
+            target_col,
+            "Day",
+        )
+
+    # Separator between chart and table
+    st.divider()
+    st.markdown("&nbsp;")
 
     # Data table
     st.subheader(texts["data_table"])
-    st.multiselect(texts["columns_select"], options=COL_NAMES,
-                   default=st.session_state.table_cols, key="table_cols")
+    st.multiselect(
+        texts["columns_select"],
+        options=COL_NAMES,
+        default=st.session_state.table_cols,
+        key="table_cols",
+    )
     table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
 
-    st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.",
-              on_click=st.cache_data.clear)
+    st.button(
+        texts["clear_cache"],
+        help="Clears cached data for fresh fetch.",
+        on_click=st.cache_data.clear,
+    )
 
-# ── About page ───────────────────────────────────────────────────────────────
+# About page
 else:
     st.title(texts["app_title"])
     st.markdown(texts["description"])
