@@ -22,11 +22,11 @@ toggle_label = APP_TEXTS[lang]["toggle_button"]
 texts        = APP_TEXTS[lang]
 
 defaults = {
-    "target_col" : COL_NAMES[0],
-    "date_from"  : None,
-    "date_to"    : None,
-    "agg_stats"  : ["Min", "Max", "Median"],
-    "table_cols" : COL_NAMES,
+    "target_col": COL_NAMES[0],
+    "date_from":  None,
+    "date_to":    None,
+    "agg_stats":  ["Min", "Max", "Median"],
+    "table_cols": COL_NAMES,
 }
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
@@ -44,6 +44,15 @@ st.markdown(
             padding-bottom:0.25rem;border-bottom:2px solid transparent;}
         .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
         body>.main{margin-top:4.5rem;}
+
+        /* ── scroll-to-top button ────────────────────────────────*/
+        #scroll-top{
+            position:fixed;bottom:2rem;right:2rem;display:none;
+            width:40px;height:40px;border:none;border-radius:50%;
+            background:#09c;color:#fff;font-size:22px;cursor:pointer;
+            box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:9999;
+        }
+        #scroll-top:hover{background:#0076b6;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -63,6 +72,26 @@ st.markdown(
         <a href="?page={page}&lang={toggle_lang}" target="_self">{toggle_label}</a>
       </div>
     </div>
+
+    <!-- anchor for scroll target -->
+    <div id="top"></div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ── scroll-to-top button + JS ────────────────────────────────────────────────
+st.markdown(
+    """
+    <button id="scroll-top" aria-label="Scroll to top">⬆</button>
+    <script>
+      const btn = document.getElementById('scroll-top');
+      window.addEventListener('scroll', () => {
+        btn.style.display = window.scrollY > 400 ? 'block' : 'none';
+      });
+      btn.addEventListener('click', () => {
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    </script>
     """,
     unsafe_allow_html=True,
 )
@@ -76,39 +105,26 @@ def settings_panel(first_date, last_date):
         st.session_state.date_from = first_date
     if c2.button("Today"):
         st.session_state.date_from = st.session_state.date_to = last_date
-
     if st.session_state.date_from is None:
         st.session_state.date_from = last_date
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
-
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
-
     st.multiselect(
-        "Summary Statistics",
-        ["Min", "Max", "Median"],
-        default=["Min", "Max", "Median"],
-        key="agg_stats",
+        "Summary Statistics", ["Min", "Max", "Median"],
+        default=["Min", "Max", "Median"], key="agg_stats"
     )
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
 
 if page == "Overview":
-    # ── Map with auto-scroll marker ───────────────────────────────────────────
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
-    popup_html = """
-        <script>
-            const tgt = window.parent.document.getElementById('graph-section');
-            if (tgt) tgt.scrollIntoView({behavior:'smooth'});
-        </script>
-    """
     folium.Marker(
         [10.099833, 106.208306],
         tooltip="BASWAP Buoy",
         icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
-        popup=folium.Popup(popup_html, max_width=0),
     ).add_to(m)
     st_folium(m, width="100%", height=400)
 
@@ -130,9 +146,6 @@ if page == "Overview":
     filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     target_col  = st.session_state.target_col
     agg_funcs   = st.session_state.agg_stats
-
-    # ── Scroll target anchor ─────────────────────────────────────────────────
-    st.markdown('<div id="graph-section"></div>', unsafe_allow_html=True)
 
     st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
