@@ -127,7 +127,9 @@ if page == "Overview":
 
     filtered_df = filter_data(df, date_from, date_to)
     display_statistics(filtered_df, target_col)
-
+    
+    st.divider()
+    st.markdown("&nbsp;")
     # ── Chart section ────────────────────────────────────────────────────────
     st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
