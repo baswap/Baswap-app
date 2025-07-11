@@ -25,7 +25,7 @@ defaults = {
     "target_col": COL_NAMES[0],
     "date_from":  None,
     "date_to":    None,
-    "agg_stats":  ["Min", "Max", "Median"],
+    "agg_stats":  ["Min", "Max", "Median"],   # ← all three pre-selected
     "table_cols": COL_NAMES,
 }
 for k, v in defaults.items():
@@ -82,20 +82,25 @@ def settings_panel(first_date, last_date):
         st.session_state.date_to = last_date
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
-    st.multiselect("Summary Statistics", ["Min", "Max", "Median"], key="agg_stats")
+
+    # always start with all three options selected
+    st.multiselect(
+        "Summary Statistics",
+        ["Min", "Max", "Median"],
+        default=["Min", "Max", "Median"],
+        key="agg_stats",
+    )
     if not st.session_state.agg_stats:
         st.warning("Select at least one statistic.")
         st.stop()
 
 if page == "Overview":
-    # ── interactive map with buoy marker ──────────────────────────────────────
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
-    buoy_icon = folium.Icon(icon="tint", prefix="fa", color="blue")   # droplet icon
     folium.Marker(
-        location=[10.099833, 106.208306],
+        [10.099833, 106.208306],
         tooltip="BASWAP Buoy",
-        icon=folium.Icon(icon="info-sign", prefix="glyphicon", color="blue")
-).add_to(m)
+        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
+    ).add_to(m)
     st_folium(m, width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
@@ -140,7 +145,3 @@ if page == "Overview":
 else:
     st.title(texts["app_title"])
     st.markdown(texts["description"])
-    st.markdown("""
-**BASWAP** là nền tảng giám sát chất lượng nước dựa trên phao ở Vĩnh Long, Việt Nam.  
-- Nguồn dữ liệu: [Thingspeak](https://thingspeak.com)
-""")
