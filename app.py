@@ -1,7 +1,6 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-from streamlit import components
 from datetime import datetime
 
 from config import SECRET_ACC, APP_TEXTS, COL_NAMES
@@ -23,12 +22,11 @@ toggle_label = APP_TEXTS[lang]["toggle_button"]
 texts        = APP_TEXTS[lang]
 
 defaults = {
-    "target_col": COL_NAMES[0],
-    "date_from":  None,
-    "date_to":    None,
-    "agg_stats":  ["Min", "Max", "Median"],
-    "table_cols": COL_NAMES,
-    "scroll_to_graph": False,
+    "target_col" : COL_NAMES[0],
+    "date_from"  : None,
+    "date_to"    : None,
+    "agg_stats"  : ["Min", "Max", "Median"],
+    "table_cols" : COL_NAMES,
 }
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
@@ -78,12 +76,15 @@ def settings_panel(first_date, last_date):
         st.session_state.date_from = first_date
     if c2.button("Today"):
         st.session_state.date_from = st.session_state.date_to = last_date
+
     if st.session_state.date_from is None:
         st.session_state.date_from = last_date
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
+
     st.date_input("Start Date", min_value=first_date, max_value=last_date, key="date_from")
     st.date_input("End Date",   min_value=first_date, max_value=last_date, key="date_to")
+
     st.multiselect(
         "Summary Statistics",
         ["Min", "Max", "Median"],
@@ -95,19 +96,21 @@ def settings_panel(first_date, last_date):
         st.stop()
 
 if page == "Overview":
-    # ── map with clickable buoy ──
+    # ── Map with auto-scroll marker ───────────────────────────────────────────
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
+    popup_html = """
+        <script>
+            const tgt = window.parent.document.getElementById('graph-section');
+            if (tgt) tgt.scrollIntoView({behavior:'smooth'});
+        </script>
+    """
     folium.Marker(
         [10.099833, 106.208306],
         tooltip="BASWAP Buoy",
         icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
+        popup=folium.Popup(popup_html, max_width=0),
     ).add_to(m)
-    map_data = st_folium(m, width="100%", height=400)
-
-    # if marker clicked → set flag & rerun
-    if map_data and map_data.get("last_object_clicked", {}).get("tooltip") == "BASWAP Buoy":
-        st.session_state.scroll_to_graph = True
-        st.experimental_rerun()
+    st_folium(m, width="100%", height=400)
 
     df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
@@ -124,23 +127,13 @@ if page == "Overview":
     with st.expander("⚙️ Graph Settings", expanded=False):
         settings_panel(first_date, last_date)
 
-    # ── anchor for scrolling ──
-    st.markdown('<div id="graph_section"></div>', unsafe_allow_html=True)
+    filtered_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    target_col  = st.session_state.target_col
+    agg_funcs   = st.session_state.agg_stats
 
-    # inject JS one-time to scroll smoothly
-    if st.session_state.scroll_to_graph:
-        components.v1.html(
-            """
-            <script>
-              const el = parent.document.getElementById("graph_section");
-              if (el){ el.scrollIntoView({behavior: "smooth"}); }
-            </script>
-            """,
-            height=0,
-        )
-        st.session_state.scroll_to_graph = False
+    # ── Scroll target anchor ─────────────────────────────────────────────────
+    st.markdown('<div id="graph-section"></div>', unsafe_allow_html=True)
 
-    # ── charts ──
     st.subheader(f"📈 {target_col}")
     tab_raw, tab_hr, tab_day = st.tabs(["Raw", "Hourly", "Daily"])
     with tab_raw:
