@@ -12,11 +12,13 @@ from plotting import plot_line_chart, display_statistics
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 # ── Routing & i18n ──────────────────────────────────────────────────────────────
-qs   = st.query_params
-page = qs.get("page", "Overview")
-lang = qs.get("lang", "vi")
-page = page if page in ("Overview", "About") else "Overview"
-lang = lang if lang in ("en", "vi") else "vi"
+params   = st.query_params
+page     = params.get("page", "Overview")
+lang     = params.get("lang", "vi")
+if page not in ("Overview", "About"):
+    page = "Overview"
+if lang not in ("en", "vi"):
+    lang = "vi"
 
 toggle_lang  = "en" if lang == "vi" else "vi"
 toggle_label = APP_TEXTS[lang]["toggle_button"]
@@ -64,23 +66,23 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ── Header bar markup ────────────────────────────────────────────────────────────
-st.markdown(
-    f"""
-    <div class="custom-header">
-      <div class="logo">BASWAP</div>
-      <div class="nav">
-        <a href="?page=Overview&lang={lang}" target="_self"
-           class="{{'active' if '{page}'=='Overview' else ''}}">Overview</a>
-        <a href="?page=About&lang={lang}" target="_self"
-           class="{{'active' if '{page}'=='About' else ''}}">About</a>
-      </div>
-      <div class="nav" style="margin-left:auto;">
-        <a href="?page={page}&lang={toggle_lang}" target="_self">{toggle_label}</a>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# --- header markup ---
+st.markdown(f"""
+<div class="custom-header">
+  <div class="logo">BASWAP</div>
+  <div class="nav">
+    <a href="?page=Overview&lang={lang}" class="{{'active' if page=='Overview' else ''}}">
+      {texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" class="{{'active' if page=='About' else ''}}">
+      {texts['nav_about']}</a>
+  </div>
+  <div class="nav" style="margin-left:auto;">
+    <a href="?page={page}&lang={'en' if lang=='vi' else 'vi'}"
+       title="{toggle_tooltip}">{toggle_label}</a>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
 
 dm = DriveManager(SECRET_ACC)
 
