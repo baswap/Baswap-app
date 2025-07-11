@@ -130,9 +130,3 @@ if page == "Overview":
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help="Clears cached data for fresh fetch.", on_click=st.cache_data.clear)
-
-else:
-    st.title(texts["app_title"])
-    st.markdown(texts["description"])
-    st.markdown("""
-""")
