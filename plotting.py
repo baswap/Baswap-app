@@ -7,10 +7,11 @@ import numpy as np
 import torch
 from model import make_predictions
 
-def plot_line_chart(df, col, resample_freq="None"):
-    if col not in df.columns:
-        st.error(f"Column '{col}' not found in DataFrame.")
-        return
+def plot_line_chart(df, col, freq, x_label="Timestamp", y_label="Value"):
+    fig = px.line(df, x="Timestamp (GMT+7)", y=col, template="plotly_dark")
+    fig.update_xaxes(title_text=x_label)
+    fig.update_yaxes(title_text=y_label)
+    st.plotly_chart(fig, use_container_width=True)
 
     df_filtered = df.copy()
 
