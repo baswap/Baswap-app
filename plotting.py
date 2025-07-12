@@ -5,6 +5,7 @@ from model import LITModel, LSTMTimeseries
 import pytorch_lightning as pl
 import numpy as np
 import torch
+import plotly.express as px
 from model import make_predictions
 
 def plot_line_chart(df, col, freq, x_label="Timestamp", y_label="Value"):
