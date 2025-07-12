@@ -5,37 +5,56 @@ from model import LITModel, LSTMTimeseries
 import pytorch_lightning as pl
 import numpy as np
 import torch
+import plotly.express as px
 from model import make_predictions
 
-def plot_line_chart(df, col, resample_freq="None"):
-    if col not in df.columns:
-        st.error(f"Column '{col}' not found in DataFrame.")
-        return
+def plot_line_chart(
+        df, col, resample_freq="None",
+        *, x_label="Timestamp", y_label="Value"):
+    # 1 ▪ aggregate if needed
+    if resample_freq != "None":
+        df = apply_aggregation(
+            df, COL_NAMES, col, resample_freq, st.session_state.agg_stats
+        )
 
-    df_filtered = df.copy()
+    # 2 ▪ Plotly line
+    fig = px.line(
+        df,
+        x="Timestamp (GMT+7)",
+        y=col,
+        labels={"Timestamp (GMT+7)": x_label, col: y_label},
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
+    # 3 ▪ Altair line (same data, same labels)
+    df_alt = df.copy()
+    df_alt["Aggregation"] = (
+        "Raw" if resample_freq == "None" else resample_freq.capitalize()
+    )
     color_scale = alt.Scale(
-            domain=["Raw", "Max", "Min", "Median"],
-            range=["orange", "red", "blue", "green"]
-        )
+        domain=["Raw", "Hour", "Day"],
+        range=["orange", "red", "blue"],
+    )
 
-    if resample_freq == "None":
-        df_filtered["Aggregation"] = "Raw"
-        chart = (
-            alt.Chart(df_filtered)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
-                y=alt.Y(f"{col}:Q", title="Value"),
-                color=alt.Color("Aggregation:N", title="Aggregation", scale=color_scale),
-                tooltip=[
-                    alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
-                    alt.Tooltip(f"{col}:Q", title="Value")
-                ],
-            )
-            .interactive()
+    chart = (
+        alt.Chart(df_alt)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X("Timestamp (GMT+7):T", title=x_label),
+            y=alt.Y(f"{col}:Q", title=y_label),
+            color=alt.Color(
+                "Aggregation:N", scale=color_scale, title="Aggregation"
+            ),
+            tooltip=[
+                alt.Tooltip("Timestamp (GMT+7):T", title=x_label,
+                            format="%d/%m/%Y %H:%M:%S"),
+                alt.Tooltip(f"{col}:Q", title=y_label),
+            ],
         )
-        st.altair_chart(chart, use_container_width=True)
+        .interactive()
+    )
+    st.altair_chart(chart, use_container_width=True)
+
     else:
         # Create a rounded timestamp based on resample frequency.
         if resample_freq == "Hour":
