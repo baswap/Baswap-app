@@ -7,10 +7,10 @@ import numpy as np
 import torch
 from model import make_predictions
 
-lang = st.experimental_get_query_params().get("lang", ["vi"])[0]
-texts = APP_TEXTS[lang]
 
 def plot_line_chart(df, col, resample_freq="None"):
+    lang = st.query_params.get("lang", ["vi"])[0]
+    texts = APP_TEXTS[lang]
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
@@ -25,10 +25,10 @@ def plot_line_chart(df, col, resample_freq="None"):
     if resample_freq == "None":
         df_filtered["Aggregation"] = "Raw"
         chart = (
-            alt.Chart(df_filtered)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X(
+            alt.Chart(df)
+              .mark_line(point=True)
+              .encode(
+            x=alt.X(
                 "Timestamp (GMT+7):T",
                 axis=alt.Axis(title=texts["axis_timestamp"])
             ),
