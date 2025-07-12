@@ -7,6 +7,9 @@ import numpy as np
 import torch
 from model import make_predictions
 
+lang = st.experimental_get_query_params().get("lang", ["vi"])[0]
+texts = APP_TEXTS[lang]
+
 def plot_line_chart(df, col, resample_freq="None"):
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -25,8 +28,14 @@ def plot_line_chart(df, col, resample_freq="None"):
             alt.Chart(df_filtered)
             .mark_line(point=True)
             .encode(
-                x=alt.X("Timestamp (GMT+7):T", axis=alt.Axis(title="Timestamp")),
-                y=alt.Y(f"{col}:Q",axis=alt.Axis(title="Value")),
+                x=alt.X(
+                "Timestamp (GMT+7):T",
+                axis=alt.Axis(title=texts["axis_timestamp"])
+            ),
+            y=alt.Y(
+                f"{col}:Q",
+                axis=alt.Axis(title=texts["axis_value"])
+            ),
                 color=alt.Color("Aggregation:N", title="Aggregation", scale=color_scale),
                 tooltip=[
                     alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
