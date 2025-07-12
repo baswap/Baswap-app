@@ -61,7 +61,7 @@ APP_TEXTS = {
         "nav_about":    "Giới thiệu",
         "overall_stats_title": "Thống kê chung",
         "axis_value": "Giá trị đo",
-        "axis_time": "Mốc thời gian đo",
+        "axis_timestamp": "Mốc thời gian đo",
     }
 }
 
