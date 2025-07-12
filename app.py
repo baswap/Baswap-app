@@ -106,12 +106,13 @@ if page == "Overview":
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
-
+    x_lbl = texts["axis_time"]     
+    y_lbl = texts["axis_value"]
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
         with tabs[0]:
-            plot_line_chart(filtered_df, target_col, "None",  x_label=axis_value, y_label=y_lbl)
+            plot_line_chart(filtered_df, target_col, "None",  x_label=x_lbl, y_label=y_lbl)
         with tabs[1]:
             plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs),
                 target_col, "Hour", x_label=x_lbl, y_label=y_lbl)
