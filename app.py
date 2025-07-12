@@ -97,46 +97,60 @@ def settings_panel(first_date, last_date):
 
 if page == "Overview":
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
-    folium.Marker([10.099833, 106.208306], tooltip="BASWAP Buoy", icon=folium.Icon(icon="tint", prefix="fa", color="blue")).add_to(m)
+    folium.Marker([10.099833, 106.208306],
+                  tooltip="BASWAP Buoy",
+                  icon=folium.Icon(icon="tint", prefix="fa", color="blue")).add_to(m)
     st_folium(m, width="100%", height=400)
 
-    df = thingspeak_retrieve(combined_data_retrieve())
+    df         = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
-    last_date = df["Timestamp (GMT+7)"].max().date()
+    last_date  = df["Timestamp (GMT+7)"].max().date()
+
+    # ── Overall statistics (always full-width) ──
     date_from = st.session_state.date_from or first_date
-    date_to = st.session_state.date_to or last_date
-    target_col = st.session_state.target_col
-    agg_funcs = st.session_state.agg_stats
-
-    filtered_df = filter_data(df, date_from, date_to)
+    date_to   = st.session_state.date_to   or last_date
+    target    = st.session_state.target_col
     st.markdown(f"### 📊 {texts['overall_stats_title']}")
-    display_statistics(filtered_df, target_col)
+    display_statistics(filter_data(df, date_from, date_to), target)
 
+    # ── Graph Settings (user may change dates) ──
     st.divider()
-    st.markdown("&nbsp;")
-    st.subheader(f"📈 {target_col}")
-    tab_raw, tab_hr, tab_day = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
-    with tab_raw:
-        plot_line_chart(filtered_df, target_col, "None")
-    with tab_hr:
-        hr_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-        plot_line_chart(hr_df, target_col, "Hour")
-    with tab_day:
-        day_df = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-        plot_line_chart(day_df, target_col, "Day")
-
     exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(exp_label, expanded=False):
         settings_panel(first_date, last_date)
 
+    # read back (possibly new) session-state
+    date_from = st.session_state.date_from or first_date
+    date_to   = st.session_state.date_to   or last_date
+    target    = st.session_state.target_col
+    aggs      = st.session_state.agg_stats
+    filtered_df = filter_data(df, date_from, date_to)
+
+    # ── Chart draws only the selected window ──
     st.divider()
-    st.markdown("&nbsp;")
+    st.subheader(f"📈 {target}")
+    tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
+
+    with tabs[0]:
+        plot_line_chart(filtered_df, target, "None")
+    with tabs[1]:
+        plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target, "Hour", aggs),
+                        target, "Hour")
+    with tabs[2]:
+        plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target, "Day",  aggs),
+                        target, "Day")
+
+    # ── Data table (unchanged) ──
+    st.divider()
     st.subheader(texts["data_table"])
-    st.multiselect(texts["columns_select"], options=COL_NAMES, default=st.session_state.table_cols, key="table_cols")
+    st.multiselect(texts["columns_select"], COL_NAMES,
+                   default=st.session_state.table_cols, key="table_cols")
     table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
-    st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
+    st.button(texts["clear_cache"], help=texts["toggle_tooltip"],
+              on_click=st.cache_data.clear)
+
 
 else:
     st.title(texts["app_title"])
