@@ -38,7 +38,9 @@ APP_TEXTS = {
         "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ",  # Tooltip in Vietnamese.
         "nav_overview": "Overview",
         "nav_about":    "About",
-        "overall_stats_title": "Overall Statistics"
+        "overall_stats_title": "Overall Statistics",
+        "axis_value": "Value",
+        "axis_time": "Timestamp"
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -57,7 +59,9 @@ APP_TEXTS = {
         "toggle_tooltip": "Click to change language",
         "nav_overview": "Tổng quan",
         "nav_about":    "Giới thiệu",
-        "overall_stats_title": "Thống kê chung" 
+        "overall_stats_title": "Thống kê chung",
+        "axis_value": "Giá trị",
+        "axis_time": "Mốc thời gian",
     }
 }
 
