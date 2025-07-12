@@ -107,17 +107,7 @@ if page == "Overview":
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
 
-    # 1️⃣ graph-settings first
-    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
-    with st.expander(exp_label, expanded=False):
-        settings_panel(first_date, last_date)
-
-    # 2️⃣ read the (possibly changed) state
-    date_from  = st.session_state.date_from or first_date
-    date_to    = st.session_state.date_to   or last_date
-    target_col = st.session_state.target_col
-    agg_funcs  = st.session_state.agg_stats
-    filtered   = filter_data(df, date_from, date_to)
+    
 
     # 3️⃣ overall stats & charts use the new window
     st.markdown(f"### 📊 {texts['overall_stats_title']}")
@@ -138,7 +128,17 @@ if page == "Overview":
         plot_line_chart(apply_aggregation(filtered, COL_NAMES,
                                           target_col, "Day",  agg_funcs),
                         target_col, "Day")
+# 1️⃣ graph-settings first
+    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
+    with st.expander(exp_label, expanded=False):
+        settings_panel(first_date, last_date)
 
+    # 2️⃣ read the (possibly changed) state
+    date_from  = st.session_state.date_from or first_date
+    date_to    = st.session_state.date_to   or last_date
+    target_col = st.session_state.target_col
+    agg_funcs  = st.session_state.agg_stats
+    filtered   = filter_data(df, date_from, date_to)
     # 4️⃣ data table
     st.divider()
     st.subheader(texts["data_table"])
