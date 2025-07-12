@@ -113,19 +113,16 @@ if page == "Overview":
     st.markdown(f"### 📊 {texts['overall_stats_title']}")
     display_statistics(filter_data(df, date_from, date_to), target)
 
-    # ── Graph Settings (user may change dates) ──
-    st.divider()
-    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
-    with st.expander(exp_label, expanded=False):
-        settings_panel(first_date, last_date)
-
     # read back (possibly new) session-state
     date_from = st.session_state.date_from or first_date
     date_to   = st.session_state.date_to   or last_date
     target    = st.session_state.target_col
     aggs      = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
-
+    
+    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
+    with st.expander(exp_label, expanded=False):
+        settings_panel(first_date, last_date)
     # ── Chart draws only the selected window ──
     st.divider()
     st.subheader(f"📈 {target}")
