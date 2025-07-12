@@ -11,3 +11,4 @@ google-auth
 pydeck
 folium
 streamlit-folium
+plotly==5.20.0
