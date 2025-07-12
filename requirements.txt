@@ -8,7 +8,11 @@ torchmetrics
 scikit-learn==1.5.2
 google-api-python-client
 google-auth
+google-auth-httplib2
+google-auth-oauthlib
 pydeck
 folium
 streamlit-folium
-plotly==5.20.0
+pandas
+numpy
+matplotlib
