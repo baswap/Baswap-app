@@ -107,39 +107,41 @@ if page == "Overview":
     first_date = datetime(2025, 1, 17).date()
     last_date  = df["Timestamp (GMT+7)"].max().date()
 
-      # 2️⃣ read the (possibly changed) state
+    # 1️⃣ stats header
+    st.markdown(f"### 📊 {texts['overall_stats_title']}")
+
+    # 2️⃣ placeholder RESERVED for chart (shown above settings)
+    chart_slot = st.empty()
+
+    # 3️⃣ Graph-settings expander (user changes widgets here)
+    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
+    with st.expander(exp_label, expanded=False):
+        settings_panel(first_date, last_date)
+
+    # 4️⃣ use (possibly new) session-state to filter & plot
     date_from  = st.session_state.date_from or first_date
     date_to    = st.session_state.date_to   or last_date
     target_col = st.session_state.target_col
     agg_funcs  = st.session_state.agg_stats
     filtered   = filter_data(df, date_from, date_to)
 
-    # 3️⃣ overall stats & charts use the new window
-    st.markdown(f"### 📊 {texts['overall_stats_title']}")
-    display_statistics(filtered, target_col)
+    display_statistics(filtered, target_col)        # stays above chart
 
-    st.divider()
-    st.subheader(f"📈 {target_col}")
-    tab_raw, tab_hr, tab_day = st.tabs([texts["raw_view"],
-                                        texts["hourly_view"],
-                                        texts["daily_view"]])
-    with tab_raw:
-        plot_line_chart(filtered, target_col, "None")
-    with tab_hr:
-        plot_line_chart(apply_aggregation(filtered, COL_NAMES,
-                                          target_col, "Hour", agg_funcs),
-                        target_col, "Hour")
-    with tab_day:
-        plot_line_chart(apply_aggregation(filtered, COL_NAMES,
-                                          target_col, "Day",  agg_funcs),
-                        target_col, "Day")
-# 1️⃣ graph-settings first
-    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
-    with st.expander(exp_label, expanded=False):
-        settings_panel(first_date, last_date)
+    # fill the placeholder
+    with chart_slot.container():
+        st.subheader(f"📈 {target_col}")
+        tab_raw, tab_hr, tab_day = st.tabs(
+            [texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
+        with tab_raw:
+            plot_line_chart(filtered, target_col, "None")
+        with tab_hr:
+            plot_line_chart(apply_aggregation(filtered, COL_NAMES, target_col, "Hour", agg_funcs),
+                            target_col, "Hour")
+        with tab_day:
+            plot_line_chart(apply_aggregation(filtered, COL_NAMES, target_col, "Day",  agg_funcs),
+                            target_col, "Day")
 
-  
-    # 4️⃣ data table
+    # 5️⃣ table
     st.divider()
     st.subheader(texts["data_table"])
     st.multiselect(texts["columns_select"], COL_NAMES,
