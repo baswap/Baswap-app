@@ -120,9 +120,7 @@ if page == "Overview":
     aggs      = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
     
-    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
-    with st.expander(exp_label, expanded=False):
-        settings_panel(first_date, last_date)
+    
     # ── Chart draws only the selected window ──
     st.divider()
     st.subheader(f"📈 {target}")
@@ -136,7 +134,9 @@ if page == "Overview":
     with tabs[2]:
         plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target, "Day",  aggs),
                         target, "Day")
-
+    exp_label = side_texts["sidebar_header"].lstrip("# ").strip()
+    with st.expander(exp_label, expanded=False):
+        settings_panel(first_date, last_date)
     # ── Data table (unchanged) ──
     st.divider()
     st.subheader(texts["data_table"])
