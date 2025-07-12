@@ -111,11 +111,13 @@ if page == "Overview":
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
         with tabs[0]:
-            plot_line_chart(filtered_df, target_col, "None")
+            plot_line_chart(filtered_df, target_col, "None",  x_label=x_lbl, y_label=y_lbl)
         with tabs[1]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs), target_col, "Hour")
+            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs),
+                target_col, "Hour", x_label=x_lbl, y_label=y_lbl)
         with tabs[2]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs), target_col, "Day")
+            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day",  agg_funcs),
+                target_col, "Day",  x_label=x_lbl, y_label=y_lbl)
 
     st.divider()
     st.subheader(texts["data_table"])
