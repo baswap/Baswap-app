@@ -40,7 +40,7 @@ APP_TEXTS = {
         "nav_about":    "About",
         "overall_stats_title": "Overall Statistics",
         "axis_value": "Measurement",
-        "axis_time": "Recorded At"
+        "axis_timestamp": "Recorded At"
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
