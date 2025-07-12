@@ -5,16 +5,12 @@ from model import LITModel, LSTMTimeseries
 import pytorch_lightning as pl
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 from model import make_predictions
 
-def plot_line_chart(df, target_col, freq, x_label, y_label):
-    fig, ax = plt.subplots()
-    ax.plot(df["Timestamp (GMT+7)"], df[target_col], marker=".", linewidth=0.8)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    ax.set_title(f"{target_col} – {freq if freq!='None' else 'Raw'}")
-    st.pyplot(fig, clear_figure=True)
+def plot_line_chart(df, col, resample_freq="None"):
+    if col not in df.columns:
+        st.error(f"Column '{col}' not found in DataFrame.")
+        return
 
     df_filtered = df.copy()
 
