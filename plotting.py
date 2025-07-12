@@ -5,14 +5,16 @@ from model import LITModel, LSTMTimeseries
 import pytorch_lightning as pl
 import numpy as np
 import torch
-import plotly.express as px
+import matplotlib.pyplot as plt
 from model import make_predictions
 
-def plot_line_chart(df, col, freq, x_label="Timestamp", y_label="Value"):
-    fig = px.line(df, x="Timestamp (GMT+7)", y=col, template="plotly_dark")
-    fig.update_xaxes(title_text=x_label)
-    fig.update_yaxes(title_text=y_label)
-    st.plotly_chart(fig, use_container_width=True)
+def plot_line_chart(df, target_col, freq, x_label, y_label):
+    fig, ax = plt.subplots()
+    ax.plot(df["Timestamp (GMT+7)"], df[target_col], marker=".", linewidth=0.8)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(f"{target_col} – {freq if freq!='None' else 'Raw'}")
+    st.pyplot(fig, clear_figure=True)
 
     df_filtered = df.copy()
 
