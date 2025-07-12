@@ -39,8 +39,8 @@ APP_TEXTS = {
         "nav_overview": "Overview",
         "nav_about":    "About",
         "overall_stats_title": "Overall Statistics",
-        "axis_value": "Value",
-        "axis_time": "Timestamp"
+        "axis_value": "Measurement",
+        "axis_time": "Recorded At"
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -60,8 +60,8 @@ APP_TEXTS = {
         "nav_overview": "Tổng quan",
         "nav_about":    "Giới thiệu",
         "overall_stats_title": "Thống kê chung",
-        "axis_value": "Giá trị",
-        "axis_time": "Mốc thời gian",
+        "axis_value": "Giá trị đo",
+        "axis_time": "Mốc thời gian đo",
     }
 }
 
