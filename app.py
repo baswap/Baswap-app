@@ -14,10 +14,8 @@ st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 params = st.query_params
 page = params.get("page", "Overview")
 lang = params.get("lang", "vi")
-if page not in ("Overview", "About"):
-    page = "Overview"
-if lang not in ("en", "vi"):
-    lang = "vi"
+page = page if page in ("Overview", "About") else "Overview"
+lang = lang if lang in ("en", "vi") else "vi"
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
@@ -82,6 +80,13 @@ def settings_panel(first_date, last_date):
         st.warning(texts["data_dimensions"])
         st.stop()
 
+AXIS_LABELS = {
+    "EC Value (us/cm)": ("EC (µS/cm)", "Giá trị EC (µS/cm)"),
+    "EC Value (g/l)": ("EC (g/L)", "Giá trị EC (g/L)"),
+    "EC Temperature": ("Temperature (°C)", "Nhiệt độ (°C)"),
+    "Battery Voltage": ("Battery Voltage (V)", "Điện áp pin (V)")
+}
+
 if page == "Overview":
     m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
     folium.Marker([10.099833, 106.208306], tooltip="BASWAP Buoy", icon=folium.Icon(icon="tint", prefix="fa", color="blue")).add_to(m)
@@ -96,7 +101,6 @@ if page == "Overview":
     display_statistics(stats_df, st.session_state.target_col)
 
     st.divider()
-    chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
         settings_panel(first_date, last_date)
@@ -106,20 +110,20 @@ if page == "Overview":
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
-    x_lbl = texts["axis_time"]
-    y_lbl = texts["axis_value"]
 
-    with chart_container:
-        st.subheader(f"📈 {target_col}")
-        tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
-        with tabs[0]:
-            plot_line_chart(filtered_df, target_col, "None",  x_label=x_lbl, y_label=y_lbl)
-        with tabs[1]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs),
-                target_col, "Hour", x_label=x_lbl, y_label=y_lbl)
-        with tabs[2]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day",  agg_funcs),
-                target_col, "Day",  x_label=x_lbl, y_label=y_lbl)
+    y_en, y_vi = AXIS_LABELS.get(target_col, ("Sensor Reading", "Giá trị đo"))
+    y_lbl = y_en if lang == "en" else y_vi
+    x_lbl = texts["axis_time"]
+
+    st.divider()
+    st.subheader(f"📈 {target_col}")
+    tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
+    with tabs[0]:
+        plot_line_chart(filtered_df, target_col, "None", x_label=x_lbl, y_label=y_lbl)
+    with tabs[1]:
+        plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs), target_col, "Hour", x_label=x_lbl, y_label=y_lbl)
+    with tabs[2]:
+        plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs), target_col, "Day", x_label=x_lbl, y_label=y_lbl)
 
     st.divider()
     st.subheader(texts["data_table"])
@@ -128,7 +132,6 @@ if page == "Overview":
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
-
 else:
     st.title(texts["app_title"])
     st.markdown(texts["description"])
