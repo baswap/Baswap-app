@@ -1,7 +1,6 @@
 import streamlit as st
 from datetime import datetime
 
-# Must be the very first Streamlit command
 st.set_page_config(page_title="BASWAP-APP", page_icon="💧", layout="wide")
 
 from data import combined_data_retrieve, thingspeak_retrieve
@@ -10,21 +9,14 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 from config import COL_NAMES, APP_TEXTS
 
-# Define text dictionaries for English and Vietnamese, including toggle tooltip texts.
-
-
-# Callback function to update language immediately.
 def update_language():
     st.session_state.language = "vi" if st.session_state.language == "en" else "en"
-    # st.rerun()
 
-# Initialize session state for language if not set.
 if "language" not in st.session_state:
     st.session_state.language = "vi"
 lang = st.session_state.language
 texts = APP_TEXTS[lang]
 
-# Add CSS to position the toggle button at the top right corner.
 st.markdown(
     """
     <style>
@@ -38,7 +30,6 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# Render the toggle button using a callback and assign the tooltip via the help parameter.
 st.markdown('<div class="lang-toggle">', unsafe_allow_html=True)
 st.button(label=texts["toggle_button"], 
           on_click=update_language, 
@@ -48,21 +39,17 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.title(texts["app_title"])
 st.markdown(texts["description"])
 
-# Data retrieval.
 df = combined_data_retrieve()
 df = thingspeak_retrieve(df)
 col_names = COL_NAMES
-first_date = datetime(2025, 1, 17).date()  # Fixed first date
+first_date = datetime(2025, 1, 17).date() 
 last_date = df['Timestamp (GMT+7)'].max().date()
 
-# Sidebar inputs.
 date_from, date_to, target_col, agg_functions = sidebar_inputs(df, lang, first_date, last_date)
 filtered_df = filter_data(df, date_from, date_to)
 
-# Display statistics.
 display_statistics(filtered_df, target_col)
 
-# Display views: Raw, Hourly, Daily.
 def display_view(df, target_col, view_title, resample_freq, selected_cols, agg_functions):
     st.subheader(view_title)
     if resample_freq == "None":
@@ -78,7 +65,6 @@ display_view(filtered_df, target_col, f"{texts['hourly_view']} {target_col}",
 display_view(filtered_df, target_col, f"{texts['daily_view']} {target_col}",
              resample_freq="Day", selected_cols=col_names, agg_functions=agg_functions)
 
-# Data table section with column selector.
 st.subheader(texts["data_table"])
 selected_table_cols = st.multiselect(
     texts["columns_select"],
