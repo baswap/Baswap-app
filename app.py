@@ -56,7 +56,14 @@ def display_view(df, target_col, view_title, resample_freq, selected_cols, agg_f
         view_df = df.copy()
     else:
         view_df = apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions)
-    plot_line_chart(view_df, target_col, resample_freq)
+    plot_line_chart(
+    filtered_df,
+    target_col,
+    "None",
+    date_from=st.session_state.date_from,
+    date_to=st.session_state.date_to,
+)
+
 
 display_view(filtered_df, target_col, f"{texts['raw_view']} {target_col}",
              resample_freq="None", selected_cols=col_names, agg_functions=agg_functions)
