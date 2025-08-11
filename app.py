@@ -128,7 +128,7 @@ if page == "Overview":
 else:
     st.title(texts["app_title"])
     st.markdown(texts["description"])
-=======
+
 from config import COL_NAMES, APP_TEXTS
 
 def update_language():
