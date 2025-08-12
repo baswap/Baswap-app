@@ -7,78 +7,35 @@ import numpy as np
 import torch
 from model import make_predictions
 
-def plot_line_chart(
-    df: pd.DataFrame,
-    col: str,
-    resample_freq: str = "None",
-    *,
-    date_from=None,
-    date_to=None,
-):
+def plot_line_chart(df, col, resample_freq="None"):
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
 
-    df_plot = df.copy()
+    df_filtered = df.copy()
 
     color_scale = alt.Scale(
-        domain=["Raw", "Max", "Min", "Median"],
-        range=["orange", "red", "blue", "green"],
-    )
-
-    # base x encoding with optional domain clamp
-    x_enc = alt.X(
-        "Timestamp (GMT+7):T",
-        title="Timestamp",
-        scale=alt.Scale(domain=[date_from, date_to]) if date_from and date_to else alt.Scale(),
-    )
+            domain=["Raw", "Max", "Min", "Median"],
+            range=["orange", "red", "blue", "green"]
+        )
 
     if resample_freq == "None":
-        df_plot["Aggregation"] = "Raw"
+        df_filtered["Aggregation"] = "Raw"
         chart = (
-            alt.Chart(df_plot)
-            .mark_line(point=True, interpolate="linear")
+            alt.Chart(df_filtered)
+            .mark_line(point=True)
             .encode(
-                x=x_enc,
+                x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
                 y=alt.Y(f"{col}:Q", title="Value"),
-                color=alt.Color(
-                    "Aggregation:N", title="Aggregation", scale=color_scale
-                ),
+                color=alt.Color("Aggregation:N", title="Aggregation", scale=color_scale),
                 tooltip=[
-                    alt.Tooltip(
-                        "Timestamp (GMT+7):T",
-                        title="Exact Time",
-                        format="%d/%m/%Y %H:%M:%S",
-                    ),
-                    alt.Tooltip(f"{col}:Q", title="Value"),
+                    alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
+                    alt.Tooltip(f"{col}:Q", title="Value")
                 ],
             )
             .interactive()
         )
-    else:
-        # df_plot already contains aggregated rows (Min, Max, Median)
-        chart = (
-            alt.Chart(df_plot)
-            .mark_line(point=True, interpolate="linear")
-            .encode(
-                x=x_enc,
-                y=alt.Y(f"{col}:Q", title="Value"),
-                color=alt.Color(
-                    "Aggregation:N", title="Aggregation", scale=color_scale
-                ),
-                tooltip=[
-                    alt.Tooltip(
-                        "Timestamp (GMT+7):T",
-                        title="Exact Time",
-                        format="%d/%m/%Y %H:%M:%S",
-                    ),
-                    alt.Tooltip(f"{col}:Q", title="Value"),
-                ],
-            )
-            .interactive()
-        )
-
-    st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, use_container_width=True)
     else:
         # Create a rounded timestamp based on resample frequency.
         if resample_freq == "Hour":
