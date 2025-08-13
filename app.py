@@ -3,8 +3,9 @@ import pandas as pd
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-from datetime import datetime, timedelta
 from folium.plugins import MarkerCluster, FeatureGroupSubGroup
+from datetime import datetime, timedelta
+
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
@@ -32,16 +33,17 @@ toggle_tooltip = texts.get("toggle_tooltip", "")
 # ================== SESSION DEFAULTS ==================
 for k, v in {
     "target_col": COL_NAMES[0],
-    "date_from": None,      # will be set to last 1 month after data loads
-    "date_to": None,        # will be set to latest date after data loads
+    "date_from": None,      # set after data loads
+    "date_to": None,        # set after data loads
     "agg_stats": ["Min", "Max", "Median"],
     "table_cols": COL_NAMES,
     "selected_station": None,  # for map zooming
 }.items():
     st.session_state.setdefault(k, v)
 
-# ================== STYLES ==================
-MAP_HEIGHT = 720  # taller map to match the right box
+# ================== STYLES / HEIGHTS ==================
+MAP_HEIGHT = 720            # tall map
+TABLE_HEIGHT = MAP_HEIGHT - 90  # reduce table height to visually align with map
 st.markdown(f"""
 <style>
   header{{visibility:hidden;}}
@@ -82,9 +84,6 @@ st.markdown(f"""
 
   /* Ensure folium map height */
   iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
-
-  /* Right box internal scroll (applies to the table area) */
-  .right-box-table .stDataFrame {{ height: {MAP_HEIGHT}px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -116,7 +115,7 @@ st.markdown(f"""
 # ================== DATA BACKENDS ==================
 dm = DriveManager(SECRET_ACC)
 
-# ================== HARD-CODED other (non-BASWAP) stations ==================
+# ================== STATIONS ==================
 OTHER_STATIONS = [
     {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
     {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
@@ -162,8 +161,13 @@ OTHER_STATIONS = [
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
-# Fast lookup for zooming
+# BASWAP buoy constant
+BASWAP_NAME = "BASWAP Buoy"
+BASWAP_LATLON = (10.099833, 106.208306)
+
+# Fast lookup for zooming (includes BASWAP + others)
 STATION_LOOKUP = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in OTHER_STATIONS}
+STATION_LOOKUP[BASWAP_NAME] = BASWAP_LATLON
 
 # ================== MAP HELPERS ==================
 def add_layers(m: folium.Map):
@@ -171,21 +175,20 @@ def add_layers(m: folium.Map):
     Shared clustering across BASWAP + Other, with separate toggles.
     When zoomed out, markers from both layers merge into one cluster count.
     """
-
-    # One hidden, shared clusterer (no extra checkbox)
+    # One shared clusterer (hidden from LayerControl)
     shared_cluster = MarkerCluster(name="All stations (clusterer)", control=False)
     shared_cluster.add_to(m)
 
-    # Two togglable sub-groups that *share* the clusterer
+    # Two togglable sub-groups that share the clusterer
     baswap_sub = FeatureGroupSubGroup(shared_cluster, name="BASWAP stations", show=True)
     other_sub  = FeatureGroupSubGroup(shared_cluster, name="Other stations",  show=True)
     m.add_child(baswap_sub)
     m.add_child(other_sub)
 
-    # BASWAP buoy — same behavior, only icon differs
+    # BASWAP marker — identical behavior, only icon differs
     folium.Marker(
-        [10.099833, 106.208306],
-        tooltip="BASWAP Buoy",
+        BASWAP_LATLON,
+        tooltip=BASWAP_NAME,
         icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
     ).add_to(baswap_sub)
 
@@ -197,11 +200,8 @@ def add_layers(m: folium.Map):
             icon=folium.Icon(icon="life-ring", prefix="fa", color="gray"),
         ).add_to(other_sub)
 
-    # Exactly two checkboxes in the control
+    # Exactly two checkboxes
     folium.LayerControl(collapsed=False).add_to(m)
-
-
-
 
 # ================== SIDEBAR SETTINGS ==================
 def settings_panel(first_date, last_date, default_from, default_to):
@@ -246,54 +246,52 @@ if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Station picker + 2×42 table (scrollable) ----------
+    # ---------- RIGHT: Picker + 2×42 table (scrollable) ----------
     with col_right:
         st.markdown("#### Station / Warning")
 
-        # Picker to "click" a station; triggers map zoom. Lives in the same right box.
+        # Picker with None + BASWAP + others
+        station_options = ["None", BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
+        default_sel = st.session_state.get("selected_station", "None")
+        if default_sel not in station_options:
+            default_sel = "None"
+
         picked = st.selectbox(
             label="Pick a station to focus the map",
-            options=[s["name"] for s in OTHER_STATIONS],
-            index=0 if st.session_state.selected_station is None else
-                   [s["name"] for s in OTHER_STATIONS].index(st.session_state.selected_station),
+            options=station_options,
+            index=station_options.index(default_sel),
         )
-        # Persist selection for the rerun
-        st.session_state.selected_station = picked
+        st.session_state.selected_station = None if picked == "None" else picked
 
-        # 2×42 table: Station | Warning("-")
+        # 2×42 table: Station | Warning("-")  (keeps ONLY the 42 'Other' stations)
         station_names = [s["name"] for s in OTHER_STATIONS]
         warnings_col = ["-"] * len(station_names)
         table_df = pd.DataFrame({"Station": station_names, "Warning": warnings_col})
-        TABLE_HEIGHT = MAP_HEIGHT - 125
-        # Scrollable table matching map height
-        table_container = st.container()
-        with table_container:
-            st.dataframe(
-                table_df,
-                use_container_width=True,
-                hide_index=True,
-                height=TABLE_HEIGHT,
-            )
+        st.dataframe(
+            table_df,
+            use_container_width=True,
+            hide_index=True,
+            height=TABLE_HEIGHT,
+        )
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
         # Default view
         center = [10.2, 106.0]
         zoom = 8
-
-        # If a station is selected, pan/zoom to it and highlight
         highlight_location = None
-        if st.session_state.selected_station and st.session_state.selected_station in STATION_LOOKUP:
-            lat, lon = STATION_LOOKUP[st.session_state.selected_station]
+
+        sel = st.session_state.selected_station
+        if sel and sel in STATION_LOOKUP:
+            lat, lon = STATION_LOOKUP[sel]
             center = [lat, lon]
-            zoom = 12   # adjust to taste
+            zoom = 12   # tweak (12–14) for tighter focus
             highlight_location = (lat, lon)
 
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
         add_layers(m)
 
-        # Visual highlight for selected station
         if highlight_location:
             folium.CircleMarker(
                 location=highlight_location,
@@ -302,20 +300,18 @@ if page == "Overview":
                 fill=True,
                 fill_opacity=0.2,
                 color="#0077ff",
-                tooltip=st.session_state.selected_station,
+                tooltip=sel,
             ).add_to(m)
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
-    # Use actual min/max from data
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # --- Overall stats for current window (defaults to last month) ---
-    # Ensure defaults are set before computing
+    # --- Overall stats defaults ---
     if st.session_state.date_from is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.date_to is None:
@@ -340,7 +336,7 @@ if page == "Overview":
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
 
-    # --- Charts: ONLY Hourly and Daily (Raw removed) ---
+    # --- Charts: Hourly & Daily ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
