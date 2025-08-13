@@ -4,6 +4,7 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
 from datetime import datetime, timedelta
+import pandas as pd
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -220,23 +221,44 @@ def settings_panel(first_date, last_date, default_from, default_to):
 
 # ================== PAGES ==================
 if page == "Overview":
-    # --- Map (full width, taller) ---
-    center = [10.2, 106.0]
-    zoom = 8
-    m = folium.Map(location=center, zoom_start=zoom, tiles=None)
-    folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
-    add_layers(m)
-    st_folium(m, width="100%", height=MAP_HEIGHT)
+    # --- Map + Right Table Layout (70/30) ---
+    col_left, col_right = st.columns([7, 3], gap="small")
+
+    # Left: Folium map
+    with col_left:
+        center = [10.2, 106.0]
+        zoom = 8
+        m = folium.Map(location=center, zoom_start=zoom, tiles=None)
+        folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
+        add_layers(m)
+        st_folium(m, width="100%", height=MAP_HEIGHT)
+
+    # Right: Scrollable 2x42 table
+    with col_right:
+        st.markdown("#### Station / Warning")
+        station_names = [s["name"] for s in OTHER_STATIONS]  # 42 names
+        warnings_col = ["-"] * len(station_names)
+
+        table_df = pd.DataFrame({
+            "Station": station_names,
+            "Warning": warnings_col
+        })
+
+        # Height matches map; scroll appears automatically if needed
+        st.dataframe(
+            table_df,
+            use_container_width=True,
+            hide_index=True,
+            height=MAP_HEIGHT
+        )
 
     # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
-    # Use actual min/max from data
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # --- Overall stats for current window (defaults to last month) ---
-    # Ensure defaults are set before computing
+    # Defaults for stats window
     if st.session_state.date_from is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.date_to is None:
@@ -248,7 +270,7 @@ if page == "Overview":
 
     st.divider()
 
-    # --- Settings (in expander) ---
+    # Settings expander
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
@@ -261,7 +283,7 @@ if page == "Overview":
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
 
-    # --- Charts: ONLY Hourly and Daily (Raw removed) ---
+    # Charts
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
@@ -282,6 +304,7 @@ if page == "Overview":
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
+
 
 else:
     st.title(texts["app_title"])
