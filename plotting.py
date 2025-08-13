@@ -7,22 +7,58 @@ import pandas as pd
 import numpy as np
 from typing import Optional
 
-# keep your model imports (even if unused in this file by default)
+# keep model imports (used for predictions)
 from model import LITModel, LSTMTimeseries, make_predictions  # noqa: F401
 import pytorch_lightning as pl  # noqa: F401
 import torch  # noqa: F401
 
 
+# ----------------------------------------------------------------------
+# Responsive custom legend (outside the chart so it doesn't shrink plots)
+# ----------------------------------------------------------------------
+_COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}  # no Raw here
+
+def _render_aggregation_legend(show_predicted: bool = False) -> None:
+    items = "".join(
+        f"<div class='agg-item'><span class='dot' style='background:{_COLOR_MAP[k]}'></span>{k}</div>"
+        for k in ["Max", "Min", "Median"]
+    )
+    pred = (
+        "<div class='agg-item'><span class='dash' ></span>Predicted</div>"
+        if show_predicted else ""
+    )
+    st.markdown(
+        f"""
+        <style>
+          .agg-legend {{
+            display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:center;
+            margin:.25rem 0 .5rem 0; font-weight:600;
+          }}
+          .agg-item {{ display:inline-flex; align-items:center; gap:.45rem; }}
+          .agg-item .dot {{
+            width:12px; height:12px; border-radius:999px; display:inline-block;
+          }}
+          .agg-item .dash {{
+            width:18px; height:0; border-top:2px dashed red; display:inline-block;
+          }}
+          @media (max-width: 640px) {{
+            .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }}
+          }}
+        </style>
+        <div class="agg-legend">
+          {items}{pred}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # ------------------------ Gap handling (robust) ------------------------ #
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
-    """
-    Coerce any datetime-like series to tz-naive datetime64[ns].
-    Prevents sort/compare errors when a column mixes tz-aware & tz-naive values.
-    """
+    """Coerce any datetime-like series to tz-naive datetime64[ns]."""
     s = pd.to_datetime(s, errors="coerce")
     try:
-        tz = getattr(s.dt, "tz", None)
-        if tz is not None:
+        if getattr(s.dt, "tz", None) is not None:
             s = s.dt.tz_localize(None)
     except Exception:
         pass
@@ -41,7 +77,7 @@ def _inject_nans_for_gaps(
 ) -> pd.DataFrame:
     """
     Insert NaN rows at midpoints of gaps > max_gap so Altair breaks the line.
-    If cat_col is provided (e.g., 'Aggregation'), gaps are computed per category.
+    If cat_col is provided (e.g. 'Aggregation'), compute per category.
     """
     d = df.copy()
     d[time_col] = _coerce_naive_datetime(d[time_col])
@@ -79,10 +115,10 @@ def _inject_nans_for_gaps(
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     """
-    Draws a line chart (Altair), breaking the line across missing intervals.
-    - For 'Hour' view, a gap > 3 hours is considered missing.
-    - For 'Day'  view, a gap > 3 days  is considered missing.
-    Raw view is kept for completeness (uses 30-minute gap).
+    Draw a line chart with:
+      - line breaks across missing intervals (NaN injection),
+      - custom legend outside the chart (no 'Raw'),
+      - optional predictions overlay for Hour + EC series.
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -90,61 +126,37 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     df_filtered = df.copy()
 
+    # Altair color scale for series (no 'Raw')
     color_scale = alt.Scale(
-        domain=["Raw", "Max", "Min", "Median"],
-        range=["orange", "red", "blue", "green"],
+        domain=["Max", "Min", "Median"],
+        range=[_COLOR_MAP["Max"], _COLOR_MAP["Min"], _COLOR_MAP["Median"]],
     )
 
-    # ---------------------- Raw (optional) ---------------------- #
-    if resample_freq == "None":
-        df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
-        df_filtered["Aggregation"] = "Raw"
-
-        df_broken = _inject_nans_for_gaps(
-            df_filtered,
-            time_col="Timestamp (GMT+7)",
-            value_col=col,
-            cat_col="Aggregation",
-            max_gap=pd.Timedelta(minutes=30),
-        )
-
-        chart = (
-            alt.Chart(df_broken)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
-                y=alt.Y(f"{col}:Q", title="Value"),
-                color=alt.Color("Aggregation:N", title="Aggregation", scale=color_scale),
-                tooltip=[
-                    alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
-                    alt.Tooltip(f"{col}:Q", title="Value"),
-                ],
-            )
-            .interactive()
-        )
-        st.altair_chart(chart, use_container_width=True)
-        return
-
-    # -------------------- Hour / Day views --------------------- #
-    # Round timestamps for display/grouping
+    # -------- Only keep Hour/Day logic; Raw legend/item removed --------
     if resample_freq == "Hour":
-        df_filtered["Timestamp (Rounded)"] = pd.to_datetime(df_filtered["Timestamp (GMT+7)"], errors="coerce").dt.floor("h")
+        df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
+            df_filtered["Timestamp (GMT+7)"], errors="coerce"
+        ).dt.floor("h")
         gap = pd.Timedelta(hours=3)
         disp_fmt = "%H:%M:%S"
     elif resample_freq == "Day":
-        df_filtered["Timestamp (Rounded)"] = pd.to_datetime(df_filtered["Timestamp (GMT+7)"], errors="coerce").dt.floor("d")
+        df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
+            df_filtered["Timestamp (GMT+7)"], errors="coerce"
+        ).dt.floor("d")
         gap = pd.Timedelta(days=3)
         disp_fmt = "%d/%m/%Y"
     else:
+        # Fallback (shouldn't be used since Raw tab was removed)
         df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
     df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
     df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (Rounded)"])
-    df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(df_filtered["Timestamp (Rounded)"]).dt.strftime(disp_fmt)
+    df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
+        df_filtered["Timestamp (Rounded)"]
+    ).dt.strftime(disp_fmt)
 
-    # Break lines across gaps, per Aggregation (if present)
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
     df_broken = _inject_nans_for_gaps(
         df_filtered,
@@ -156,14 +168,21 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         display_fmt=disp_fmt,
     )
 
-    # Main chart
+    # --------- Render our own legend OUTSIDE the chart ----------
+    _render_aggregation_legend(show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]))
+
+    # Main chart (legend=None so it doesn't squeeze chart area)
     main_chart = (
         alt.Chart(df_broken)
         .mark_line(point=True)
         .encode(
             x=alt.X("Timestamp (Rounded):T", title="Timestamp"),
             y=alt.Y(f"{col}:Q", title="Value"),
-            color=alt.Color("Aggregation:N", title="Aggregation", scale=color_scale) if cat_col else alt.value("steelblue"),
+            color=(
+                alt.Color("Aggregation:N", scale=color_scale, legend=None)
+                if cat_col
+                else alt.value("steelblue")
+            ),
             tooltip=[
                 alt.Tooltip("Timestamp (Rounded Display):N", title="Rounded Time"),
                 alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
@@ -174,7 +193,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         .interactive()
     )
 
-    # Optional: Predictions overlay for Hour view + EC columns
+    # Optional predictions (Hourly EC only)
     if resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"] and "Aggregation" in df_filtered.columns:
         max_data = df_filtered[df_filtered["Aggregation"] == "Max"].copy()
         if not max_data.empty and len(max_data) >= 2:
