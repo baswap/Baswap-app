@@ -1,9 +1,10 @@
 import re
+from datetime import datetime
+
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
-from datetime import datetime
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -11,7 +12,7 @@ from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
-# =============== Page config ===============
+# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 params = st.query_params
@@ -28,10 +29,10 @@ LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# keep selection in session (no navigation)
+# Keep selection in session (no navigation)
 st.session_state.setdefault("focus_slug", None)
 
-# =============== Hard-coded stations ===============
+# ================== HARD-CODED STATIONS ==================
 OTHER_STATIONS = [
     {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
     {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
@@ -80,12 +81,11 @@ def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 for s in OTHER_STATIONS:
     s["slug"] = slugify(s["name"])
-
 STATIONS_BY_NAME = {s["name"]: s for s in OTHER_STATIONS}
-STATIONS_BY_SLUG  = {s["slug"]: s for s in OTHER_STATIONS}
+STATIONS_BY_SLUG = {s["slug"]: s for s in OTHER_STATIONS}
 
-# =============== Styles ===============
-MAP_HEIGHT = 520  # ~30% taller than original
+# ================== STYLES ==================
+MAP_HEIGHT = 520  # ~30% taller than 400 (adjust if needed)
 
 st.markdown(f"""
 <style>
@@ -99,7 +99,7 @@ st.markdown(f"""
   .custom-header .nav a{{text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;border-bottom:2px solid transparent;}}
   .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
 
-  /* Language dropdown (kept from previous) */
+  /* Language dropdown (no flag; text is black in menu) */
   .lang-dd {{ position: relative; }}
   .lang-dd summary {{
     list-style:none; cursor:pointer; outline:none;
@@ -115,49 +115,71 @@ st.markdown(f"""
 
   body>.main{{margin-top:4.5rem;}}
 
-  /* Map height fallback */
+  /* Map height fallback so Folium iframe matches MAP_HEIGHT */
   iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
 
-  /* ===== Right panel: full-height, scrollable, 2-column rows ===== */
-  [data-testid="stRadio"]{{ width:100%; }}
-  [data-testid="stRadio"] > div[role="radiogroup"]{{
-    width:100%;
-    height:{MAP_HEIGHT}px;               /* match the map height exactly */
-    overflow-y:auto; overflow-x:hidden;  /* vertical scroll */
-    padding:.5rem; margin:0;
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:.5rem;
-    background:rgba(255,255,255,.03);
+  /* ===== Right panel: header + scrollable table ===== */
+  :root {{ --map-h: {MAP_HEIGHT}px; }}
+
+  /* Header row: "Monitoring Station" | "Warning" */
+  .station-table-head {{
+    display: grid;
+    grid-template-columns: 1fr 1fr;      /* left name | right warning */
+    align-items: center;
+    padding: .6rem .8rem;
+    margin: 0 0 .5rem 0;
+    font-weight: 700;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: .5rem;
+  }}
+  .station-table-head .name {{ text-align: left; }}
+  .station-table-head .warn {{ text-align: right; }}
+
+  /* Radio container = scrollable body with table-look rows */
+  [data-testid="stRadio"] {{ width: 100%; }}
+  [data-testid="stRadio"] > div[role="radiogroup"] {{
+    width: 100%;
+    height: var(--map-h);               /* EXACTLY the map height */
+    overflow-y: auto; overflow-x: hidden;
+    padding: .25rem; margin: 0;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: .5rem;
+    background: rgba(255,255,255,.03);
   }}
 
-  /* Each option = full-width bar split left/right */
-  [data-testid="stRadio"] div[role="radio"]{{ width:100%; }}
-  [data-testid="stRadio"] label{{
-    width:100%;
-    display:grid;
-    grid-template-columns: 1fr 1fr;      /* left half name, right half status */
-    align-items:center;
-    gap:.75rem;
-    padding:.65rem .85rem; margin:.35rem 0;
-    border-radius:.5rem;
-    background:rgba(255,255,255,.06);
-    text-align:left;
+  /* Each row = full-width bar split left/right (name | warning) */
+  [data-testid="stRadio"] div[role="radio"] {{ width: 100%; }}
+  [data-testid="stRadio"] label {{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: .65rem .9rem;
+    margin: .25rem 0;
+    border-radius: .4rem;
+    background: rgba(255,255,255,.04);
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,.06);
+    text-align: left;
   }}
-  /* Name sits in the first half; default text already there, so ensure it's aligned left */
-  [data-testid="stRadio"] label span{{ text-align:left; }}
+  [data-testid="stRadio"] label:hover {{ background: rgba(255,255,255,.08); }}
 
-  /* Create a right-aligned status placeholder “–” in the second half */
-  [data-testid="stRadio"] label::after{{
-    content:'-';
-    justify-self:end;                    /* push to the far right */
-    opacity:.85;
+  /* Hide the little radio bullet so it looks like clean rows */
+  [data-testid="stRadio"] label > div:first-child {{
+    width: 0; margin: 0; opacity: 0; pointer-events: none;
   }}
 
-  [data-testid="stRadio"] label:hover{{ background:rgba(255,255,255,.12); }}
+  /* Right column content: default is a “–” placeholder */
+  [data-testid="stRadio"] label::after {{
+    content: '–';
+    grid-column: 2 / 3;
+    justify-self: end;
+    opacity: .9;
+  }}
 </style>
 """, unsafe_allow_html=True)
 
-# =============== Header ===============
+# ================== HEADER BAR ==================
 active_overview = "active" if page == "Overview" else ""
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
@@ -182,20 +204,12 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# =============== Defaults ===============
-dm = DriveManager(SECRET_ACC)
-for k, v in {
-    "target_col": COL_NAMES[0],
-    "date_from": None,
-    "date_to": None,
-    "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": COL_NAMES,
-}.items():
-    st.session_state.setdefault(k, v)
-
-# =============== Helpers ===============
+# ================== HELPERS ==================
 def add_layers(m: folium.Map, selected_slug: str | None):
-    """Two overlay groups: BASWAP stations & Other stations (no basemap toggle)."""
+    """
+    Overlay groups only: BASWAP stations & Other stations.
+    Basemap is added separately (no toggle for OpenStreetMap).
+    """
     baswap_group = folium.FeatureGroup(name="BASWAP stations", show=True)
     folium.Marker(
         [10.099833, 106.208306],
@@ -237,61 +251,92 @@ def settings_panel(first_date, last_date):
         st.warning(texts["data_dimensions"])
         st.stop()
 
-# =============== Pages ===============
-if page == "Overview":
-    left, right = st.columns([7, 3], gap="large")  # 70% map / 30% list
+# ================== MAIN PAGES ==================
+dm = DriveManager(SECRET_ACC)
 
-    # RIGHT: vertical scroll list (full height, two halves per row)
-    with right:
+if page == "Overview":
+    # 70/30 layout: Map (left) | Scroll table (right)
+    left_col, right_col = st.columns([7, 3], gap="large")
+
+    # ----- RIGHT: header + scrollable rows -----
+    with right_col:
+        # Header that matches your screenshot (two columns)
+        st.markdown(
+            """
+            <div class="station-table-head">
+              <div class="name">Monitoring Station</div>
+              <div class="warn">Warning</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # Clickable rows (radio). Using radio avoids new-tab navigation.
         names = [s["name"] for s in OTHER_STATIONS]
         default_idx = 0
-        if st.session_state.focus_slug:
+        if st.session_state.get("focus_slug"):
             try:
-                default_idx = names.index(next(s["name"] for s in OTHER_STATIONS if s["slug"] == st.session_state.focus_slug))
+                chosen_name = next(s["name"] for s in OTHER_STATIONS if s["slug"] == st.session_state["focus_slug"])
+                default_idx = names.index(chosen_name)
             except Exception:
                 default_idx = 0
 
         choice = st.radio(
-            "Stations", options=names, index=default_idx,
-            key="station_radio", label_visibility="collapsed"
+            "Stations",
+            options=names,
+            index=default_idx,
+            key="station_radio",
+            label_visibility="collapsed",  # we draw our own header above
         )
-        st.session_state.focus_slug = STATIONS_BY_NAME[choice]["slug"]
+        st.session_state["focus_slug"] = STATIONS_BY_NAME[choice]["slug"]
 
-    # LEFT: map (center/zoom on choice; zoom +20% = 13)
-    with left:
-        if st.session_state.focus_slug and st.session_state.focus_slug in STATIONS_BY_SLUG:
+    # ----- LEFT: Map (center/zoom from selection) -----
+    with left_col:
+        # +20% zoom from 11 => 13
+        zoom_when_focused = 13
+        if st.session_state["focus_slug"] in STATIONS_BY_SLUG:
             center = [
-                STATIONS_BY_SLUG[st.session_state.focus_slug]["lat"],
-                STATIONS_BY_SLUG[st.session_state.focus_slug]["lon"],
+                STATIONS_BY_SLUG[st.session_state["focus_slug"]]["lat"],
+                STATIONS_BY_SLUG[st.session_state["focus_slug"]]["lon"],
             ]
-            zoom = 13
+            zoom = zoom_when_focused
         else:
             center, zoom = [10.2, 106.0], 8
 
+        # Build map with no baselayer control; add OSM as non-toggle base
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
-        add_layers(m, selected_slug=st.session_state.focus_slug)
+
+        # Add overlay groups (BASWAP + Other)
+        add_layers(m, selected_slug=st.session_state["focus_slug"])
+
         st_folium(m, width="100%", height=MAP_HEIGHT)
 
-    # ===== rest of page =====
+    # ===== Rest of your Overview page (unchanged) =====
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
 
-    stats_df = filter_data(df, st.session_state.date_from or first_date, st.session_state.date_to or last_date)
+    stats_df = filter_data(df, st.session_state.get("date_from") or first_date,
+                           st.session_state.get("date_to") or last_date)
     st.markdown(f"### 📊 {texts['overall_stats_title']}")
-    display_statistics(stats_df, st.session_state.target_col)
+    display_statistics(stats_df, st.session_state["target_col"])
 
     st.divider()
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
+        # Initialize defaults if missing
+        st.session_state.setdefault("target_col", COL_NAMES[0])
+        st.session_state.setdefault("date_from", first_date)
+        st.session_state.setdefault("date_to", last_date)
+        st.session_state.setdefault("agg_stats", ["Min", "Max", "Median"])
         settings_panel(first_date, last_date)
 
-    date_from = st.session_state.date_from or first_date
-    date_to = st.session_state.date_to or last_date
-    target_col = st.session_state.target_col
-    agg_funcs = st.session_state.agg_stats
+    date_from = st.session_state.get("date_from") or first_date
+    date_to = st.session_state.get("date_to") or last_date
+    target_col = st.session_state["target_col"]
+    agg_funcs = st.session_state["agg_stats"]
     filtered_df = filter_data(df, date_from, date_to)
 
     with chart_container:
@@ -300,14 +345,18 @@ if page == "Overview":
         with tabs[0]:
             plot_line_chart(filtered_df, target_col, "None")
         with tabs[1]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs), target_col, "Hour")
+            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs),
+                            target_col, "Hour")
         with tabs[2]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs), target_col, "Day")
+            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs),
+                            target_col, "Day")
 
     st.divider()
     st.subheader(texts["data_table"])
-    st.multiselect(texts["columns_select"], options=COL_NAMES, default=st.session_state.table_cols, key="table_cols")
-    table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
+    st.session_state.setdefault("table_cols", COL_NAMES)
+    st.multiselect(texts["columns_select"], options=COL_NAMES,
+                   default=st.session_state["table_cols"], key="table_cols")
+    table_cols = ["Timestamp (GMT+7)"] + st.session_state["table_cols"]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
