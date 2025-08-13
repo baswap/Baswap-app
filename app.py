@@ -3,6 +3,7 @@ import streamlit as st
 import folium
 from folium.plugins import MarkerCluster
 from datetime import datetime
+from streamlit_folium import st_folium
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
