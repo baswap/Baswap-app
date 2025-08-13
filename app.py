@@ -1,8 +1,9 @@
-import json
-from datetime import datetime
-
+import re
 import streamlit as st
-import streamlit.components.v1 as components
+import folium
+from streamlit_folium import st_folium
+from datetime import datetime
+from folium.plugins import MarkerCluster
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -10,10 +11,10 @@ from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
-# -------------------- Page --------------------
+
+# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# --- Query params & language/page guards ---
 params = st.query_params
 page = params.get("page", "Overview")
 lang = params.get("lang", "vi")
@@ -24,97 +25,17 @@ if lang not in ("en", "vi"):
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
+
 LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# --- Session defaults ---
-for k, v in {
-    "target_col": COL_NAMES[0],
-    "date_from": None,
-    "date_to": None,
-    "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": COL_NAMES,
-}.items():
-    st.session_state.setdefault(k, v)
+# Keep a selected station in session (no full-page navigation needed)
+if "focus_slug" not in st.session_state:
+    st.session_state.focus_slug = None
 
-# -------------------- Styles & Header --------------------
-st.markdown("""
-<style>
-  header{visibility:hidden;}
-  .custom-header{
-    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
-    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
-  }
-  .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
-  .custom-header .nav{display:flex;gap:1rem;align-items:center;}
-  .custom-header .nav a{
-    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
-    border-bottom:2px solid transparent;
-  }
-  .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
 
-  /* Language dropdown */
-  .lang-dd { position: relative; }
-  .lang-dd summary {
-    list-style: none; cursor: pointer; outline: none;
-    display:inline-flex; align-items:center; gap:.35rem;
-    padding:.35rem .6rem; border-radius:999px;
-    border:1px solid rgba(255,255,255,.35);
-    background: rgba(255,255,255,.12); color:#fff; font-weight:600;
-  }
-  .lang-dd summary::-webkit-details-marker { display: none; }
-  .lang-dd summary .chev { margin-left:2px; opacity:.9; }
-  .lang-dd[open] summary { background: rgba(255,255,255,.18); }
-
-  .lang-menu {
-    position:absolute; right:0; margin-top:.4rem; min-width:160px;
-    background:#fff; color:#111; border-radius:.5rem;
-    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
-    border:1px solid rgba(0,0,0,.06);
-  }
-  /* Make dropdown items black and stay in same tab */
-  .lang-menu .item, .lang-menu .item:visited { color:#000 !important; }
-  .lang-menu .item {
-    display:block; padding:.5rem .65rem; border-radius:.4rem;
-    text-decoration:none; font-weight:500;
-  }
-  .lang-menu .item:hover { background:#f2f6ff; }
-  .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
-
-  body>.main{margin-top:4.5rem;}
-</style>
-""", unsafe_allow_html=True)
-
-active_overview = "active" if page == "Overview" else ""
-active_about = "active" if page == "About" else ""
-
-st.markdown(f"""
-<div class="custom-header">
-  <div class="logo">BASWAP</div>
-  <div class="nav">
-    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
-    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
-  </div>
-  <div class="nav" style="margin-left:auto;">
-    <details class="lang-dd">
-      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
-        <span class="label">{current_lang_label}</span>
-        <span class="chev" aria-hidden="true">▾</span>
-      </summary>
-      <div class="lang-menu" role="menu">
-        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
-      </div>
-    </details>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-# -------------------- Drive manager --------------------
-dm = DriveManager(SECRET_ACC)
-
-# -------------------- Hard-coded other stations --------------------
+# ================== HARD-CODED STATIONS ==================
 OTHER_STATIONS = [
     {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
     {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
@@ -160,156 +81,139 @@ OTHER_STATIONS = [
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
-# -------------------- HTML/JS map + table component --------------------
-def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520):
-    """
-    70/30 layout: Leaflet map (left) + scrollable table (right).
-    Click a row to zoom & highlight marker (no page refresh).
-    `stations` = list of dicts: {"name": str, "lat": float, "lon": float}
-    """
-    html = f"""
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.css"/>
+def slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.js"></script>
+for s in OTHER_STATIONS:
+    s["slug"] = slugify(s["name"])
 
-    <style>
-      .mapwrap {{
-        display: flex; gap: 12px;
-        width: 100%;
-        height: {height_px}px;
-      }}
-      .mapleft {{
-        width: 70%;
-        height: 100%;
-        border-radius: 8px;
-        overflow: hidden;
-      }}
-      .mapright {{
-        width: 30%;
-        height: 100%;
-      }}
-      .table-wrap {{
-        height: 100%;
-        overflow-y: auto;
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 8px;
-        background: rgba(255,255,255,.03);
-      }}
+STATIONS_BY_NAME = {s["name"]: s for s in OTHER_STATIONS}
+STATIONS_BY_SLUG = {s["slug"]: s for s in OTHER_STATIONS}
 
-      /* Table look & feel */
-      .station-table {{
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-      }}
-      .station-table thead th {{
-        position: sticky; top: 0; z-index: 5;
-        text-align: left;
-        padding: 10px 12px;
-        background: rgba(255,255,255,.10);
-        backdrop-filter: saturate(140%) blur(2px);
-        border-bottom: 1px solid rgba(255,255,255,.15);
-      }}
-      .station-table thead th.warn-col {{ text-align: center; width: 32%; }}
-      .station-table tbody td {{
-        padding: 10px 12px;
-        border-bottom: 1px solid rgba(255,255,255,.06);
-      }}
-      .station-table tbody td.warn-col {{ text-align: center; opacity: .9; }}
 
-      /* Row interactions */
-      .station-table tbody tr {{ cursor: pointer; }}
-      .station-table tbody tr:hover {{ background: rgba(255,255,255,.07); }}
-      .station-table tbody tr.active {{
-        outline: 2px solid #09c;
-        background: rgba(0,153,204,.15);
-      }}
+# ================== STYLES ==================
+st.markdown(f"""
+<style>
+  header{{visibility:hidden;}}
+  .custom-header{{
+    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
+    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
+  }}
+  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
+  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
+  .custom-header .nav a{{
+    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
+    border-bottom:2px solid transparent;
+  }}
+  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
 
-      #map {{ width: 100%; height: 100%; }}
-    </style>
+  /* Language dropdown (no flag; words are black in menu items) */
+  .lang-dd {{ position: relative; }}
+  .lang-dd summary {{
+    list-style:none; cursor:pointer; outline:none;
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.35rem .6rem; border-radius:999px;
+    border:1px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.12); color:#fff; font-weight:600;
+  }}
+  .lang-dd summary::-webkit-details-marker {{ display:none; }}
+  .lang-dd summary .chev {{ margin-left:2px; opacity:.9; }}
+  .lang-dd[open] summary {{ background: rgba(255,255,255,.18); }}
 
-    <div class="mapwrap">
-      <div class="mapleft"><div id="map"></div></div>
-      <div class="mapright">
-        <div class="table-wrap">
-          <table class="station-table">
-            <thead>
-              <tr>
-                <th>Monitoring Station</th>
-                <th class="warn-col">Warning</th>
-              </tr>
-            </thead>
-            <tbody id="stationTbody"></tbody>
-          </table>
-        </div>
+  .lang-menu {{
+    position:absolute; right:0; margin-top:.4rem; min-width:160px;
+    background:#fff; color:#111; border-radius:.5rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
+    border:1px solid rgba(0,0,0,.06);
+  }}
+  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
+  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
+  .lang-menu .item:hover {{ background:#f2f6ff; }}
+  .lang-menu .item.is-current {{ background:#eef6ff; font-weight:700; }}
+
+  body>.main{{margin-top:4.5rem;}}
+
+  /* Map: ~30% taller (520px) as a fallback */
+  iframe[title="streamlit_folium.st_folium"]{{height:520px!important;}}
+
+  /* Right list: make the radio options a scrollable panel the same height as the map */
+  /* Scope to all radio groups (we only have one) */
+  div[role="radiogroup"] {{
+    max-height: 520px;
+    overflow: auto;
+    padding-right: .35rem;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: .5rem;
+    background: rgba(255,255,255,.03);
+  }}
+  /* Make each option look like a box */
+  div[role="radiogroup"] label {{
+    display:block;
+    padding:.45rem .55rem;
+    margin:.25rem;
+    border-radius:.4rem;
+    background: rgba(255,255,255,.04);
+  }}
+  div[role="radiogroup"] label:hover {{
+    background: rgba(255,255,255,.08);
+  }}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ================== HEADER ==================
+active_overview = "active" if page == "Overview" else ""
+active_about = "active" if page == "About" else ""
+
+st.markdown(f"""
+<div class="custom-header">
+  <div class="logo">BASWAP</div>
+  <div class="nav">
+    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
+  </div>
+  <div class="nav" style="margin-left:auto;">
+    <details class="lang-dd">
+      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
+        <span class="label">{current_lang_label}</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </summary>
+      <div class="lang-menu" role="menu">
+        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
+        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
       </div>
-    </div>
+    </details>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    <script>
-      // Init map
-      const map = L.map('map', {{ zoomControl: true }}).setView([{baswap_lat}, {baswap_lon}], 8);
-      L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }}).addTo(map);
 
-      // Icons
-      const blueDrop   = L.AwesomeMarkers.icon({{ icon: 'tint',      prefix: 'fa', markerColor: 'blue'   }});
-      const grayRing   = L.AwesomeMarkers.icon({{ icon: 'life-ring', prefix: 'fa', markerColor: 'gray'   }});
-      const orangeRing = L.AwesomeMarkers.icon({{ icon: 'life-ring', prefix: 'fa', markerColor: 'orange' }});
+# ================== DATA / STATE DEFAULTS ==================
+dm = DriveManager(SECRET_ACC)
+for k, v in {
+    "target_col": COL_NAMES[0],
+    "date_from": None,
+    "date_to": None,
+    "agg_stats": ["Min", "Max", "Median"],
+    "table_cols": COL_NAMES,
+}.items():
+    st.session_state.setdefault(k, v)
 
-      // BASWAP marker
-      L.marker([{baswap_lat}, {baswap_lon}], {{icon: blueDrop}}).addTo(map).bindTooltip('BASWAP Buoy');
 
-      // Cluster + markers for other stations
-      const stations = {json.dumps([{"name": s["name"], "lat": float(s["lat"]), "lon": float(s["lon"])} for s in OTHER_STATIONS])};
-      const cluster = L.markerClusterGroup();
-      const markers = [];
+# ================== HELPERS ==================
+def add_other_station_markers(m: folium.Map, selected_slug: str | None):
+    """Add other stations, highlighting the selected one."""
+    cluster = MarkerCluster(name="Other stations").add_to(m)
+    for s in OTHER_STATIONS:
+        color = "orange" if s["slug"] == selected_slug else "gray"
+        folium.Marker(
+            [float(s["lat"]), float(s["lon"])],
+            tooltip=s["name"],
+            icon=folium.Icon(icon="life-ring", prefix="fa", color=color),
+        ).add_to(cluster)
+    folium.LayerControl(collapsed=False).add_to(m)
 
-      stations.forEach((s, i) => {{
-        const m = L.marker([s.lat, s.lon], {{icon: grayRing, title: s.name}}).bindTooltip(s.name);
-        markers.push(m);
-        cluster.addLayer(m);
-      }});
-      map.addLayer(cluster);
 
-      // Build table rows
-      const tbody = document.getElementById('stationTbody');
-      stations.forEach((s, i) => {{
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-idx', i);
-        tr.innerHTML = `
-          <td class="name-col">${{s.name}}</td>
-          <td class="warn-col">-</td>
-        `;
-        tr.addEventListener('click', () => {{
-          // highlight row
-          document.querySelectorAll('.station-table tbody tr').forEach(el => el.classList.remove('active'));
-          tr.classList.add('active');
-
-          // color selected marker orange, others gray
-          markers.forEach((m, idx) => m.setIcon(idx === i ? orangeRing : grayRing));
-
-          // ensure marker is visible, then center & open tooltip
-          cluster.zoomToShowLayer(markers[i], () => {{
-            const ll = markers[i].getLatLng();
-            map.setView(ll, Math.max(map.getZoom(), 11), {{animate: true, duration: 0.5}});
-            markers[i].openTooltip();
-          }});
-        }});
-        tbody.appendChild(tr);
-      }});
-    </script>
-    """
-    components.html(html, height=height_px + 10, scrolling=False)
-
-# -------------------- Sidebar / settings panel --------------------
 def settings_panel(first_date, last_date):
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
@@ -331,18 +235,63 @@ def settings_panel(first_date, last_date):
         st.warning(texts["data_dimensions"])
         st.stop()
 
-# -------------------- Pages --------------------
-if page == "Overview":
-    # Map area: ~30% taller than before, 70/30 split with a table on the right
-    MAP_HEIGHT = 520
-    render_map_with_station_list(
-        baswap_lat=10.099833,
-        baswap_lon=106.208306,
-        stations=[{"name": s["name"], "lat": float(s["lat"]), "lon": float(s["lon"])} for s in OTHER_STATIONS],
-        height_px=MAP_HEIGHT,
-    )
 
-    # Data + charts
+# ================== PAGES ==================
+if page == "Overview":
+    MAP_HEIGHT = 520  # ~30% taller than 400
+    left_col, right_col = st.columns([7, 3], gap="large")  # 70% / 30%
+
+    # --- RIGHT: scrollable list (native radio => no new tab) ---
+    with right_col:
+        station_names = [s["name"] for s in OTHER_STATIONS]
+
+        # Pre-select the currently focused one (if any)
+        default_idx = 0
+        if st.session_state.focus_slug:
+            try:
+                focused_name = STATIONS_BY_SLUG[st.session_state.focus_slug]["name"]
+                default_idx = station_names.index(focused_name)
+            except Exception:
+                default_idx = 0
+
+        choice = st.radio(
+            "Stations",
+            options=station_names,
+            index=default_idx,
+            label_visibility="collapsed",
+            key="station_radio",
+        )
+
+        # Update focus slug in session; Streamlit reruns automatically
+        st.session_state.focus_slug = STATIONS_BY_NAME[choice]["slug"]
+
+    # --- LEFT: map centered/zoomed by the selected station ---
+    with left_col:
+        if st.session_state.focus_slug and st.session_state.focus_slug in STATIONS_BY_SLUG:
+            center = [
+                STATIONS_BY_SLUG[st.session_state.focus_slug]["lat"],
+                STATIONS_BY_SLUG[st.session_state.focus_slug]["lon"],
+            ]
+            zoom = 11  # zoom in when a station is chosen
+        else:
+            center = [10.2, 106.0]
+            zoom = 8
+
+        m = folium.Map(location=center, zoom_start=zoom)
+
+        # BASWAP buoy (blue droplet)
+        folium.Marker(
+            [10.099833, 106.208306],
+            tooltip="BASWAP Buoy",
+            icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
+        ).add_to(m)
+
+        # Other stations with highlight on selection
+        add_other_station_markers(m, selected_slug=st.session_state.focus_slug)
+
+        st_folium(m, width="100%", height=MAP_HEIGHT)
+
+    # ===== Rest of the page =====
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
