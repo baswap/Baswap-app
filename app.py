@@ -3,9 +3,8 @@ import pandas as pd
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-from folium.plugins import MarkerCluster
 from datetime import datetime, timedelta
-
+from folium.plugins import MarkerCluster, FeatureGroupSubGroup
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
@@ -169,37 +168,38 @@ STATION_LOOKUP = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in OTHER_S
 # ================== MAP HELPERS ==================
 def add_layers(m: folium.Map):
     """
-    Two independently togglable layers:
-      - 'BASWAP stations' (cluster)
-      - 'Other stations'  (cluster)
-    Same behavior for both; only BASWAP icon differs.
+    Shared clustering across BASWAP + Other, with separate toggles.
+    When zoomed out, markers from both layers merge into one cluster count.
     """
 
-    # ---- BASWAP layer (cluster inside a FeatureGroup) ----
-    baswap_group = folium.FeatureGroup(name="BASWAP stations", show=True)
-    baswap_cluster = MarkerCluster(name="BASWAP cluster", control=False)  # avoid extra checkbox
+    # One hidden, shared clusterer (no extra checkbox)
+    shared_cluster = MarkerCluster(name="All stations (clusterer)", control=False)
+    shared_cluster.add_to(m)
+
+    # Two togglable sub-groups that *share* the clusterer
+    baswap_sub = FeatureGroupSubGroup(shared_cluster, name="BASWAP stations", show=True)
+    other_sub  = FeatureGroupSubGroup(shared_cluster, name="Other stations",  show=True)
+    m.add_child(baswap_sub)
+    m.add_child(other_sub)
+
+    # BASWAP buoy — same behavior, only icon differs
     folium.Marker(
         [10.099833, 106.208306],
         tooltip="BASWAP Buoy",
-        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),  # only difference
-    ).add_to(baswap_cluster)
-    baswap_cluster.add_to(baswap_group)
-    baswap_group.add_to(m)
+        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
+    ).add_to(baswap_sub)
 
-    # ---- Other stations layer (cluster inside a FeatureGroup) ----
-    other_group = folium.FeatureGroup(name="Other stations", show=True)
-    other_cluster = MarkerCluster(name="Other cluster", control=False)  # avoid extra checkbox
+    # Other stations
     for s in OTHER_STATIONS:
         folium.Marker(
             [float(s["lat"]), float(s["lon"])],
             tooltip=s["name"],
             icon=folium.Icon(icon="life-ring", prefix="fa", color="gray"),
-        ).add_to(other_cluster)
-    other_cluster.add_to(other_group)
-    other_group.add_to(m)
+        ).add_to(other_sub)
 
-    # ---- Layer control with exactly two toggles ----
+    # Exactly two checkboxes in the control
     folium.LayerControl(collapsed=False).add_to(m)
+
 
 
 
