@@ -1,16 +1,14 @@
 import re
 import streamlit as st
 import folium
-from streamlit_folium import st_folium
-from datetime import datetime
 from folium.plugins import MarkerCluster
+from datetime import datetime
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
-
 
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
@@ -30,10 +28,9 @@ LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# Keep a selected station in session (no full-page navigation needed)
+# Keep a selected station in session (no navigation needed)
 if "focus_slug" not in st.session_state:
     st.session_state.focus_slug = None
-
 
 # ================== HARD-CODED STATIONS ==================
 OTHER_STATIONS = [
@@ -90,76 +87,67 @@ for s in OTHER_STATIONS:
 STATIONS_BY_NAME = {s["name"]: s for s in OTHER_STATIONS}
 STATIONS_BY_SLUG = {s["slug"]: s for s in OTHER_STATIONS}
 
-
 # ================== STYLES ==================
-st.markdown(f"""
+st.markdown("""
 <style>
-  header{{visibility:hidden;}}
-  .custom-header{{
+  header{visibility:hidden;}
+  .custom-header{
     position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
     gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
-  }}
-  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
-  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
-  .custom-header .nav a{{
-    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
-    border-bottom:2px solid transparent;
-  }}
-  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
+  }
+  .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
+  .custom-header .nav{display:flex;gap:1rem;align-items:center;}
+  .custom-header .nav a{
+    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;border-bottom:2px solid transparent;
+  }
+  .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
 
-  /* Language dropdown (no flag; words are black in menu items) */
-  .lang-dd {{ position: relative; }}
-  .lang-dd summary {{
-    list-style:none; cursor:pointer; outline:none;
+  /* Language dropdown */
+  .lang-dd { position: relative; }
+  .lang-dd summary {
+    list-style: none; cursor: pointer; outline: none;
     display:inline-flex; align-items:center; gap:.35rem;
     padding:.35rem .6rem; border-radius:999px;
     border:1px solid rgba(255,255,255,.35);
     background: rgba(255,255,255,.12); color:#fff; font-weight:600;
-  }}
-  .lang-dd summary::-webkit-details-marker {{ display:none; }}
-  .lang-dd summary .chev {{ margin-left:2px; opacity:.9; }}
-  .lang-dd[open] summary {{ background: rgba(255,255,255,.18); }}
-
-  .lang-menu {{
+  }
+  .lang-dd summary::-webkit-details-marker { display: none; }
+  .lang-dd summary .chev { margin-left:2px; opacity:.9; }
+  .lang-dd[open] summary { background: rgba(255,255,255,.18); }
+  .lang-menu {
     position:absolute; right:0; margin-top:.4rem; min-width:160px;
-    background:#fff; color:#111; border-radius:.5rem;
-    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
+    background:#fff; color:#111; border-radius:.5rem; box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
     border:1px solid rgba(0,0,0,.06);
-  }}
-  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
-  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
-  .lang-menu .item:hover {{ background:#f2f6ff; }}
-  .lang-menu .item.is-current {{ background:#eef6ff; font-weight:700; }}
+  }
+  .lang-menu .item, .lang-menu .item:visited { color:#000 !important; }
+  .lang-menu .item { display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }
+  .lang-menu .item:hover { background:#f2f6ff; }
+  .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
 
-  body>.main{{margin-top:4.5rem;}}
+  body>.main{margin-top:4.5rem;}
 
-  /* Map: ~30% taller (520px) as a fallback */
-  iframe[title="streamlit_folium.st_folium"]{{height:520px!important;}}
+  /* Map height ~520px (≈+30%) as fallback */
+  iframe[title="streamlit_folium.st_folium"]{height:520px!important;}
 
-  /* Right list: make the radio options a scrollable panel the same height as the map */
-  /* Scope to all radio groups (we only have one) */
-  div[role="radiogroup"] {{
-    max-height: 520px;
-    overflow: auto;
-    padding-right: .35rem;
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: .5rem;
-    background: rgba(255,255,255,.03);
-  }}
-  /* Make each option look like a box */
-  div[role="radiogroup"] label {{
-    display:block;
-    padding:.45rem .55rem;
-    margin:.25rem;
-    border-radius:.4rem;
-    background: rgba(255,255,255,.04);
-  }}
-  div[role="radiogroup"] label:hover {{
-    background: rgba(255,255,255,.08);
-  }}
+  /* Horizontal station bar */
+  [data-testid="stRadio"] > div[role="radiogroup"]{
+    display:flex; flex-wrap:nowrap; gap:.5rem;
+    overflow-x:auto; overflow-y:hidden;
+    padding:.5rem; border:1px solid rgba(255,255,255,.08);
+    border-radius:.5rem; background:rgba(255,255,255,.03);
+    height:64px;  /* looks like a bar */
+  }
+  [data-testid="stRadio"] div[role="radio"]{
+    flex:0 0 auto;  /* keep in one row */
+  }
+  /* pill look */
+  [data-testid="stRadio"] label{
+    display:block; padding:.45rem .75rem; border-radius:999px; margin:0;
+    background:rgba(255,255,255,.06);
+  }
+  [data-testid="stRadio"] label:hover{ background:rgba(255,255,255,.12); }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
@@ -187,7 +175,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-
 # ================== DATA / STATE DEFAULTS ==================
 dm = DriveManager(SECRET_ACC)
 for k, v in {
@@ -199,11 +186,25 @@ for k, v in {
 }.items():
     st.session_state.setdefault(k, v)
 
-
 # ================== HELPERS ==================
-def add_other_station_markers(m: folium.Map, selected_slug: str | None):
-    """Add other stations, highlighting the selected one."""
-    cluster = MarkerCluster(name="Other stations").add_to(m)
+def add_layers(m: folium.Map, selected_slug: str | None):
+    """
+    Adds two toggleable overlay groups:
+      - 'BASWAP stations' (your blue buoy(s))
+      - 'Other stations' (gray/selected=orange)
+    No base-layer toggle is exposed in LayerControl.
+    """
+    # BASWAP group
+    baswap_group = folium.FeatureGroup(name="BASWAP stations", show=True)
+    folium.Marker(
+        [10.099833, 106.208306],
+        tooltip="BASWAP Buoy",
+        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
+    ).add_to(baswap_group)
+    baswap_group.add_to(m)
+
+    # Other stations (clustered)
+    cluster = MarkerCluster(name="Other stations", show=True)
     for s in OTHER_STATIONS:
         color = "orange" if s["slug"] == selected_slug else "gray"
         folium.Marker(
@@ -211,8 +212,9 @@ def add_other_station_markers(m: folium.Map, selected_slug: str | None):
             tooltip=s["name"],
             icon=folium.Icon(icon="life-ring", prefix="fa", color=color),
         ).add_to(cluster)
-    folium.LayerControl(collapsed=False).add_to(m)
+    cluster.add_to(m)
 
+    folium.LayerControl(collapsed=False).add_to(m)
 
 def settings_panel(first_date, last_date):
     st.markdown(side_texts["sidebar_header"])
@@ -235,17 +237,15 @@ def settings_panel(first_date, last_date):
         st.warning(texts["data_dimensions"])
         st.stop()
 
-
 # ================== PAGES ==================
 if page == "Overview":
-    MAP_HEIGHT = 520  # ~30% taller than 400
+    MAP_HEIGHT = 520  # ~30% taller
     left_col, right_col = st.columns([7, 3], gap="large")  # 70% / 30%
 
-    # --- RIGHT: scrollable list (native radio => no new tab) ---
+    # --- RIGHT: Horizontal station bar (radio -> rerun only) ---
     with right_col:
         station_names = [s["name"] for s in OTHER_STATIONS]
-
-        # Pre-select the currently focused one (if any)
+        # Default selection persists
         default_idx = 0
         if st.session_state.focus_slug:
             try:
@@ -255,43 +255,38 @@ if page == "Overview":
                 default_idx = 0
 
         choice = st.radio(
-            "Stations",
-            options=station_names,
-            index=default_idx,
-            label_visibility="collapsed",
-            key="station_radio",
+            "Stations", station_names, index=default_idx,
+            key="station_radio", horizontal=True, label_visibility="collapsed"
         )
-
-        # Update focus slug in session; Streamlit reruns automatically
         st.session_state.focus_slug = STATIONS_BY_NAME[choice]["slug"]
 
     # --- LEFT: map centered/zoomed by the selected station ---
     with left_col:
+        # 20% more zoom than the previous 11 => 13 (and clamp)
+        base_zoom_focus = 11
+        zoom_when_focused = min(18, int(round(base_zoom_focus * 1.2)))  # -> 13
+
         if st.session_state.focus_slug and st.session_state.focus_slug in STATIONS_BY_SLUG:
             center = [
                 STATIONS_BY_SLUG[st.session_state.focus_slug]["lat"],
                 STATIONS_BY_SLUG[st.session_state.focus_slug]["lon"],
             ]
-            zoom = 11  # zoom in when a station is chosen
+            zoom = zoom_when_focused
         else:
             center = [10.2, 106.0]
             zoom = 8
 
-        m = folium.Map(location=center, zoom_start=zoom)
+        # Remove base-layer toggle from LayerControl:
+        # build map with tiles=None, then add OSM with control=False
+        m = folium.Map(location=center, zoom_start=zoom, tiles=None)
+        folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
 
-        # BASWAP buoy (blue droplet)
-        folium.Marker(
-            [10.099833, 106.208306],
-            tooltip="BASWAP Buoy",
-            icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
-        ).add_to(m)
-
-        # Other stations with highlight on selection
-        add_other_station_markers(m, selected_slug=st.session_state.focus_slug)
+        # Add overlay groups only: BASWAP stations & Other stations
+        add_layers(m, selected_slug=st.session_state.focus_slug)
 
         st_folium(m, width="100%", height=MAP_HEIGHT)
 
-    # ===== Rest of the page =====
+    # ===== Rest of page =====
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
