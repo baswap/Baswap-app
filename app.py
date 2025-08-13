@@ -10,13 +10,13 @@ from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
+# -------------------- Page --------------------
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# ------------------------ Query params & page/lang guards ------------------------
+# --- Query params & language/page guards ---
 params = st.query_params
 page = params.get("page", "Overview")
 lang = params.get("lang", "vi")
-
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
@@ -24,15 +24,11 @@ if lang not in ("en", "vi"):
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
-
 LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-active_overview = "active" if page == "Overview" else ""
-active_about = "active" if page == "About" else ""
-
-# ------------------------ Session defaults ------------------------
+# --- Session defaults ---
 for k, v in {
     "target_col": COL_NAMES[0],
     "date_from": None,
@@ -42,7 +38,7 @@ for k, v in {
 }.items():
     st.session_state.setdefault(k, v)
 
-# ------------------------ Styles ------------------------
+# -------------------- Styles & Header --------------------
 st.markdown("""
 <style>
   header{visibility:hidden;}
@@ -77,7 +73,7 @@ st.markdown("""
     box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
     border:1px solid rgba(0,0,0,.06);
   }
-  /* Force dropdown words to black, including visited */
+  /* Make dropdown items black and stay in same tab */
   .lang-menu .item, .lang-menu .item:visited { color:#000 !important; }
   .lang-menu .item {
     display:block; padding:.5rem .65rem; border-radius:.4rem;
@@ -87,12 +83,12 @@ st.markdown("""
   .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
 
   body>.main{margin-top:4.5rem;}
-  /* Old folium iframe fallback if present elsewhere */
-  iframe[title="streamlit_folium.st_folium"]{height:520px!important;}
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------------ Header ------------------------
+active_overview = "active" if page == "Overview" else ""
+active_about = "active" if page == "About" else ""
+
 st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
@@ -115,10 +111,10 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ------------------------ Drive manager ------------------------
+# -------------------- Drive manager --------------------
 dm = DriveManager(SECRET_ACC)
 
-# ------------------------ HARD-CODED other (non-BASWAP) stations ------------------------
+# -------------------- Hard-coded other stations --------------------
 OTHER_STATIONS = [
     {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
     {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
@@ -164,12 +160,12 @@ OTHER_STATIONS = [
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
-# ------------------------ Map + right-side table (JS component) ------------------------
+# -------------------- HTML/JS map + table component --------------------
 def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520):
     """
-    Render a 70/30 layout: Leaflet map (left) + scrollable station table (right).
-    Clicking a table row zooms/highlights the station on the map without reloading the page.
-    `stations` = list[{"name": str, "lat": float, "lon": float}]
+    70/30 layout: Leaflet map (left) + scrollable table (right).
+    Click a row to zoom & highlight marker (no page refresh).
+    `stations` = list of dicts: {"name": str, "lat": float, "lon": float}
     """
     html = f"""
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -206,21 +202,34 @@ def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520
         background: rgba(255,255,255,.03);
       }}
 
-      /* Table styles */
-      .station-table {{ width: 100%; border-collapse: collapse; font-size: 0.95rem; }}
+      /* Table look & feel */
+      .station-table {{
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }}
       .station-table thead th {{
-        position: sticky; top: 0; z-index: 5; text-align: left;
-        padding: 10px 12px; background: rgba(255,255,255,.10);
+        position: sticky; top: 0; z-index: 5;
+        text-align: left;
+        padding: 10px 12px;
+        background: rgba(255,255,255,.10);
         backdrop-filter: saturate(140%) blur(2px);
         border-bottom: 1px solid rgba(255,255,255,.15);
       }}
       .station-table thead th.warn-col {{ text-align: center; width: 32%; }}
-      .station-table tbody td {{ padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }}
+      .station-table tbody td {{
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+      }}
       .station-table tbody td.warn-col {{ text-align: center; opacity: .9; }}
 
+      /* Row interactions */
       .station-table tbody tr {{ cursor: pointer; }}
       .station-table tbody tr:hover {{ background: rgba(255,255,255,.07); }}
-      .station-table tbody tr.active {{ outline: 2px solid #09c; background: rgba(0,153,204,.15); }}
+      .station-table tbody tr.active {{
+        outline: 2px solid #09c;
+        background: rgba(0,153,204,.15);
+      }}
 
       #map {{ width: 100%; height: 100%; }}
     </style>
@@ -243,7 +252,7 @@ def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520
     </div>
 
     <script>
-      // Map
+      // Init map
       const map = L.map('map', {{ zoomControl: true }}).setView([{baswap_lat}, {baswap_lon}], 8);
       L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
         maxZoom: 19,
@@ -258,8 +267,8 @@ def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520
       // BASWAP marker
       L.marker([{baswap_lat}, {baswap_lon}], {{icon: blueDrop}}).addTo(map).bindTooltip('BASWAP Buoy');
 
-      // Other stations -> cluster
-      const stations = {json.dumps(stations)};
+      // Cluster + markers for other stations
+      const stations = {json.dumps([{"name": s["name"], "lat": float(s["lat"]), "lon": float(s["lon"])} for s in OTHER_STATIONS])};
       const cluster = L.markerClusterGroup();
       const markers = [];
 
@@ -270,7 +279,7 @@ def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520
       }});
       map.addLayer(cluster);
 
-      // Build table rows + click behavior
+      // Build table rows
       const tbody = document.getElementById('stationTbody');
       stations.forEach((s, i) => {{
         const tr = document.createElement('tr');
@@ -284,10 +293,10 @@ def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520
           document.querySelectorAll('.station-table tbody tr').forEach(el => el.classList.remove('active'));
           tr.classList.add('active');
 
-          // set marker icons
+          // color selected marker orange, others gray
           markers.forEach((m, idx) => m.setIcon(idx === i ? orangeRing : grayRing));
 
-          // ensure marker is visible, center & open tooltip
+          // ensure marker is visible, then center & open tooltip
           cluster.zoomToShowLayer(markers[i], () => {{
             const ll = markers[i].getLatLng();
             map.setView(ll, Math.max(map.getZoom(), 11), {{animate: true, duration: 0.5}});
@@ -300,7 +309,7 @@ def render_map_with_station_list(baswap_lat, baswap_lon, stations, height_px=520
     """
     components.html(html, height=height_px + 10, scrolling=False)
 
-# ------------------------ Sidebar / settings panel ------------------------
+# -------------------- Sidebar / settings panel --------------------
 def settings_panel(first_date, last_date):
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
@@ -322,9 +331,9 @@ def settings_panel(first_date, last_date):
         st.warning(texts["data_dimensions"])
         st.stop()
 
-# ------------------------ Pages ------------------------
+# -------------------- Pages --------------------
 if page == "Overview":
-    # Map area: 30% taller (~520px) and 70/30 split with a scrollable table
+    # Map area: ~30% taller than before, 70/30 split with a table on the right
     MAP_HEIGHT = 520
     render_map_with_station_list(
         baswap_lat=10.099833,
@@ -333,7 +342,7 @@ if page == "Overview":
         height_px=MAP_HEIGHT,
     )
 
-    # Data / stats / charts
+    # Data + charts
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
