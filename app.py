@@ -168,27 +168,39 @@ STATION_LOOKUP = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in OTHER_S
 
 # ================== MAP HELPERS ==================
 def add_layers(m: folium.Map):
-    """Put ALL stations (including BASWAP) in the same clustered layer.
-    BASWAP differs only by icon."""
-    cluster = MarkerCluster(name="Stations", show=True)
+    """
+    Two independently togglable layers:
+      - 'BASWAP stations' (cluster)
+      - 'Other stations'  (cluster)
+    Same behavior for both; only BASWAP icon differs.
+    """
 
-    # BASWAP buoy: same behavior as others, only icon differs
+    # ---- BASWAP layer (cluster inside a FeatureGroup) ----
+    baswap_group = folium.FeatureGroup(name="BASWAP stations", show=True)
+    baswap_cluster = MarkerCluster(name="BASWAP cluster", control=False)  # avoid extra checkbox
     folium.Marker(
         [10.099833, 106.208306],
         tooltip="BASWAP Buoy",
         icon=folium.Icon(icon="tint", prefix="fa", color="blue"),  # only difference
-    ).add_to(cluster)
+    ).add_to(baswap_cluster)
+    baswap_cluster.add_to(baswap_group)
+    baswap_group.add_to(m)
 
-    # Other stations
+    # ---- Other stations layer (cluster inside a FeatureGroup) ----
+    other_group = folium.FeatureGroup(name="Other stations", show=True)
+    other_cluster = MarkerCluster(name="Other cluster", control=False)  # avoid extra checkbox
     for s in OTHER_STATIONS:
         folium.Marker(
             [float(s["lat"]), float(s["lon"])],
             tooltip=s["name"],
             icon=folium.Icon(icon="life-ring", prefix="fa", color="gray"),
-        ).add_to(cluster)
+        ).add_to(other_cluster)
+    other_cluster.add_to(other_group)
+    other_group.add_to(m)
 
-    cluster.add_to(m)
+    # ---- Layer control with exactly two toggles ----
     folium.LayerControl(collapsed=False).add_to(m)
+
 
 
 # ================== SIDEBAR SETTINGS ==================
