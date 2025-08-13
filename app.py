@@ -2,6 +2,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from datetime import datetime
+from folium.plugins import MarkerCluster
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -77,11 +78,8 @@ st.markdown("""
     box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
     border:1px solid rgba(0,0,0,.06);
   }
-  /* Make dropdown words black (and stay black even after visited) */
-  .lang-menu .item,
-  .lang-menu .item:visited {
-    color:#000 !important;
-  }
+  /* Force dropdown words to black, including visited */
+  .lang-menu .item, .lang-menu .item:visited { color:#000 !important; }
   .lang-menu .item {
     display:block; padding:.5rem .65rem; border-radius:.4rem;
     text-decoration:none; font-weight:500;
@@ -120,6 +118,68 @@ st.markdown(f"""
 # --- Drive manager ---
 dm = DriveManager(SECRET_ACC)
 
+# ========== HARD-CODED other (non-BASWAP) stations ==========
+OTHER_STATIONS = [
+    {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
+    {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
+    {"name":"Cầu Quan","lon":106.1139858,"lat":9.755832963},
+    {"name":"Trà Vinh","lon":106.3554593,"lat":9.976579766},
+    {"name":"Hưng Mỹ","lon":106.4509515,"lat":9.885625852},
+    {"name":"Bến Trại","lon":106.5241047,"lat":9.883471894},
+    {"name":"Lộc Thuận","lon":106.6030561,"lat":10.24436142},
+    {"name":"Sơn Đốc","lon":106.4638095,"lat":10.05325888},
+    {"name":"Bình Đại","lon":106.7077466,"lat":10.20537343},
+    {"name":"An Định","lon":106.4292222,"lat":10.3122585},
+    {"name":"Hòa Bình","lon":106.5923811,"lat":10.28936244},
+    {"name":"Vàm Kênh","lon":106.7367911,"lat":10.27264736},
+    {"name":"Đồng Tâm","lon":106.334365,"lat":10.329834},
+    {"name":"Hương Mỹ","lon":106.383335,"lat":9.983307},
+    {"name":"Tân An","lon":106.4157942,"lat":10.54178782},
+    {"name":"Tuyên Nhơn","lon":106.1937576,"lat":10.65884433},
+    {"name":"Bến Lức","lon":106.4744215,"lat":10.63677295},
+    {"name":"Cầu Nối","lon":106.5723735,"lat":10.41872922},
+    {"name":"Xuân Khánh","lon":106.3507418,"lat":10.8419521},
+    {"name":"Mỹ Tho","lon":106.3469893,"lat":10.34689161},
+    {"name":"Thạnh Phú","lon":105.857877,"lat":9.498933823},
+    {"name":"Đại Ngãi","lon":106.0779384,"lat":9.733924226},
+    {"name":"Trần Đề","lon":106.2048576,"lat":9.528517406},
+    {"name":"Sóc Trăng","lon":105.9683935,"lat":9.60610964},
+    {"name":"Long Phú","lon":106.1514227,"lat":9.61341221},
+    {"name":"An Lạc Tây","lon":105.9790505,"lat":9.853617387},
+    {"name":"Mỹ Hòa","lon":106.3454055,"lat":10.22267205},
+    {"name":"Rạch Giá","lon":105.0840604,"lat":10.01215053},
+    {"name":"Xẻo Rô","lon":105.1129466,"lat":9.86417299},
+    {"name":"Gò Quao","lon":105.2774089,"lat":9.722549732},
+    {"name":"An Ninh","lon":105.1245146,"lat":9.87196146},
+    {"name":"Phước Long","lon":105.4609733,"lat":9.43721774},
+    {"name":"Gành Hào","lon":105.4183437,"lat":9.032165591},
+    {"name":"Cà Mau","lon":105.1497391,"lat":9.171865534},
+    {"name":"Sông Đốc","lon":104.8336191,"lat":9.040111339},
+    {"name":"Vũng Liêm","lon":106.2329204,"lat":10.08355046},
+    {"name":"Chù Chí","lon":105.318965,"lat":9.303196225},
+    {"name":"Bạc Liêu","lon":105.7212312,"lat":9.281556339},
+    {"name":"Thới Bình","lon":105.0868866,"lat":9.3479814},
+    {"name":"Luyến Quỳnh","lon":104.9466043,"lat":10.16807224},
+    {"name":"Măng Thít","lon":106.1562281,"lat":10.16149561},
+    {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
+]
+
+def add_other_station_markers(m: folium.Map):
+    """Add gray life-ring markers for non-BASWAP stations."""
+    if not OTHER_STATIONS:
+        return
+    cluster = MarkerCluster(name="Other stations").add_to(m)
+    for s in OTHER_STATIONS:
+        name = s["name"]
+        lat = float(s["lat"])   # folium expects [lat, lon]
+        lon = float(s["lon"])
+        folium.Marker(
+            [lat, lon],
+            tooltip=name,
+            icon=folium.Icon(icon="life-ring", prefix="fa", color="gray")
+        ).add_to(cluster)
+    folium.LayerControl(collapsed=False).add_to(m)
+
 # --- Sidebar / settings panel ---
 def settings_panel(first_date, last_date):
     st.markdown(side_texts["sidebar_header"])
@@ -144,9 +204,19 @@ def settings_panel(first_date, last_date):
 
 # --- Pages ---
 if page == "Overview":
-    m = folium.Map(location=[10.231140, 105.980999], zoom_start=10)
-    folium.Marker([10.099833, 106.208306], tooltip="BASWAP Buoy",
-                  icon=folium.Icon(icon="tint", prefix="fa", color="blue")).add_to(m)
+    # Center/zoom so most stations are visible
+    m = folium.Map(location=[10.2, 106.0], zoom_start=8)
+
+    # BASWAP buoy (keep your original droplet icon)
+    folium.Marker(
+        [10.099833, 106.208306],
+        tooltip="BASWAP Buoy",
+        icon=folium.Icon(icon="tint", prefix="fa", color="blue")
+    ).add_to(m)
+
+    # Add the hard-coded other stations
+    add_other_station_markers(m)
+
     st_folium(m, width="100%", height=400)
 
     df = thingspeak_retrieve(combined_data_retrieve())
