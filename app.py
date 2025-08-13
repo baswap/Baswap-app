@@ -249,7 +249,7 @@ if page == "Overview":
         station_names = [s["name"] for s in OTHER_STATIONS]
         warnings_col = ["-"] * len(station_names)
         table_df = pd.DataFrame({"Station": station_names, "Warning": warnings_col})
-        TABLE_HEIGHT = MAP_HEIGHT - 120
+        TABLE_HEIGHT = MAP_HEIGHT - 125
         # Scrollable table matching map height
         table_container = st.container()
         with table_container:
