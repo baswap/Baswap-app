@@ -41,6 +41,16 @@ APP_TEXTS = {
         "overall_stats_title": "Overall Statistics",
         "axis_value":    "Value",
         "axis_timestamp":"Timestamp",
+
+        # === NEW: texts for your picker/info panel/layers/table ===
+        "info_panel_title": "Information",
+        "picker_label": "Pick a station",
+        "picker_none": "None",
+        "baswap_name": "BASWAP Buoy",
+        "layer_baswap": "BASWAP stations",
+        "layer_other": "Other stations",
+        "table_station": "Station",
+        "table_warning": "Warning",
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -62,6 +72,16 @@ APP_TEXTS = {
         "overall_stats_title": "Thống kê chung",
         "axis_value":    "Giá trị",
         "axis_timestamp":"Thời gian",
+
+        # === MỚI: văn bản cho bộ chọn/trình bày thông tin/layers/bảng ===
+        "info_panel_title": "Thông tin",
+        "picker_label": "Chọn trạm",
+        "picker_none": "Không chọn",
+        "baswap_name": "Phao BASWAP",
+        "layer_baswap": "Trạm BASWAP",
+        "layer_other": "Các trạm khác",
+        "table_station": "Trạm",
+        "table_warning": "Cảnh báo",
     }
 }
 
