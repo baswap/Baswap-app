@@ -168,25 +168,28 @@ STATION_LOOKUP = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in OTHER_S
 
 # ================== MAP HELPERS ==================
 def add_layers(m: folium.Map):
-    """Add overlay groups: BASWAP stations & Other stations (no basemap toggle)."""
-    baswap_group = folium.FeatureGroup(name="BASWAP stations", show=True)
+    """Put ALL stations (including BASWAP) in the same clustered layer.
+    BASWAP differs only by icon."""
+    cluster = MarkerCluster(name="Stations", show=True)
+
+    # BASWAP buoy: same behavior as others, only icon differs
     folium.Marker(
         [10.099833, 106.208306],
         tooltip="BASWAP Buoy",
-        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
-    ).add_to(baswap_group)
-    baswap_group.add_to(m)
+        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),  # only difference
+    ).add_to(cluster)
 
-    cluster = MarkerCluster(name="Other stations", show=True)
+    # Other stations
     for s in OTHER_STATIONS:
         folium.Marker(
             [float(s["lat"]), float(s["lon"])],
             tooltip=s["name"],
             icon=folium.Icon(icon="life-ring", prefix="fa", color="gray"),
         ).add_to(cluster)
-    cluster.add_to(m)
 
+    cluster.add_to(m)
     folium.LayerControl(collapsed=False).add_to(m)
+
 
 # ================== SIDEBAR SETTINGS ==================
 def settings_panel(first_date, last_date, default_from, default_to):
