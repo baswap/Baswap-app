@@ -13,12 +13,10 @@ from plotting import plot_line_chart, display_statistics
 
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# --- Query params & language/page guards ---
+# --- Query params & guards ---
 params = st.query_params
 page = params.get("page", "Overview")
 lang = params.get("lang", "vi")
-focus = params.get("focus")  # station slug to focus/zoom
-
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
@@ -26,13 +24,9 @@ if lang not in ("en", "vi"):
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
-
 LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
-
-active_overview = "active" if page == "Overview" else ""
-active_about = "active" if page == "About" else ""
 
 # --- Session defaults ---
 for k, v in {
@@ -41,6 +35,7 @@ for k, v in {
     "date_to": None,
     "agg_stats": ["Min", "Max", "Median"],
     "table_cols": COL_NAMES,
+    "focus_slug": None,           # <— selected station slug
 }.items():
     st.session_state.setdefault(k, v)
 
@@ -89,81 +84,28 @@ OTHER_STATIONS = [
     {"name":"Măng Thít","lon":106.1562281,"lat":10.16149561},
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
-
 def slugify(name: str) -> str:
-    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
-
-# Build lookup dicts
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 for s in OTHER_STATIONS:
     s["slug"] = slugify(s["name"])
 STATIONS_BY_SLUG = {s["slug"]: s for s in OTHER_STATIONS}
 
-# --- Styles ---
+# --- Styles (header + dropdown kept from your build) ---
 st.markdown("""
 <style>
   header{visibility:hidden;}
-  .custom-header{
-    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
-    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
-  }
+  .custom-header{position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;}
   .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
   .custom-header .nav{display:flex;gap:1rem;align-items:center;}
-  .custom-header .nav a{
-    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
-    border-bottom:2px solid transparent;
-  }
+  .custom-header .nav a{text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;border-bottom:2px solid transparent;}
   .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
-
-  /* Language dropdown */
-  .lang-dd { position: relative; }
-  .lang-dd summary {
-    list-style: none; cursor: pointer; outline: none;
-    display:inline-flex; align-items:center; gap:.35rem;
-    padding:.35rem .6rem; border-radius:999px;
-    border:1px solid rgba(255,255,255,.35);
-    background: rgba(255,255,255,.12); color:#fff; font-weight:600;
-  }
-  .lang-dd summary::-webkit-details-marker { display: none; }
-  .lang-dd summary .chev { margin-left:2px; opacity:.9; }
-  .lang-dd[open] summary { background: rgba(255,255,255,.18); }
-
-  .lang-menu {
-    position:absolute; right:0; margin-top:.4rem; min-width:160px;
-    background:#fff; color:#111; border-radius:.5rem;
-    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
-    border:1px solid rgba(0,0,0,.06);
-  }
-  .lang-menu .item, .lang-menu .item:visited { color:#000 !important; }
-  .lang-menu .item { display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }
-  .lang-menu .item:hover { background:#f2f6ff; }
-  .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
-
-  /* Right scroll panel styling */
-  .station-panel {
-    background: var(--background-color, #111);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: .5rem;
-    padding: .5rem .75rem;
-  }
-  .station-count {
-    position: sticky; top: 0;
-    background: rgba(255,255,255,.06);
-    backdrop-filter: saturate(140%) blur(2px);
-    padding:.4rem .35rem; border-radius:.35rem;
-    margin-bottom:.35rem; font-weight:700;
-  }
-  .station-item {
-    display:block; cursor:pointer;
-    padding:.45rem .35rem; border-radius:.35rem; margin-bottom:.25rem;
-    background: rgba(255,255,255,.04);
-    color: inherit; text-decoration:none;
-  }
-  .station-item:hover { background: rgba(255,255,255,.08); }
-  .station-item.is-active { outline:2px solid #09c; background: rgba(0,153,204,.15); }
-  .station-name { font-weight:600; }
-
+  .lang-dd{position:relative;}
+  .lang-dd summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-weight:600;}
+  .lang-dd summary::-webkit-details-marker{display:none;}
+  .lang-dd .lang-menu{position:absolute;right:0;margin-top:.4rem;min-width:160px;background:#fff;color:#111;border-radius:.5rem;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:.4rem;border:1px solid rgba(0,0,0,.06);}
+  .lang-menu .item,.lang-menu .item:visited{color:#000!important;}
   body>.main{margin-top:4.5rem;}
-  iframe[title="streamlit_folium.st_folium"]{height:520px!important;} /* 30% taller fallback */
+  iframe[title="streamlit_folium.st_folium"]{height:520px!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -172,18 +114,15 @@ st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
   <div class="nav">
-    <a href="?page=Overview&lang={lang}" target="_self" class="{ 'active' if page=='Overview' else '' }">{texts['nav_overview']}</a>
-    <a href="?page=About&lang={lang}" target="_self" class="{ 'active' if page=='About' else '' }">{texts['nav_about']}</a>
+    <a href="?page=Overview&lang={lang}" target="_self" class="{{'active' if page=='Overview' else ''}}">{texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" target="_self" class="{{'active' if page=='About' else ''}}">{texts['nav_about']}</a>
   </div>
   <div class="nav" style="margin-left:auto;">
     <details class="lang-dd">
-      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
-        <span class="label">{current_lang_label}</span>
-        <span class="chev" aria-hidden="true">▾</span>
-      </summary>
+      <summary title="{toggle_tooltip}" aria-haspopup="menu"><span>{current_lang_label}</span><span>▾</span></summary>
       <div class="lang-menu" role="menu">
-        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
+        <a href="?page={page}&lang=en" target="_self" class="item" role="menuitem">English</a>
+        <a href="?page={page}&lang=vi" target="_self" class="item" role="menuitem">Tiếng Việt</a>
       </div>
     </details>
   </div>
@@ -193,89 +132,57 @@ st.markdown(f"""
 # --- Drive manager ---
 dm = DriveManager(SECRET_ACC)
 
-# Helpers to add markers
+# --- Helpers ---
 def add_other_station_markers(m: folium.Map, selected_slug: str | None):
-    if not OTHER_STATIONS:
-        return
     cluster = MarkerCluster(name="Other stations").add_to(m)
     for s in OTHER_STATIONS:
         color = "orange" if s["slug"] == selected_slug else "gray"
         folium.Marker(
             [float(s["lat"]), float(s["lon"])],
             tooltip=s["name"],
-            icon=folium.Icon(icon="life-ring", prefix="fa", color=color)
+            icon=folium.Icon(icon="life-ring", prefix="fa", color=color),
         ).add_to(cluster)
     folium.LayerControl(collapsed=False).add_to(m)
 
-# --- Sidebar / settings panel ---
-def settings_panel(first_date, last_date):
-    st.markdown(side_texts["sidebar_header"])
-    st.markdown(side_texts["sidebar_description"])
-    st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
-    c1, c2 = st.columns(2)
-    if c1.button(side_texts["sidebar_first_day"]):
-        st.session_state.date_from = first_date
-    if c2.button(side_texts["sidebar_today"]):
-        st.session_state.date_from = st.session_state.date_to = last_date
-    if st.session_state.date_from is None:
-        st.session_state.date_from = first_date
-    if st.session_state.date_to is None:
-        st.session_state.date_to = last_date
-    st.date_input(side_texts["sidebar_start_date"], min_value=first_date, max_value=last_date, key="date_from")
-    st.date_input(side_texts["sidebar_end_date"], min_value=first_date, max_value=last_date, key="date_to")
-    st.multiselect(side_texts["sidebar_summary_stats"], ["Min", "Max", "Median"],
-                   default=["Min", "Max", "Median"], key="agg_stats")
-    if not st.session_state.agg_stats:
-        st.warning(texts["data_dimensions"])
-        st.stop()
-
-# ========== Pages ==========
+# --- Pages ---
 if page == "Overview":
-    MAP_HEIGHT = 520  # ~30% taller than 400
+    MAP_HEIGHT = 520  # ~30% taller
     left_col, right_col = st.columns([7, 3], gap="large")  # 70% / 30%
 
-    # Determine map center/zoom from focus
-    default_center = [10.2, 106.0]
-    default_zoom = 8
-    if focus and focus in STATIONS_BY_SLUG:
-        center = [STATIONS_BY_SLUG[focus]["lat"], STATIONS_BY_SLUG[focus]["lon"]]
+    # Determine focus from session_state (no navigation)
+    focus_slug = st.session_state.get("focus_slug")
+    if focus_slug and focus_slug in STATIONS_BY_SLUG:
+        center = [STATIONS_BY_SLUG[focus_slug]["lat"], STATIONS_BY_SLUG[focus_slug]["lon"]]
         zoom = 11
     else:
-        center, zoom = default_center, default_zoom
+        center, zoom = [10.2, 106.0], 8
 
-    # Map on the LEFT
+    # LEFT: map
     with left_col:
         m = folium.Map(location=center, zoom_start=zoom)
-        # BASWAP buoy (blue droplet)
-        folium.Marker(
-            [10.099833, 106.208306],
-            tooltip="BASWAP Buoy",
-            icon=folium.Icon(icon="tint", prefix="fa", color="blue")
-        ).add_to(m)
-        # Other stations (selected = orange)
-        add_other_station_markers(m, selected_slug=focus if isinstance(focus, str) else None)
+        folium.Marker([10.099833, 106.208306], tooltip="BASWAP Buoy",
+                      icon=folium.Icon(icon="tint", prefix="fa", color="blue")).add_to(m)
+        add_other_station_markers(m, selected_slug=focus_slug)
         st_folium(m, width="100%", height=MAP_HEIGHT)
 
-    # Scrollable station list on the RIGHT
+    # RIGHT: scrollable, clickable station list (no URL, no new tab)
     with right_col:
-        # Build one HTML block so items stay inside the scroll container.
-        # Each item is a link that sets ?focus=<slug>; we keep page & lang.
-        def item_html(station):
-            slug = station["slug"]
-            active = " is-active" if slug == focus else ""
-            href = f"?page=Overview&lang={lang}&focus={slug}"
-            return f'<a class="station-item{active}" href="{href}" target="_self"><div class="station-name">{station["name"]}</div></a>'
+        # Streamlit >= 1.31 supports heighted containers with scroll
+        panel = st.container(height=MAP_HEIGHT, border=True)
+        with panel:
+            st.markdown(f"**{len(OTHER_STATIONS)} stations**")
+            # Optional: clear selection
+            if st.button("Reset view", use_container_width=True):
+                st.session_state.focus_slug = None
+            for s in OTHER_STATIONS:
+                slug = s["slug"]
+                active = (slug == focus_slug)
+                label = ("▶ " if active else "") + s["name"]
+                if st.button(label, key=f"btn_{slug}", use_container_width=True):
+                    st.session_state.focus_slug = slug
+                    # No st.rerun() needed; Streamlit re-runs automatically after a button click.
 
-        items_html = "".join(item_html(s) for s in OTHER_STATIONS)
-        panel_html = f"""
-        <div class="station-panel" style="height:{MAP_HEIGHT}px; overflow:auto;">
-          <div class="station-count">{len(OTHER_STATIONS)} stations</div>
-          {items_html}
-        </div>
-        """
-        st.markdown(panel_html, unsafe_allow_html=True)
-
-    # ===== rest of page =====
+    # ==== rest unchanged ====
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
@@ -288,6 +195,26 @@ if page == "Overview":
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
+        def settings_panel(first_date, last_date):
+            st.markdown(side_texts["sidebar_header"])
+            st.markdown(side_texts["sidebar_description"])
+            st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
+            c1, c2 = st.columns(2)
+            if c1.button(side_texts["sidebar_first_day"]):
+                st.session_state.date_from = first_date
+            if c2.button(side_texts["sidebar_today"]):
+                st.session_state.date_from = st.session_state.date_to = last_date
+            if st.session_state.date_from is None:
+                st.session_state.date_from = first_date
+            if st.session_state.date_to is None:
+                st.session_state.date_to = last_date
+            st.date_input(side_texts["sidebar_start_date"], min_value=first_date, max_value=last_date, key="date_from")
+            st.date_input(side_texts["sidebar_end_date"], min_value=first_date, max_value=last_date, key="date_to")
+            st.multiselect(side_texts["sidebar_summary_stats"], ["Min", "Max", "Median"],
+                           default=["Min", "Max", "Median"], key="agg_stats")
+            if not st.session_state.agg_stats:
+                st.warning(texts["data_dimensions"])
+                st.stop()
         settings_panel(first_date, last_date)
 
     date_from = st.session_state.date_from or first_date
