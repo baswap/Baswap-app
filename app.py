@@ -43,7 +43,7 @@ for k, v in {
 
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
-TABLE_HEIGHT = MAP_HEIGHT - 90  # reduce table height to visually align with map
+TABLE_HEIGHT = MAP_HEIGHT - 130  # reduce table height to visually align with map
 st.markdown(f"""
 <style>
   header{{visibility:hidden;}}
@@ -248,7 +248,7 @@ if page == "Overview":
 
     # ---------- RIGHT: Picker + 2×42 table (scrollable) ----------
     with col_right:
-        st.markdown("#### Station / Warning")
+        st.markdown("#### Information ")
 
         # Picker with None + BASWAP + others
         station_options = ["None", BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
@@ -257,7 +257,7 @@ if page == "Overview":
             default_sel = "None"
 
         picked = st.selectbox(
-            label="Pick a station to focus the map",
+            label="Pick a station",
             options=station_options,
             index=station_options.index(default_sel),
         )
