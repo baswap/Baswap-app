@@ -22,14 +22,11 @@ if lang not in ("en", "vi"):
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
-toggle_lang = "en" if lang == "vi" else "vi"
-toggle_label = texts["toggle_button"]                 # e.g. "English" or "Tiếng Việt"
-toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# Show the flag of the TARGET language (the one you switch to)
-FLAG_MAP = {"en": "🇬🇧", "vi": "🇻🇳"}
-toggle_flag = FLAG_MAP.get(toggle_lang, "🌐")
-chevron = "▾"
+# Labels for current language display in the dropdown summary
+LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
+current_lang_label = LANG_LABEL.get(lang, "English")
+toggle_tooltip = texts.get("toggle_tooltip", "")
 
 # Active nav classes
 active_overview = "active" if page == "Overview" else ""
@@ -60,18 +57,33 @@ st.markdown("""
     border-bottom:2px solid transparent;
   }
   .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
-  /* Language switch pill */
-  .custom-header .lang-switch{
-    display:inline-flex;align-items:center;gap:.5rem;
-    padding:.35rem .6rem;border-radius:999px;text-decoration:none;
+
+  /* Language dropdown */
+  .lang-dd { position: relative; }
+  .lang-dd summary {
+    list-style: none; cursor: pointer; outline: none;
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.35rem .6rem; border-radius:999px;
     border:1px solid rgba(255,255,255,.35);
-    background: rgba(255,255,255,.12);
-    box-shadow: 0 1px 2px rgba(0,0,0,.08);
-    font-weight:600;color:#fff;
+    background: rgba(255,255,255,.12); color:#fff; font-weight:600;
   }
-  .custom-header .lang-switch:hover{background: rgba(255,255,255,.18);}
-  .custom-header .lang-switch .flag{line-height:1;}
-  .custom-header .lang-switch .chev{font-size:.9rem;opacity:.9;margin-left:2px;}
+  .lang-dd summary::-webkit-details-marker { display: none; }
+  .lang-dd summary .chev { margin-left:2px; opacity:.9; }
+  .lang-dd[open] summary { background: rgba(255,255,255,.18); }
+
+  .lang-menu {
+    position:absolute; right:0; margin-top:.4rem; min-width:160px;
+    background:#fff; color:#111; border-radius:.5rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
+    border:1px solid rgba(0,0,0,.06);
+  }
+  .lang-menu .item {
+    display:block; padding:.5rem .65rem; border-radius:.4rem;
+    text-decoration:none; color:#111; font-weight:500;
+  }
+  .lang-menu .item:hover { background:#f2f6ff; }
+  .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
+
   body>.main{margin-top:4.5rem;}
   iframe[title="streamlit_folium.st_folium"]{height:400px!important;}
 </style>
@@ -86,11 +98,16 @@ st.markdown(f"""
     <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
   </div>
   <div class="nav" style="margin-left:auto;">
-    <a class="lang-switch" href="?page={page}&lang={toggle_lang}" target="_self" title="{toggle_tooltip}" aria-label="Switch language to {toggle_label}">
-      <span class="label">{toggle_label}</span>
-      <span class="flag" aria-hidden="true">{toggle_flag}</span>
-      <span class="chev" aria-hidden="true">{chevron}</span>
-    </a>
+    <details class="lang-dd">
+      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
+        <span class="label">{current_lang_label}</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </summary>
+      <div class="lang-menu" role="menu">
+        <a href="?page={page}&lang=en" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
+        <a href="?page={page}&lang=vi" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
+      </div>
+    </details>
   </div>
 </div>
 """, unsafe_allow_html=True)
