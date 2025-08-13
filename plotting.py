@@ -7,6 +7,57 @@ import numpy as np
 import torch
 from model import make_predictions
 
+
+# -------- NEW: break the line across large time gaps by injecting NaNs --------
+def _inject_nans_for_gaps(
+    df: pd.DataFrame,
+    time_col: str,
+    value_col: str,
+    *,
+    cat_col: str | None,                 # e.g. "Aggregation" (series)
+    max_gap: pd.Timedelta,               # e.g. pd.Timedelta(hours=3)
+    display_col: str | None = None,      # optional label column used in tooltip
+    display_fmt: str | None = None
+) -> pd.DataFrame:
+    """
+    Return df with extra rows (value = NaN) inserted at the midpoint of any
+    time gap larger than `max_gap`. Altair stops drawing a line at NaNs.
+    Gaps are computed per `cat_col` (series), if provided.
+    """
+    d = df.copy()
+    d[time_col] = pd.to_datetime(d[time_col])
+
+    groups = [(None, d)] if not cat_col else d.groupby(cat_col, dropna=False)
+    pieces = []
+
+    for key, g in groups:
+        g = g.sort_values(time_col)
+        deltas = g[time_col].diff()
+        gap_mask = deltas > max_gap
+        if gap_mask.any():
+            prev_times = g[time_col].shift(1)[gap_mask]
+            next_times = g[time_col][gap_mask]
+            mid_times = prev_times + (next_times - prev_times) / 2
+
+            fill = pd.DataFrame({
+                time_col: mid_times.values,
+                value_col: np.nan
+            })
+            if cat_col:
+                fill[cat_col] = key
+            # optional display label for tooltips (not strictly required)
+            if display_col and display_fmt:
+                fill[display_col] = pd.to_datetime(fill[time_col]).dt.strftime(display_fmt)
+
+            pieces.append(pd.concat([g, fill], ignore_index=True))
+        else:
+            pieces.append(g)
+
+    out = pd.concat(pieces, ignore_index=True).sort_values(time_col)
+    return out
+# -----------------------------------------------------------------------------
+
+
 def plot_line_chart(df, col, resample_freq="None"):
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -15,14 +66,25 @@ def plot_line_chart(df, col, resample_freq="None"):
     df_filtered = df.copy()
 
     color_scale = alt.Scale(
-            domain=["Raw", "Max", "Min", "Median"],
-            range=["orange", "red", "blue", "green"]
-        )
+        domain=["Raw", "Max", "Min", "Median"],
+        range=["orange", "red", "blue", "green"]
+    )
 
     if resample_freq == "None":
+        # (You may not be using the Raw view anymore, but this keeps it safe.)
         df_filtered["Aggregation"] = "Raw"
+
+        # --- NEW: break raw line across gaps (>30 min) ---
+        df_broken = _inject_nans_for_gaps(
+            df_filtered,
+            time_col="Timestamp (GMT+7)",
+            value_col=col,
+            cat_col="Aggregation",
+            max_gap=pd.Timedelta(minutes=30)
+        )
+
         chart = (
-            alt.Chart(df_filtered)
+            alt.Chart(df_broken)
             .mark_line(point=True)
             .encode(
                 x=alt.X("Timestamp (GMT+7):T", title="Timestamp"),
@@ -36,6 +98,7 @@ def plot_line_chart(df, col, resample_freq="None"):
             .interactive()
         )
         st.altair_chart(chart, use_container_width=True)
+
     else:
         # Create a rounded timestamp based on resample frequency.
         if resample_freq == "Hour":
@@ -49,9 +112,30 @@ def plot_line_chart(df, col, resample_freq="None"):
             r"%H:%M:%S" if resample_freq == "Hour" else "%d/%m/%Y"
         )
 
-        # Build the main chart for all data.
+        # --- NEW: choose a gap threshold and inject NaNs so the line breaks ---
+        if resample_freq == "Hour":
+            gap = pd.Timedelta(hours=3)
+            disp_fmt = "%H:%M:%S"
+        elif resample_freq == "Day":
+            gap = pd.Timedelta(days=3)
+            disp_fmt = "%d/%m/%Y"
+        else:
+            gap = pd.Timedelta(hours=1)
+            disp_fmt = "%d/%m/%Y %H:%M:%S"
+
+        df_broken = _inject_nans_for_gaps(
+            df_filtered,
+            time_col="Timestamp (Rounded)",
+            value_col=col,
+            cat_col="Aggregation" if "Aggregation" in df_filtered.columns else None,
+            max_gap=gap,
+            display_col="Timestamp (Rounded Display)",
+            display_fmt=disp_fmt,
+        )
+
+        # Build the main chart for all data (with gaps broken).
         main_chart = (
-            alt.Chart(df_filtered)
+            alt.Chart(df_broken)
             .mark_line(point=True)
             .encode(
                 x=alt.X("Timestamp (Rounded):T", title="Timestamp"),
@@ -73,7 +157,7 @@ def plot_line_chart(df, col, resample_freq="None"):
 
             # Extract only the numeric values from the last 7 points.
             max_values_numeric = max_data[[col]].iloc[-7:]
-            
+
             # Get the last timestamp and last value from the max data.
             last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
             last_value = max_values_numeric.iloc[-1][col]
@@ -81,29 +165,27 @@ def plot_line_chart(df, col, resample_freq="None"):
             if (col == "EC Value (g/l)"):
                 max_values_numeric = max_values_numeric * 2000
 
-            # Call your prediction function, which now returns a list of predicted values.
+            # Predictions (external function)
             predictions_list = make_predictions(max_values_numeric, mode="Max")
 
             if (col == "EC Value (g/l)"):
                 predictions_list = [x/2000 for x in predictions_list]
-            
-            # Create new timestamps for each prediction by adding one hour for each prediction.
+
+            # Timestamps for predictions
             prediction_timestamps = [
                 last_timestamp + pd.Timedelta(hours=i+1) for i in range(len(predictions_list))
             ]
-            
-            # To connect the prediction line to the max graph, prepend the last max point.
+
+            # Connect from last max point to predictions
             combined_timestamps = [last_timestamp] + prediction_timestamps
             combined_values = [last_value] + predictions_list
-            
-            # Create a DataFrame that includes the connecting point and the predictions.
+
             predictions_line_df = pd.DataFrame({
                 "Timestamp": combined_timestamps,
                 col: combined_values,
                 "Aggregation": "Predicted"
             })
-            
-            # Create a dashed line chart for the prediction segment (which now starts at the last max point).
+
             predictions_chart = (
                 alt.Chart(predictions_line_df)
                 .mark_line(color='red', strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
@@ -117,8 +199,7 @@ def plot_line_chart(df, col, resample_freq="None"):
                     ]
                 )
             )
-            
-            # Combine the main chart with the predictions chart.
+
             combined_chart = alt.layer(predictions_chart, main_chart).resolve_scale(
                 color='independent'
             )
