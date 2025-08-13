@@ -1,5 +1,4 @@
 import re
-import pandas as pd
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
@@ -113,7 +112,7 @@ st.markdown(f"""
 # ================== DATA BACKENDS ==================
 dm = DriveManager(SECRET_ACC)
 
-# ================== HARD-CODED OTHER STATIONS ==================
+# ================== HARD-CODED other (non-BASWAP) stations ==================
 OTHER_STATIONS = [
     {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
     {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
@@ -181,44 +180,6 @@ def add_layers(m: folium.Map):
 
     folium.LayerControl(collapsed=False).add_to(m)
 
-# ================== DATA-QUALITY CHECK ==================
-def should_hide_series(df: pd.DataFrame, col: str, level: str, min_days: int = 2) -> bool:
-    """
-    Return True if the series has a flat (same value) streak or a null streak
-    lasting more than 2 days (Daily: ≥3 consecutive points; Hourly: ≥48 hours).
-    level = 'Day' or 'Hour'
-    """
-    if df.empty or col not in df.columns:
-        return True
-
-    d = df[["Timestamp (GMT+7)", col]].copy()
-    d = d.dropna(subset=["Timestamp (GMT+7)"]).sort_values("Timestamp (GMT+7)")
-
-    # Round numeric values to reduce tiny jitter that isn't a real change
-    if pd.api.types.is_numeric_dtype(d[col]):
-        vals = d[col].round(6)
-    else:
-        vals = d[col]
-
-    # Start a new group whenever value changes OR null boundary
-    prev = vals.shift()
-    same_as_prev = vals.eq(prev)
-    null_boundary = vals.isna() | prev.isna()
-    new_group = ~(same_as_prev & ~null_boundary)
-    grp = new_group.cumsum()
-
-    # Length in points per group
-    run_len = grp.groupby(grp).transform("count")
-
-    if level == "Day":
-        threshold_points = 3  # ≥3 consecutive daily points (~ >2 days)
-    else:  # Hour
-        # Assume hourly aggregation → 24 per day. Use 48 as 2 days.
-        threshold_points = 48
-
-    # Any group that is constant (including null-only) meeting threshold?
-    return bool((run_len >= threshold_points).any())
-
 # ================== SIDEBAR SETTINGS ==================
 def settings_panel(first_date, last_date, default_from, default_to):
     st.markdown(side_texts["sidebar_header"])
@@ -269,17 +230,18 @@ if page == "Overview":
 
     # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
+    # Use actual min/max from data
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # Initialize defaults if needed
+    # --- Overall stats for current window (defaults to last month) ---
+    # Ensure defaults are set before computing
     if st.session_state.date_from is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.date_to is None:
         st.session_state.date_to = last_date
 
-    # --- Overall stats for current window ---
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     st.markdown(f"### 📊 {texts['overall_stats_title']}")
     display_statistics(stats_df, st.session_state.target_col)
@@ -304,21 +266,13 @@ if page == "Overview":
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
 
-        # Hourly
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            if should_hide_series(hourly, target_col, level="Hour", min_days=2):
-                st.info("Series hidden: more than 2 days of identical or missing values in Hourly view.")
-            else:
-                plot_line_chart(hourly, target_col, "Hour")
+            plot_line_chart(hourly, target_col, "Hour")
 
-        # Daily
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            if should_hide_series(daily, target_col, level="Day", min_days=2):
-                st.info("Series hidden: more than 2 days of identical or missing values in Daily view.")
-            else:
-                plot_line_chart(daily, target_col, "Day")
+            plot_line_chart(daily, target_col, "Day")
 
     st.divider()
     st.subheader(texts["data_table"])
