@@ -37,13 +37,13 @@ for k, v in {
     "date_to": None,        # set after data loads
     "agg_stats": ["Min", "Max", "Median"],
     "table_cols": COL_NAMES,
-    "selected_station": None,  # for map zooming
+    "selected_station": None,  # for map zooming (None or station name)
 }.items():
     st.session_state.setdefault(k, v)
 
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
-TABLE_HEIGHT = MAP_HEIGHT - 130  # reduce table height to visually align with map
+TABLE_HEIGHT = MAP_HEIGHT - 130  # adjust to align visually with map
 st.markdown(f"""
 <style>
   header{{visibility:hidden;}}
@@ -161,8 +161,8 @@ OTHER_STATIONS = [
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
-# BASWAP buoy constant
-BASWAP_NAME = "BASWAP Buoy"
+# BASWAP buoy name comes from translations
+BASWAP_NAME = texts["baswap_name"]
 BASWAP_LATLON = (10.099833, 106.208306)
 
 # Fast lookup for zooming (includes BASWAP + others)
@@ -179,13 +179,13 @@ def add_layers(m: folium.Map):
     shared_cluster = MarkerCluster(name="All stations (clusterer)", control=False)
     shared_cluster.add_to(m)
 
-    # Two togglable sub-groups that share the clusterer
-    baswap_sub = FeatureGroupSubGroup(shared_cluster, name="BASWAP stations", show=True)
-    other_sub  = FeatureGroupSubGroup(shared_cluster, name="Other stations",  show=True)
+    # Two togglable sub-groups that share the clusterer — names are localized
+    baswap_sub = FeatureGroupSubGroup(shared_cluster, name=texts["layer_baswap"], show=True)
+    other_sub  = FeatureGroupSubGroup(shared_cluster, name=texts["layer_other"],  show=True)
     m.add_child(baswap_sub)
     m.add_child(other_sub)
 
-    # BASWAP marker — identical behavior, only icon differs
+    # BASWAP marker — identical behavior, only icon differs; tooltip localized
     folium.Marker(
         BASWAP_LATLON,
         tooltip=BASWAP_NAME,
@@ -200,7 +200,7 @@ def add_layers(m: folium.Map):
             icon=folium.Icon(icon="life-ring", prefix="fa", color="gray"),
         ).add_to(other_sub)
 
-    # Exactly two checkboxes
+    # Exactly two checkboxes (localized group names)
     folium.LayerControl(collapsed=False).add_to(m)
 
 # ================== SIDEBAR SETTINGS ==================
@@ -248,25 +248,34 @@ if page == "Overview":
 
     # ---------- RIGHT: Picker + 2×42 table (scrollable) ----------
     with col_right:
-        st.markdown("#### Information ")
+        st.markdown(f"#### {texts['info_panel_title']}")
 
-        # Picker with None + BASWAP + others
-        station_options = ["None", BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
-        default_sel = st.session_state.get("selected_station", "None")
-        if default_sel not in station_options:
-            default_sel = "None"
+        # Build options with localized "None" and BASWAP name
+        station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
 
-        picked = st.selectbox(
-            label="Pick a station",
-            options=station_options,
-            index=station_options.index(default_sel),
+        # Determine default label from session value
+        current_sel = st.session_state.get("selected_station", None)
+        if current_sel is None:
+            default_label = texts["picker_none"]
+        elif current_sel in station_options_display:
+            default_label = current_sel
+        else:
+            # If previous selection doesn't exist in this language, reset to None
+            default_label = texts["picker_none"]
+
+        picked_label = st.selectbox(
+            label=texts["picker_label"],
+            options=station_options_display,
+            index=station_options_display.index(default_label),
         )
-        st.session_state.selected_station = None if picked == "None" else picked
 
-        # 2×42 table: Station | Warning("-")  (keeps ONLY the 42 'Other' stations)
+        # Normalize: store None or the actual station name
+        st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
+
+        # 2×42 table: localized headers; rows = 42 "Other" stations
         station_names = [s["name"] for s in OTHER_STATIONS]
         warnings_col = ["-"] * len(station_names)
-        table_df = pd.DataFrame({"Station": station_names, "Warning": warnings_col})
+        table_df = pd.DataFrame({texts["table_station"]: station_names, texts["table_warning"]: warnings_col})
         st.dataframe(
             table_df,
             use_container_width=True,
