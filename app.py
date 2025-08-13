@@ -1,10 +1,10 @@
 import re
+import pandas as pd
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
 from datetime import datetime, timedelta
-import pandas as pd
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -40,8 +40,12 @@ for k, v in {
 }.items():
     st.session_state.setdefault(k, v)
 
+# Map/view state
+st.session_state.setdefault("focused_station", None)  # None => fit all buoys
+st.session_state.setdefault("default_zoom", 12)       # zoom when focusing a single station
+
 # ================== STYLES ==================
-MAP_HEIGHT = 520  # ~30% taller than original
+MAP_HEIGHT = 680  # Taller to match the right box
 st.markdown(f"""
 <style>
   header{{visibility:hidden;}}
@@ -181,70 +185,52 @@ def add_layers(m: folium.Map):
 
     folium.LayerControl(collapsed=False).add_to(m)
 
-# ================== SIDEBAR SETTINGS ==================
-def settings_panel(first_date, last_date, default_from, default_to):
-    st.markdown(side_texts["sidebar_header"])
-    st.markdown(side_texts["sidebar_description"])
-    st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
-
-    c1, c2 = st.columns(2)
-    if c1.button(side_texts["sidebar_first_day"]):
-        st.session_state.date_from = first_date
-    if c2.button(side_texts["sidebar_today"]):
-        st.session_state.date_from = default_to
-        st.session_state.date_to = default_to
-
-    # Set defaults if not chosen yet
-    if st.session_state.date_from is None:
-        st.session_state.date_from = default_from
-    if st.session_state.date_to is None:
-        st.session_state.date_to = default_to
-
-    st.date_input(
-        side_texts["sidebar_start_date"],
-        min_value=first_date, max_value=last_date, key="date_from"
-    )
-    st.date_input(
-        side_texts["sidebar_end_date"],
-        min_value=first_date, max_value=last_date, key="date_to"
-    )
-
-    st.multiselect(
-        side_texts["sidebar_summary_stats"],
-        ["Min", "Max", "Median"],
-        default=["Min", "Max", "Median"],
-        key="agg_stats"
-    )
-    if not st.session_state.agg_stats:
-        st.warning(texts["data_dimensions"])
-        st.stop()
+def all_buoy_bounds():
+    """Return SW/NE bounds covering the BASWAP buoy + all OTHER_STATIONS."""
+    pts = [(10.099833, 106.208306)]  # BASWAP buoy
+    pts += [(float(s["lat"]), float(s["lon"])) for s in OTHER_STATIONS]
+    lats = [p[0] for p in pts]
+    lons = [p[1] for p in pts]
+    sw = (min(lats), min(lons))
+    ne = (max(lats), max(lons))
+    return [sw, ne]
 
 # ================== PAGES ==================
 if page == "Overview":
-    # --- Map + Right Table Layout (70/30) ---
+    # --- Two columns layout: 70% map | 30% right table ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # Left: Folium map
-    with col_left:
-        center = [10.2, 106.0]
-        zoom = 8
-        m = folium.Map(location=center, zoom_start=zoom, tiles=None)
-        folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
-        add_layers(m)
-        st_folium(m, width="100%", height=MAP_HEIGHT)
-
-    # Right: Scrollable 2x42 table
+    # ===== RIGHT: Scrollable 2×42 table with Station/Warning + selection controls =====
     with col_right:
         st.markdown("#### Station / Warning")
-        station_names = [s["name"] for s in OTHER_STATIONS]  # 42 names
-        warnings_col = ["-"] * len(station_names)
 
-        table_df = pd.DataFrame({
-            "Station": station_names,
-            "Warning": warnings_col
-        })
+        # Build table rows (42 stations; warnings "-")
+        station_rows = [{"Station": s["name"], "Warning": "-"} for s in OTHER_STATIONS]
+        station_names = [row["Station"] for row in station_rows]
+        # Initialize selection default
+        default_index = 0
+        if st.session_state["focused_station"] in station_names:
+            default_index = station_names.index(st.session_state["focused_station"])
 
-        # Height matches map; scroll appears automatically if needed
+        # Single-select "click" for station
+        selected_name = st.radio(
+            "Click a station to focus the map",
+            station_names,
+            index=default_index,
+            label_visibility="collapsed",
+            key="station_selector",
+        )
+
+        cA, cB = st.columns(2)
+        with cA:
+            if st.button("Focus station"):
+                st.session_state["focused_station"] = selected_name
+        with cB:
+            if st.button("View all buoys"):
+                st.session_state["focused_station"] = None
+
+        # The requested 2×42 table (scrolling if content taller than MAP_HEIGHT)
+        table_df = pd.DataFrame(station_rows)
         st.dataframe(
             table_df,
             use_container_width=True,
@@ -252,13 +238,32 @@ if page == "Overview":
             height=MAP_HEIGHT
         )
 
+    # ===== LEFT: Folium map, view set from session_state (no page navigation) =====
+    with col_left:
+        # Create map with a neutral center; we'll set view below
+        m = folium.Map(location=[10.2, 106.0], zoom_start=8, tiles=None)
+        folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
+
+        # Default view: fit to bounds of all buoys; focused view: center + zoom
+        if st.session_state["focused_station"] is None:
+            m.fit_bounds(all_buoy_bounds())
+        else:
+            focus = next((s for s in OTHER_STATIONS if s["name"] == st.session_state["focused_station"]), None)
+            if focus:
+                m.location = [float(focus["lat"]), float(focus["lon"])]
+                m.zoom_start = st.session_state["default_zoom"]
+
+        # Add layers & render
+        add_layers(m)
+        st_folium(m, width="100%", height=MAP_HEIGHT)
+
     # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # Defaults for stats window
+    # --- Overall stats for current window (defaults to last month) ---
     if st.session_state.date_from is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.date_to is None:
@@ -270,7 +275,7 @@ if page == "Overview":
 
     st.divider()
 
-    # Settings expander
+    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
@@ -283,7 +288,7 @@ if page == "Overview":
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
 
-    # Charts
+    # --- Charts: ONLY Hourly and Daily (Raw removed) ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
@@ -304,7 +309,6 @@ if page == "Overview":
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
-
 
 else:
     st.title(texts["app_title"])
