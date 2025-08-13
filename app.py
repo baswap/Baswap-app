@@ -3,7 +3,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
-from datetime import datetime, timedelta  # <-- timedelta for 1-month default
+from datetime import datetime, timedelta
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -29,12 +29,13 @@ LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# Session defaults
+# ================== SESSION DEFAULTS ==================
 for k, v in {
     "target_col": COL_NAMES[0],
-    "date_from": None,
-    "date_to": None,
+    "date_from": None,      # will be set to last 1 month after data loads
+    "date_to": None,        # will be set to latest date after data loads
     "agg_stats": ["Min", "Max", "Median"],
+    "table_cols": COL_NAMES,
 }.items():
     st.session_state.setdefault(k, v)
 
@@ -180,17 +181,7 @@ def add_layers(m: folium.Map):
     folium.LayerControl(collapsed=False).add_to(m)
 
 # ================== SIDEBAR SETTINGS ==================
-def settings_panel(first_date, last_date):
-    # Default to latest 1 month (bounded by first_date)
-    default_from = max(first_date, last_date - timedelta(days=30))
-    if st.session_state.date_from is None and st.session_state.date_to is None:
-        st.session_state.date_from = default_from
-        st.session_state.date_to = last_date
-    elif st.session_state.date_from is None:
-        st.session_state.date_from = default_from
-    elif st.session_state.date_to is None:
-        st.session_state.date_to = last_date
-
+def settings_panel(first_date, last_date, default_from, default_to):
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
@@ -199,17 +190,29 @@ def settings_panel(first_date, last_date):
     if c1.button(side_texts["sidebar_first_day"]):
         st.session_state.date_from = first_date
     if c2.button(side_texts["sidebar_today"]):
-        st.session_state.date_from = max(first_date, last_date - timedelta(days=30))
-        st.session_state.date_to = last_date
+        st.session_state.date_from = default_to
+        st.session_state.date_to = default_to
 
-    st.date_input(side_texts["sidebar_start_date"], min_value=first_date, max_value=last_date, key="date_from")
-    st.date_input(side_texts["sidebar_end_date"], min_value=first_date, max_value=last_date, key="date_to")
+    # Set defaults if not chosen yet
+    if st.session_state.date_from is None:
+        st.session_state.date_from = default_from
+    if st.session_state.date_to is None:
+        st.session_state.date_to = default_to
+
+    st.date_input(
+        side_texts["sidebar_start_date"],
+        min_value=first_date, max_value=last_date, key="date_from"
+    )
+    st.date_input(
+        side_texts["sidebar_end_date"],
+        min_value=first_date, max_value=last_date, key="date_to"
+    )
 
     st.multiselect(
         side_texts["sidebar_summary_stats"],
         ["Min", "Max", "Median"],
         default=["Min", "Max", "Median"],
-        key="agg_stats",
+        key="agg_stats"
     )
     if not st.session_state.agg_stats:
         st.warning(texts["data_dimensions"])
@@ -225,42 +228,59 @@ if page == "Overview":
     add_layers(m)
     st_folium(m, width="100%", height=MAP_HEIGHT)
 
-    # --- Stats & charts ---
+    # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
-    # Use actual min/max in the data for date bounds
+    # Use actual min/max from data
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
+    one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # Settings panel (sets default to latest 1 month)
+    # --- Overall stats for current window (defaults to last month) ---
+    # Ensure defaults are set before computing
+    if st.session_state.date_from is None:
+        st.session_state.date_from = one_month_ago
+    if st.session_state.date_to is None:
+        st.session_state.date_to = last_date
+
+    stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    st.markdown(f"### 📊 {texts['overall_stats_title']}")
+    display_statistics(stats_df, st.session_state.target_col)
+
     st.divider()
+
+    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
-        settings_panel(first_date, last_date)
+        settings_panel(first_date, last_date, one_month_ago, last_date)
 
-    date_from = st.session_state.date_from or max(first_date, last_date - timedelta(days=30))
-    date_to = st.session_state.date_to or last_date
+    # Use (possibly updated) dates
+    date_from = st.session_state.date_from
+    date_to = st.session_state.date_to
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
-
     filtered_df = filter_data(df, date_from, date_to)
 
-    st.markdown(f"### 📊 {texts['overall_stats_title']}")
-    display_statistics(filtered_df, target_col)
-
+    # --- Charts: ONLY Hourly and Daily (Raw removed) ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
-        tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
+        tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
+
         with tabs[0]:
-            plot_line_chart(filtered_df, target_col, "None")
+            hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
+            plot_line_chart(hourly, target_col, "Hour")
+
         with tabs[1]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs), target_col, "Hour")
-        with tabs[2]:
-            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs), target_col, "Day")
+            daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
+            plot_line_chart(daily, target_col, "Day")
 
     st.divider()
-    # Removed raw data table per your request
-
+    st.subheader(texts["data_table"])
+    st.multiselect(texts["columns_select"], options=COL_NAMES,
+                   default=st.session_state.table_cols, key="table_cols")
+    table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
+    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
+    st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
 
 else:
