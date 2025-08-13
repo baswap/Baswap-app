@@ -1,9 +1,9 @@
 import re
 import streamlit as st
 import folium
+from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
 from datetime import datetime
-from streamlit_folium import st_folium
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
@@ -85,64 +85,64 @@ STATIONS_BY_NAME = {s["name"]: s for s in OTHER_STATIONS}
 STATIONS_BY_SLUG = {s["slug"]: s for s in OTHER_STATIONS}
 
 # ================== STYLES ==================
-st.markdown("""
+MAP_HEIGHT = 520  # ~30% taller than original 400
+
+st.markdown(f"""
 <style>
-  header{visibility:hidden;}
-  .custom-header{
+  header{{visibility:hidden;}}
+  .custom-header{{
     position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
     gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
-  }
-  .custom-header .logo{font-size:1.65rem;font-weight:600;color:#fff;}
-  .custom-header .nav{display:flex;gap:1rem;align-items:center;}
-  .custom-header .nav a{ text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;border-bottom:2px solid transparent; }
-  .custom-header .nav a.active{border-bottom-color:#fff;font-weight:600;}
+  }}
+  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
+  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
+  .custom-header .nav a{{text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;border-bottom:2px solid transparent;}}
+  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
 
   /* Language dropdown */
-  .lang-dd { position: relative; }
-  .lang-dd summary {
+  .lang-dd {{ position: relative; }}
+  .lang-dd summary {{
     list-style:none; cursor:pointer; outline:none;
     display:inline-flex; align-items:center; gap:.35rem;
     padding:.35rem .6rem; border-radius:999px;
     border:1px solid rgba(255,255,255,.35);
     background:rgba(255,255,255,.12); color:#fff; font-weight:600;
-  }
-  .lang-dd summary::-webkit-details-marker{display:none;}
-  .lang-dd[open] summary{background:rgba(255,255,255,.18);}
-  .lang-menu{
-    position:absolute; right:0; margin-top:.4rem; min-width:160px;
-    background:#fff; color:#111; border-radius:.5rem; box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
-    border:1px solid rgba(0,0,0,.06);
-  }
-  .lang-menu .item, .lang-menu .item:visited{ color:#000 !important; }
-  .lang-menu .item{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }
-  .lang-menu .item:hover{ background:#f2f6ff; }
+  }}
+  .lang-dd summary::-webkit-details-marker{{display:none;}}
+  .lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
+  .lang-menu{{position:absolute; right:0; margin-top:.4rem; min-width:160px; background:#fff; color:#111; border-radius:.5rem; box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200; border:1px solid rgba(0,0,0,.06);}}
+  .lang-menu .item, .lang-menu .item:visited{{ color:#000 !important; }}
+  .lang-menu .item{{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
+  .lang-menu .item:hover{{ background:#f2f6ff; }}
 
-  body>.main{margin-top:4.5rem;}
+  body>.main{{margin-top:4.5rem;}}
 
-  /* Map height ≈520px as fallback */
-  iframe[title="streamlit_folium.st_folium"]{height:520px!important;}
+  /* Map height fallback */
+  iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
 
-  /* RIGHT: vertical scroll list where each row is a full-width bar
-     name on the left, '-' placeholder aligned right */
-  [data-testid="stRadio"] > div[role="radiogroup"]{
-    display:block;
-    max-height:520px; overflow-y:auto; overflow-x:hidden;
-    padding:.5rem; border:1px solid rgba(255,255,255,.08);
-    border-radius:.5rem; background:rgba(255,255,255,.03);
-  }
-  [data-testid="stRadio"] div[role="radio"]{ width:100%; }
-  [data-testid="stRadio"] label{
-    width:100%; display:flex; justify-content:space-between; align-items:center;
-    padding:.6rem .8rem; margin:.3rem 0; border-radius:.5rem;
+  /* ===== Right vertical full-height list ===== */
+  /* Make the radio block fill the right column width and match map height */
+  [data-testid="stRadio"]{{ width:100%; }}
+  [data-testid="stRadio"] > div[role="radiogroup"]{{
+    width:100%;
+    height:{MAP_HEIGHT}px;          /* EXACTLY same as map */
+    overflow-y:auto; overflow-x:hidden;
+    padding:.5rem; margin:0;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:.5rem;
+    background:rgba(255,255,255,.03);
+  }}
+  /* Each option = full-width bar with name on left, '-' on right */
+  [data-testid="stRadio"] div[role="radio"]{{ width:100%; }}
+  [data-testid="stRadio"] label{{
+    width:100%;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:.65rem .85rem; margin:.35rem 0;
+    border-radius:.5rem;
     background:rgba(255,255,255,.06);
-  }
-  [data-testid="stRadio"] label:hover{ background:rgba(255,255,255,.12); }
-  /* put a '-' at the right end of every row */
-  [data-testid="stRadio"] label::after{
-    content:'-';
-    opacity:.75;
-    margin-left:1rem;
-  }
+  }}
+  [data-testid="stRadio"] label:hover{{ background:rgba(255,255,255,.12); }}
+  [data-testid="stRadio"] label::after{{ content:'-'; opacity:.8; margin-left:1rem; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -228,10 +228,9 @@ def settings_panel(first_date, last_date):
 
 # ================== PAGES ==================
 if page == "Overview":
-    MAP_HEIGHT = 520  # ~30% taller than original
     left_col, right_col = st.columns([7, 3], gap="large")  # 70% / 30%
 
-    # --- RIGHT: vertical scroll bar of full-width rows ---
+    # --- RIGHT: full-height vertical list ---
     with right_col:
         names = [s["name"] for s in OTHER_STATIONS]
         default_idx = 0
@@ -240,15 +239,12 @@ if page == "Overview":
                 default_idx = names.index(next(s["name"] for s in OTHER_STATIONS if s["slug"] == st.session_state.focus_slug))
             except Exception:
                 default_idx = 0
-
         choice = st.radio("Stations", options=names, index=default_idx, key="station_radio", label_visibility="collapsed")
         st.session_state.focus_slug = STATIONS_BY_NAME[choice]["slug"]
 
-    # --- LEFT: map centers/zooms on selection (no new tab) ---
+    # --- LEFT: map centers/zooms on selection ---
     with left_col:
-        base_zoom_focus = 11
-        zoom_when_focused = min(18, int(round(base_zoom_focus * 1.2)))  # +20% => 13
-
+        zoom_when_focused = 13  # +20% from 11
         if st.session_state.focus_slug and st.session_state.focus_slug in STATIONS_BY_SLUG:
             center = [
                 STATIONS_BY_SLUG[st.session_state.focus_slug]["lat"],
