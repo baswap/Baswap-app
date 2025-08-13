@@ -87,8 +87,23 @@ st.markdown("""
   .lang-menu .item:hover { background:#f2f6ff; }
   .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
 
+  /* Right scroll panel styling */
+  .station-panel {
+    background: var(--background-color, #111);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: .5rem;
+    padding: .5rem .75rem;
+  }
+  .station-item {
+    padding:.45rem .35rem; border-radius:.35rem; margin-bottom:.25rem;
+    background: rgba(255,255,255,.04);
+  }
+  .station-item:hover { background: rgba(255,255,255,.08); }
+  .station-name { font-weight:600; }
+  .station-ll { opacity:.7; font-size:.85rem; }
+
   body>.main{margin-top:4.5rem;}
-  iframe[title="streamlit_folium.st_folium"]{height:400px!important;}
+  iframe[title="streamlit_folium.st_folium"]{height:520px!important;} /* fallback if needed */
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,12 +185,9 @@ def add_other_station_markers(m: folium.Map):
         return
     cluster = MarkerCluster(name="Other stations").add_to(m)
     for s in OTHER_STATIONS:
-        name = s["name"]
-        lat = float(s["lat"])   # folium expects [lat, lon]
-        lon = float(s["lon"])
         folium.Marker(
-            [lat, lon],
-            tooltip=name,
+            [float(s["lat"]), float(s["lon"])],
+            tooltip=s["name"],
             icon=folium.Icon(icon="life-ring", prefix="fa", color="gray")
         ).add_to(cluster)
     folium.LayerControl(collapsed=False).add_to(m)
@@ -202,23 +214,44 @@ def settings_panel(first_date, last_date):
         st.warning(texts["data_dimensions"])
         st.stop()
 
-# --- Pages ---
+# ========== Pages ==========
 if page == "Overview":
-    # Center/zoom so most stations are visible
-    m = folium.Map(location=[10.2, 106.0], zoom_start=8)
+    # 30% taller map (from ~400px -> ~520px) and 70/30 layout
+    MAP_HEIGHT = 520
 
-    # BASWAP buoy (keep your original droplet icon)
-    folium.Marker(
-        [10.099833, 106.208306],
-        tooltip="BASWAP Buoy",
-        icon=folium.Icon(icon="tint", prefix="fa", color="blue")
-    ).add_to(m)
+    left_col, right_col = st.columns([7, 3], gap="large")
 
-    # Add the hard-coded other stations
-    add_other_station_markers(m)
+    # Map on the LEFT (70% width)
+    with left_col:
+        m = folium.Map(location=[10.2, 106.0], zoom_start=8)
+        # BASWAP buoy (blue droplet)
+        folium.Marker(
+            [10.099833, 106.208306],
+            tooltip="BASWAP Buoy",
+            icon=folium.Icon(icon="tint", prefix="fa", color="blue")
+        ).add_to(m)
+        # Other stations (gray life-ring)
+        add_other_station_markers(m)
 
-    st_folium(m, width="100%", height=400)
+        st_folium(m, width="100%", height=MAP_HEIGHT)
 
+    # Scrollable station list on the RIGHT (30% width)
+    with right_col:
+        st.markdown(f"<div class='station-panel' style='height:{MAP_HEIGHT}px; overflow:auto;'>", unsafe_allow_html=True)
+        st.markdown(f"**{len(OTHER_STATIONS)} stations**", unsafe_allow_html=True)
+        for s in OTHER_STATIONS:
+            st.markdown(
+                f"""
+                <div class="station-item">
+                  <div class="station-name">{s['name']}</div>
+                  <div class="station-ll">{s['lat']:.6f}, {s['lon']:.6f}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ===== rest of your page stays the same =====
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
