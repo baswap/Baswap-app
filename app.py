@@ -77,9 +77,14 @@ st.markdown("""
     box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
     border:1px solid rgba(0,0,0,.06);
   }
+  /* Make dropdown words black (and stay black even after visited) */
+  .lang-menu .item,
+  .lang-menu .item:visited {
+    color:#000 !important;
+  }
   .lang-menu .item {
     display:block; padding:.5rem .65rem; border-radius:.4rem;
-    text-decoration:none; color:#111; font-weight:500;
+    text-decoration:none; font-weight:500;
   }
   .lang-menu .item:hover { background:#f2f6ff; }
   .lang-menu .item.is-current { background:#eef6ff; font-weight:700; }
@@ -104,8 +109,8 @@ st.markdown(f"""
         <span class="chev" aria-hidden="true">▾</span>
       </summary>
       <div class="lang-menu" role="menu">
-        <a href="?page={page}&lang=en" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="?page={page}&lang=vi" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
+        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
+        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
       </div>
     </details>
   </div>
