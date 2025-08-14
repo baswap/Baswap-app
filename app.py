@@ -389,7 +389,7 @@ if page == "Overview":
     st.subheader(texts["data_table"])
     st.multiselect(texts["columns_select"], options=COL_NAMES,
                    default=st.session_state.table_cols, key="table_cols")
-    table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
+    table_cols = [TIMESTAMP_COL] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
