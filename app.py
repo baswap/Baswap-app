@@ -108,8 +108,8 @@ st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
   <div class="nav">
-    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
-    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
+    <a href="/?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
+    <a href="/?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
   </div>
   <div class="nav" style="margin-left:auto;">
     <details class="lang-dd">
@@ -118,8 +118,8 @@ st.markdown(f"""
         <span class="chev" aria-hidden="true">▾</span>
       </summary>
       <div class="lang-menu" role="menu">
-        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
+        <a href="/?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
+        <a href="/?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
       </div>
     </details>
   </div>
