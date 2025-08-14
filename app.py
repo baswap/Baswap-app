@@ -245,14 +245,19 @@ def settings_panel(first_date, last_date, default_from, default_to):
         min_value=first_date, max_value=last_date, key="date_to"
     )
 
+    obs_label = texts.get("observed_label", "Observed")
+
+    # keep UI state separate from internal aggregator keys
     st.multiselect(
         side_texts["sidebar_summary_stats"],
-        ["Min", "Max", "Median"],
-        default=["Min", "Max", "Median"],
-        key="agg_stats"
+        [obs_label],                # only one option visible
+        default=[obs_label],
+        key="agg_stats_display"
     )
+    # map UI state to internal keys expected by apply_aggregation()
+    st.session_state.agg_stats = ["Max"] if st.session_state.agg_stats_display else []
     if not st.session_state.agg_stats:
-        st.warning(texts["data_dimensions"])
+        st.warning(texts.get("must_pick_stat", "Pick at least one summary statistic."))
         st.stop()
 
 # ================== PAGES ==================
@@ -374,11 +379,11 @@ if page == "Overview":
 
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour")
+            plot_line_chart(hourly, target_col, "Hour", lang=lang)
 
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day")
+            plot_line_chart(daily, target_col, "Day", lang=lang)
 
     st.divider()
     st.subheader(texts["data_table"])
