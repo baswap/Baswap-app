@@ -6,13 +6,12 @@ from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster, FeatureGroupSubGroup
 from datetime import datetime, timedelta
 
-from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES, TIMESTAMP_COL
+from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
-# ================== PAGE CONFIG ==================
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
@@ -389,7 +388,7 @@ if page == "Overview":
     st.subheader(texts["data_table"])
     st.multiselect(texts["columns_select"], options=COL_NAMES,
                    default=st.session_state.table_cols, key="table_cols")
-    table_cols = [TIMESTAMP_COL] + st.session_state.table_cols
+    table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
     st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
