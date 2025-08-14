@@ -13,6 +13,7 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
 # ================== PAGE CONFIG ==================
+# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 # Works on both newer and older Streamlit versions
@@ -217,26 +218,42 @@ def add_layers(m: folium.Map):
     folium.LayerControl(collapsed=False).add_to(m)
 
 # ================== SIDEBAR SETTINGS ==================
-def settings_panel(first_date, last_date, default_from, default_to): 
-st.markdown(side_texts["sidebar_header"]) 
-st.markdown(side_texts["sidebar_description"]) 
-st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col") 
-c1, c2 = st.columns(2) 
-if c1.button(side_texts["sidebar_first_day"]): 
-st.session_state.date_from = first_date 
-if c2.button(side_texts["sidebar_today"]): 
-st.session_state.date_from = default_to 
-st.session_state.date_to = default_to 
-# Set defaults if not chosen yet 
-if st.session_state.date_from is None: 
-st.session_state.date_from = default_from 
-if st.session_state.date_to is None: 
-st.session_state.date_to = default_to st.date_input( side_texts["sidebar_start_date"], min_value=first_date, max_value=last_date, key="date_from" ) 
-st.date_input( side_texts["sidebar_end_date"], min_value=first_date, max_value=last_date, key="date_to" ) 
-st.multiselect( side_texts["sidebar_summary_stats"], ["Min", "Max", "Median"], default=["Min", "Max", "Median"], key="agg_stats" ) 
-if not st.session_state.agg_stats: 
-st.warning(texts["data_dimensions"]) 
-st.stop()
+def settings_panel(first_date, last_date, default_from, default_to):
+    st.markdown(side_texts["sidebar_header"])
+    st.markdown(side_texts["sidebar_description"])
+    st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
+
+    c1, c2 = st.columns(2)
+    if c1.button(side_texts["sidebar_first_day"]):
+        st.session_state.date_from = first_date
+    if c2.button(side_texts["sidebar_today"]):
+        st.session_state.date_from = default_to
+        st.session_state.date_to = default_to
+
+    # Set defaults if not chosen yet
+    if st.session_state.date_from is None:
+        st.session_state.date_from = default_from
+    if st.session_state.date_to is None:
+        st.session_state.date_to = default_to
+
+    st.date_input(
+        side_texts["sidebar_start_date"],
+        min_value=first_date, max_value=last_date, key="date_from"
+    )
+    st.date_input(
+        side_texts["sidebar_end_date"],
+        min_value=first_date, max_value=last_date, key="date_to"
+    )
+
+    st.multiselect(
+        side_texts["sidebar_summary_stats"],
+        ["Min", "Max", "Median"],
+        default=["Min", "Max", "Median"],
+        key="agg_stats"
+    )
+    if not st.session_state.agg_stats:
+        st.warning(texts["data_dimensions"])
+        st.stop()
 
 # ================== PAGES ==================
 if page == "Overview":
