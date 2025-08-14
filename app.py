@@ -34,6 +34,25 @@ def _as_scalar(v, default):
 
 page = _as_scalar(params.get("page"), "Overview")
 lang = _as_scalar(params.get("lang"), "vi")
+# --- Querystring helpers (drop-in) ---
+def get_qs():
+    try:
+        return dict(st.query_params)             # Streamlit ≥1.32
+    except Exception:
+        out = {}
+        for k, v in st.experimental_get_query_params().items():  # older Streamlit
+            out[k] = v[0] if isinstance(v, (list, tuple)) else v
+        return out
+
+def set_qs(**updates):
+    qs = get_qs()
+    qs.update({k: v for k, v in updates.items() if v is not None})
+    try:
+        st.query_params.clear()
+        st.query_params.update(qs)
+    except Exception:
+        st.experimental_set_query_params(**qs)
+    st.rerun()
 
 # Validate
 if page not in ("Overview", "About"):
@@ -108,29 +127,41 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ================== HEADER ==================
+# ================== HEADER ==================
+bar = st.container()
+c1, c2, cspacer, clang = bar.columns([1.2, 1.0, 10, 2.6])
+
+with c1:
+    st.button(
+        texts['nav_overview'],
+        type="secondary",
+        use_container_width=True,
+        on_click=set_qs,
+        kwargs={"page": "Overview", "lang": lang},
+    )
+
+with c2:
+    st.button(
+        texts['nav_about'],
+        type="secondary",
+        use_container_width=True,
+        on_click=set_qs,
+        kwargs={"page": "About", "lang": lang},
+    )
+
+with clang:
+    # small, URL-driven language switch
+    st.selectbox(
+        label=toggle_tooltip or "Language",
+        options=["en", "vi"],
+        index=0 if lang == "en" else 1,
+        key="__lang_select__",
+        format_func=lambda x: {"en": "English", "vi": "Tiếng Việt"}[x],
+        on_change=lambda: set_qs(page=page, lang=st.session_state["__lang_select__"]),
+    )
+
 active_overview = "active" if page == "Overview" else ""
 active_about = "active" if page == "About" else ""
-st.markdown(f"""
-<div class="custom-header">
-  <div class="logo">BASWAP</div>
-  <div class="nav">
-    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
-    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
-  </div>
-  <div class="nav" style="margin-left:auto;">
-    <details class="lang-dd">
-      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
-        <span class="label">{current_lang_label}</span>
-        <span class="chev" aria-hidden="true">▾</span>
-      </summary>
-      <div class="lang-menu" role="menu">
-        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
-      </div>
-    </details>
-  </div>
-</div>
-""", unsafe_allow_html=True)
 
 # ================== DATA BACKENDS ==================
 dm = DriveManager(SECRET_ACC)
