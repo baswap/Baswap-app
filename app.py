@@ -15,7 +15,6 @@ from plotting import plot_line_chart, display_statistics
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# Query params & language/page selection
 params = st.query_params
 page = params.get("page", "Overview")
 lang = params.get("lang", "vi")
@@ -31,18 +30,6 @@ LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# --- Clear-cache action via query param (single-use) ---
-if params.get("clear_cache") == "1" and not st.session_state.get("cleared_via_query"):
-    st.cache_data.clear()
-    st.session_state["cleared_via_query"] = True
-    # Optional toast/notice
-    try:
-        st.toast(texts["clear_cache"])
-    except Exception:
-        st.success(texts["clear_cache"])
-    # Clean URL to avoid re-triggering
-    st.query_params = {"page": page, "lang": lang}
-
 # ================== SESSION DEFAULTS ==================
 for k, v in {
     "target_col": COL_NAMES[0],
@@ -55,7 +42,7 @@ for k, v in {
     st.session_state.setdefault(k, v)
 
 # ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 720             # tall map
+MAP_HEIGHT = 720            # tall map
 TABLE_HEIGHT = MAP_HEIGHT - 130  # adjust to align visually with map
 st.markdown(f"""
 <style>
@@ -64,40 +51,13 @@ st.markdown(f"""
     position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
     gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
   }}
-  /* BASWAP logo bigger by 30% */
-  .custom-header .logo{{
-    font-size:2.145rem; /* 1.65rem × 1.3 */
-    font-weight:600;
-    color:#fff;
-  }}
-  /* Overview / About bigger by 40% */
+  .custom-header .logo{{font-size:2.1rem;font-weight:600;color:#fff;}}
+  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
   .custom-header .nav a{{
-    text-decoration:none;
-    font-size:1.26rem; /* 0.9rem × 1.4 */
-    color:#fff;
-    padding-bottom:0.25rem;
+    text-decoration:none;font-size:1.2rem;color:#fff;padding-bottom:0.25rem;
     border-bottom:2px solid transparent;
   }}
   .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
-
-  /* Clear-cache ("refresh") header button */
-  .btn-clear {{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:36px;
-    height:36px;
-    border-radius:50%;
-    text-decoration:none;
-    border:1px solid rgba(255,255,255,.35);
-    background:rgba(255,255,255,.12);
-    color:#fff;
-    font-weight:700;
-    font-size:1rem; /* readable but subtle */
-    transition: background .15s ease, transform .05s ease;
-  }}
-  .btn-clear:hover {{ background:rgba(255,255,255,.18); }}
-  .btn-clear:active {{ transform: translateY(1px); }}
 
   /* Language dropdown */
   .lang-dd {{ position: relative; }}
@@ -137,18 +97,7 @@ st.markdown(f"""
     <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
     <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
   </div>
-
-  <!-- Actions on the right -->
-  <div class="nav" style="margin-left:auto; display:flex; align-items:center; gap:.5rem;">
-    <!-- Clear Cache / Refresh button -->
-    <a
-      href="?page={page}&lang={lang}&clear_cache=1"
-      title="{texts['clear_cache']}"
-      class="btn-clear"
-      aria-label="{texts['clear_cache']}"
-    >⟳</a>
-
-    <!-- Language dropdown -->
+  <div class="nav" style="margin-left:auto;">
     <details class="lang-dd">
       <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
         <span class="label">{current_lang_label}</span>
@@ -212,7 +161,7 @@ OTHER_STATIONS = [
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
-# BASWAP buoy name from translations
+# BASWAP buoy name comes from translations
 BASWAP_NAME = texts["baswap_name"]
 BASWAP_LATLON = (10.099833, 106.208306)
 
@@ -297,7 +246,7 @@ if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Picker + 3-column table (scrollable) ----------
+    # ---------- RIGHT: Picker + 2×42 table (scrollable) ----------
     with col_right:
         st.markdown(f"#### {texts['info_panel_title']}")
 
@@ -323,14 +272,10 @@ if page == "Overview":
         # Normalize: store None or the actual station name
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # 3-column table: Station | Current Measurement | Warning
+        # 2×42 table: localized headers; rows = 42 "Other" stations
         station_names = [s["name"] for s in OTHER_STATIONS]
-        placeholder_col = ["-"] * len(station_names)
-        table_df = pd.DataFrame({
-            texts["table_station"]: station_names,
-            texts["current_measurement"]: placeholder_col,
-            texts["table_warning"]: placeholder_col
-        })
+        warnings_col = ["-"] * len(station_names)
+        table_df = pd.DataFrame({texts["table_station"]: station_names, texts["table_warning"]: warnings_col})
         st.dataframe(
             table_df,
             use_container_width=True,
@@ -420,8 +365,7 @@ if page == "Overview":
     table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
-
-    # (Removed the bottom Clear Cache button — it now lives in the header)
+    st.button(texts["clear_cache"], help=texts["toggle_tooltip"], on_click=st.cache_data.clear)
 
 else:
     st.title(texts["app_title"])
