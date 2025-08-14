@@ -17,13 +17,17 @@ from plotting import plot_line_chart, display_statistics
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 # Works on both newer and older Streamlit versions
-try:
-    params = st.query_params  # Newer API
-except Exception:
-    params = st.experimental_get_query_params()  # Fallback
+def _read_query_params():
+    try:
+        # Streamlit >= 1.30: mapping-like; cast to dict so .get works identically
+        return dict(st.query_params)
+    except Exception:
+        # Older versions
+        return st.experimental_get_query_params()
+
+params = _read_query_params()
 
 def _as_scalar(v, default):
-    # Streamlit may return list-like values; pick the first if so
     if isinstance(v, (list, tuple)):
         return v[0] if v else default
     return v if v is not None else default
@@ -31,10 +35,12 @@ def _as_scalar(v, default):
 page = _as_scalar(params.get("page"), "Overview")
 lang = _as_scalar(params.get("lang"), "vi")
 
+# Validate
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
+
 
 
 texts = APP_TEXTS[lang]
