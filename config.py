@@ -50,6 +50,9 @@ APP_TEXTS = {
         "table_station": "Station",
         "table_warning": "Warning",
         "current_measurement": "Current Measurement",
+        "observed_label": "Observed",
+        "predicted_label": "Predicted",
+        "legend_aggregation": "Aggregation",
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -80,6 +83,9 @@ APP_TEXTS = {
         "table_station": "Trạm",
         "table_warning": "Cảnh báo",
         "current_measurement": "Chỉ số hiện tại",
+        "observed_label": "Quan trắc",
+        "predicted_label": "Dự báo",
+        "legend_aggregation": "Phân loại",
     }
 }
 
