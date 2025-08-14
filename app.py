@@ -217,47 +217,26 @@ def add_layers(m: folium.Map):
     folium.LayerControl(collapsed=False).add_to(m)
 
 # ================== SIDEBAR SETTINGS ==================
-def settings_panel(first_date, last_date, default_from, default_to):
-    st.markdown(side_texts["sidebar_header"])
-    st.markdown(side_texts["sidebar_description"])
-    st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
-
-    c1, c2 = st.columns(2)
-    if c1.button(side_texts["sidebar_first_day"]):
-        st.session_state.date_from = first_date
-    if c2.button(side_texts["sidebar_today"]):
-        st.session_state.date_from = default_to
-        st.session_state.date_to = default_to
-
-    # Set defaults if not chosen yet
-    if st.session_state.date_from is None:
-        st.session_state.date_from = default_from
-    if st.session_state.date_to is None:
-        st.session_state.date_to = default_to
-
-    st.date_input(
-        side_texts["sidebar_start_date"],
-        min_value=first_date, max_value=last_date, key="date_from"
-    )
-    st.date_input(
-        side_texts["sidebar_end_date"],
-        min_value=first_date, max_value=last_date, key="date_to"
-    )
-
-    obs_label = texts.get("observed_label", "Observed")
-
-    # keep UI state separate from internal aggregator keys
-    st.multiselect(
-        side_texts["sidebar_summary_stats"],
-        [obs_label],                # only one option visible
-        default=[obs_label],
-        key="agg_stats_display"
-    )
-    # map UI state to internal keys expected by apply_aggregation()
-    st.session_state.agg_stats = ["Max"] if st.session_state.agg_stats_display else []
-    if not st.session_state.agg_stats:
-        st.warning(texts.get("must_pick_stat", "Pick at least one summary statistic."))
-        st.stop()
+def settings_panel(first_date, last_date, default_from, default_to): 
+st.markdown(side_texts["sidebar_header"]) 
+st.markdown(side_texts["sidebar_description"]) 
+st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col") 
+c1, c2 = st.columns(2) 
+if c1.button(side_texts["sidebar_first_day"]): 
+st.session_state.date_from = first_date 
+if c2.button(side_texts["sidebar_today"]): 
+st.session_state.date_from = default_to 
+st.session_state.date_to = default_to 
+# Set defaults if not chosen yet 
+if st.session_state.date_from is None: 
+st.session_state.date_from = default_from 
+if st.session_state.date_to is None: 
+st.session_state.date_to = default_to st.date_input( side_texts["sidebar_start_date"], min_value=first_date, max_value=last_date, key="date_from" ) 
+st.date_input( side_texts["sidebar_end_date"], min_value=first_date, max_value=last_date, key="date_to" ) 
+st.multiselect( side_texts["sidebar_summary_stats"], ["Min", "Max", "Median"], default=["Min", "Max", "Median"], key="agg_stats" ) 
+if not st.session_state.agg_stats: 
+st.warning(texts["data_dimensions"]) 
+st.stop()
 
 # ================== PAGES ==================
 if page == "Overview":
@@ -378,11 +357,11 @@ if page == "Overview":
 
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour", lang=lang)
+            plot_line_chart(hourly, target_col, "Hour")
 
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day", lang=lang)
+            plot_line_chart(daily, target_col, "Day")
 
     st.divider()
     st.subheader(texts["data_table"])
