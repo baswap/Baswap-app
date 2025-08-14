@@ -34,15 +34,13 @@ APP_TEXTS = {
         "columns_select": "Select columns to display in the table:",
         "data_dimensions": "Data Dimension (row, column):",
         "clear_cache": "Clear Cache",
-        "toggle_button": "English",  # Label to switch language to Vietnamese.
-        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ",  # Tooltip in Vietnamese.
+        "toggle_button": "English",  
+        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ", 
         "nav_overview": "Overview",
         "nav_about":    "About",
         "overall_stats_title": "Overall Statistics",
         "axis_value":    "Value",
         "axis_timestamp":"Timestamp",
-
-        # === NEW: texts for your picker/info panel/layers/table ===
         "info_panel_title": "Information",
         "picker_label": "Pick a station",
         "picker_none": "None",
@@ -51,6 +49,7 @@ APP_TEXTS = {
         "layer_other": "Other stations",
         "table_station": "Station",
         "table_warning": "Warning",
+        "current_measurement": "Current Measurement",
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -65,15 +64,13 @@ APP_TEXTS = {
         "columns_select": "Chọn các cột để hiển thị trong bảng:",
         "data_dimensions": "Kích thước dữ liệu (hàng, cột):",
         "clear_cache": "Xóa Bộ Nhớ Cache",
-        "toggle_button": "Tiếng Việt",  # Label to switch language to English.
+        "toggle_button": "Tiếng Việt", 
         "toggle_tooltip": "Click to change language",
         "nav_overview": "Tổng quan",
         "nav_about":    "Giới thiệu",
         "overall_stats_title": "Thống kê chung",
         "axis_value":    "Giá trị",
         "axis_timestamp":"Thời gian",
-
-        # === MỚI: văn bản cho bộ chọn/trình bày thông tin/layers/bảng ===
         "info_panel_title": "Thông tin",
         "picker_label": "Chọn trạm",
         "picker_none": "Không chọn",
@@ -82,6 +79,7 @@ APP_TEXTS = {
         "layer_other": "Các trạm khác",
         "table_station": "Trạm",
         "table_warning": "Cảnh báo",
+        "current_measurement": "Chỉ số hiện tại",
     }
 }
 
