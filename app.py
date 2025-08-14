@@ -13,32 +13,29 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
 # ================== PAGE CONFIG ==================
+# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# Read query params compatibly across Streamlit versions
-def _qp() -> dict:
-    try:
-        # Newer API (1.30+): st.query_params behaves like a dict[str, str]
-        q = st.query_params
-        # Some builds expose .to_dict(); fall back to dict() otherwise
-        return q.to_dict() if hasattr(q, "to_dict") else dict(q)
-    except Exception:
-        # Older API: returns dict[str, list[str]]
-        return st.experimental_get_query_params() or {}
+# Works on both newer and older Streamlit versions
+try:
+    params = st.query_params  # Newer API
+except Exception:
+    params = st.experimental_get_query_params()  # Fallback
 
-def _as_str(value, default):
-    # Normalize listy values from experimental_get_query_params
-    if isinstance(value, (list, tuple)):
-        return value[0] if value else default
-    return default if value is None else str(value)
+def _as_scalar(v, default):
+    # Streamlit may return list-like values; pick the first if so
+    if isinstance(v, (list, tuple)):
+        return v[0] if v else default
+    return v if v is not None else default
 
-_params = _qp()
-page = _as_str(_params.get("page"), "Overview")
-lang = _as_str(_params.get("lang"), "vi")
+page = _as_scalar(params.get("page"), "Overview")
+lang = _as_scalar(params.get("lang"), "vi")
 
-# Guardrails
-page = page if page in ("Overview", "About") else "Overview"
-lang = lang if lang in ("en", "vi") else "vi"
+if page not in ("Overview", "About"):
+    page = "Overview"
+if lang not in ("en", "vi"):
+    lang = "vi"
+
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
@@ -59,62 +56,50 @@ for k, v in {
     st.session_state.setdefault(k, v)
 
 # ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 720
-TABLE_HEIGHT = MAP_HEIGHT - 130
+MAP_HEIGHT = 720            # tall map
+TABLE_HEIGHT = MAP_HEIGHT - 130  # adjust to align visually with map
 st.markdown(f"""
 <style>
-  /* Hide Streamlit's own header completely (not just invisible) */
-  header {{ display: none !important; }}
-
-  /* Establish a sane stacking context for the app */
-  .stApp {{ position: relative; z-index: 0; }}
-
-  /* Your fixed header should be above any iframe (folium map) */
-  .custom-header {{
-    position: fixed; top: 0; left: 0; right: 0; height: 4.5rem;
-    display: flex; align-items: center; gap: 2rem; padding: 0 1rem;
-    background: #09c; box-shadow: 0 1px 2px rgba(0,0,0,.1);
-    z-index: 2147483647; /* max-ish to beat iframes */
+  header{{visibility:hidden;}}
+  .custom-header{{
+    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
+    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
   }}
-  .custom-header .logo {{ font-size: 2.1rem; font-weight: 600; color: #fff; }}
-  .custom-header .nav {{ display: flex; gap: 1rem; align-items: center; }}
-  .custom-header .nav a {{
-    text-decoration: none; font-size: 1.2rem; color: #fff; padding-bottom: .25rem;
-    border-bottom: 2px solid transparent;
+  .custom-header .logo{{font-size:2.1rem;font-weight:600;color:#fff;}}
+  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
+  .custom-header .nav a{{
+    text-decoration:none;font-size:1.2rem;color:#fff;padding-bottom:0.25rem;
+    border-bottom:2px solid transparent;
   }}
-  .custom-header .nav a.active {{ border-bottom-color: #fff; font-weight: 600; }}
+  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
 
   /* Language dropdown */
   .lang-dd {{ position: relative; }}
   .lang-dd summary {{
-    list-style: none; cursor: pointer; outline: none;
-    display: inline-flex; align-items: center; gap: .35rem;
-    padding: .35rem .6rem; border-radius: 999px;
-    border: 1px solid rgba(255,255,255,.35);
-    background: rgba(255,255,255,.12); color: #fff; font-weight: 600;
+    list-style:none; cursor:pointer; outline:none;
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.35rem .6rem; border-radius:999px;
+    border:1px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.12); color:#fff; font-weight:600;
   }}
-  .lang-dd summary::-webkit-details-marker{{ display: none; }}
-  .lang-dd[open] summary{{ background: rgba(255,255,255,.18); }}
+  .lang-dd summary::-webkit-details-marker{{display:none;}}
+  .lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
   .lang-menu {{
-    position: absolute; right: 0; margin-top: .4rem; min-width: 160px;
-    background: #fff; color: #111; border-radius: .5rem;
-    box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: .4rem; z-index: 2147483647;
-    border: 1px solid rgba(0,0,0,.06);
+    position:absolute; right:0; margin-top:.4rem; min-width:160px;
+    background:#fff; color:#111; border-radius:.5rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
+    border:1px solid rgba(0,0,0,.06);
   }}
-  .lang-menu .item, .lang-menu .item:visited {{ color: #000 !important; }}
-  .lang-menu .item {{ display: block; padding: .5rem .65rem; border-radius: .4rem; text-decoration: none; font-weight: 500; }}
-  .lang-menu .item:hover {{ background: #f2f6ff; }}
+  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
+  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
+  .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-  /* Shift main content down so the fixed header doesn't overlap it */
-  body > .main {{ margin-top: 4.5rem !important; }}
+  body>.main{{margin-top:4.5rem;}}
 
-  /* Ensure the folium iframe never overlaps the header in stacking order */
-  iframe[title="streamlit_folium.st_folium"] {{
-    position: relative; z-index: 0 !important; height: {MAP_HEIGHT}px !important;
-  }}
+  /* Ensure folium map height */
+  iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
 </style>
 """, unsafe_allow_html=True)
-
 
 # ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
@@ -123,8 +108,8 @@ st.markdown(f"""
 <div class="custom-header">
   <div class="logo">BASWAP</div>
   <div class="nav">
-    <a href="./?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
-    <a href="./?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
+    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
   </div>
   <div class="nav" style="margin-left:auto;">
     <details class="lang-dd">
@@ -133,8 +118,8 @@ st.markdown(f"""
         <span class="chev" aria-hidden="true">▾</span>
       </summary>
       <div class="lang-menu" role="menu">
-        <a href="./?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="./?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
+        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
+        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
       </div>
     </details>
   </div>
