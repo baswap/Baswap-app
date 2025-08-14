@@ -13,15 +13,29 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
 # ================== PAGE CONFIG ==================
+# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-params = st.query_params
-page = params.get("page", "Overview")
-lang = params.get("lang", "vi")
+# Works on both newer and older Streamlit versions
+try:
+    params = st.query_params  # Newer API
+except Exception:
+    params = st.experimental_get_query_params()  # Fallback
+
+def _as_scalar(v, default):
+    # Streamlit may return list-like values; pick the first if so
+    if isinstance(v, (list, tuple)):
+        return v[0] if v else default
+    return v if v is not None else default
+
+page = _as_scalar(params.get("page"), "Overview")
+lang = _as_scalar(params.get("lang"), "vi")
+
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
+
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
