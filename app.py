@@ -15,13 +15,28 @@ from plotting import plot_line_chart, display_statistics
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-params = st.query_params
-page = params.get("page", "Overview")
-lang = params.get("lang", "vi")
+# --- robust param getter that handles str OR list[str] ---
+def _get_param(qp, key, default):
+    val = qp.get(key, default)
+    if isinstance(val, list):
+        return val[0] if val else default
+    return val
+
+# Prefer st.query_params when available; fall back to experimental in older versions
+try:
+    qp = st.query_params
+except AttributeError:
+    qp = st.experimental_get_query_params()
+
+page = _get_param(qp, "page", "Overview")
+lang = _get_param(qp, "lang", "vi")
+
+# sanitize
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
+
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
