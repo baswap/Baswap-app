@@ -17,12 +17,26 @@ st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 params = st.query_params
 
+# --- Query params (robust across Streamlit versions)
 def _qp_get(key: str, default: str) -> str:
-    """Get query param as a string, normalizing list values."""
-    v = params.get(key, default)
+    # Try the new API first
+    try:
+        v = st.query_params.get(key, None)
+    except Exception:
+        v = None
+
+    # Fallback to the old experimental API if needed
+    if v is None:
+        try:
+            v = st.experimental_get_query_params().get(key, None)  # returns list[str]
+        except Exception:
+            v = None
+
+    if v is None:
+        return default
     if isinstance(v, list):
         return v[0] if v else default
-    return v
+    return str(v)
 
 page = _qp_get("page", "Overview")
 lang = _qp_get("lang", "vi")
