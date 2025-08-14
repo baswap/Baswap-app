@@ -260,28 +260,34 @@ if page == "Overview":
         elif current_sel in station_options_display:
             default_label = current_sel
         else:
-            # If previous selection doesn't exist in this language, reset to None
-            default_label = texts["picker_none"]
+    # If previous selection doesn't exist in this language, reset to None
+    default_label = texts["picker_none"]
 
-        picked_label = st.selectbox(
-            label=texts["picker_label"],
-            options=station_options_display,
-            index=station_options_display.index(default_label),
-        )
+picked_label = st.selectbox(
+    label=texts["picker_label"],
+    options=station_options_display,
+    index=station_options_display.index(default_label),
+)
 
-        # Normalize: store None or the actual station name
-        st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
+# Normalize: store None or the actual station name
+st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # 2×42 table: localized headers; rows = 42 "Other" stations
-        station_names = [s["name"] for s in OTHER_STATIONS]
-        warnings_col = ["-"] * len(station_names)
-        table_df = pd.DataFrame({texts["table_station"]: station_names, texts["table_warning"]: warnings_col})
-        st.dataframe(
-            table_df,
-            use_container_width=True,
-            hide_index=True,
-            height=TABLE_HEIGHT,
-        )
+# 3×42 table: localized headers; rows = 42 "Other" stations
+station_names = [s["name"] for s in OTHER_STATIONS]
+n = len(station_names)
+
+table_df = pd.DataFrame({
+    texts["table_station"]: station_names,
+    texts["current_measurement"]: ["-"] * n,
+    texts["table_warning"]: ["-"] * n,
+})
+
+st.dataframe(
+    table_df,
+    use_container_width=True,
+    hide_index=True,
+    height=TABLE_HEIGHT,
+)
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
