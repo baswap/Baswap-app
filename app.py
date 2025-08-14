@@ -61,50 +61,62 @@ for k, v in {
     st.session_state.setdefault(k, v)
 
 # ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 720            # tall map
-TABLE_HEIGHT = MAP_HEIGHT - 130  # adjust to align visually with map
+MAP_HEIGHT = 720
+TABLE_HEIGHT = MAP_HEIGHT - 130
 st.markdown(f"""
 <style>
-  header{{visibility:hidden;}}
-  .custom-header{{
-    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
-    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
+  /* Hide Streamlit's own header completely (not just invisible) */
+  header {{ display: none !important; }}
+
+  /* Establish a sane stacking context for the app */
+  .stApp {{ position: relative; z-index: 0; }}
+
+  /* Your fixed header should be above any iframe (folium map) */
+  .custom-header {{
+    position: fixed; top: 0; left: 0; right: 0; height: 4.5rem;
+    display: flex; align-items: center; gap: 2rem; padding: 0 1rem;
+    background: #09c; box-shadow: 0 1px 2px rgba(0,0,0,.1);
+    z-index: 2147483647; /* max-ish to beat iframes */
   }}
-  .custom-header .logo{{font-size:2.1rem;font-weight:600;color:#fff;}}
-  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
-  .custom-header .nav a{{
-    text-decoration:none;font-size:1.2rem;color:#fff;padding-bottom:0.25rem;
-    border-bottom:2px solid transparent;
+  .custom-header .logo {{ font-size: 2.1rem; font-weight: 600; color: #fff; }}
+  .custom-header .nav {{ display: flex; gap: 1rem; align-items: center; }}
+  .custom-header .nav a {{
+    text-decoration: none; font-size: 1.2rem; color: #fff; padding-bottom: .25rem;
+    border-bottom: 2px solid transparent;
   }}
-  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
+  .custom-header .nav a.active {{ border-bottom-color: #fff; font-weight: 600; }}
 
   /* Language dropdown */
   .lang-dd {{ position: relative; }}
   .lang-dd summary {{
-    list-style:none; cursor:pointer; outline:none;
-    display:inline-flex; align-items:center; gap:.35rem;
-    padding:.35rem .6rem; border-radius:999px;
-    border:1px solid rgba(255,255,255,.35);
-    background:rgba(255,255,255,.12); color:#fff; font-weight:600;
+    list-style: none; cursor: pointer; outline: none;
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .35rem .6rem; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.12); color: #fff; font-weight: 600;
   }}
-  .lang-dd summary::-webkit-details-marker{{display:none;}}
-  .lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
+  .lang-dd summary::-webkit-details-marker{{ display: none; }}
+  .lang-dd[open] summary{{ background: rgba(255,255,255,.18); }}
   .lang-menu {{
-    position:absolute; right:0; margin-top:.4rem; min-width:160px;
-    background:#fff; color:#111; border-radius:.5rem;
-    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
-    border:1px solid rgba(0,0,0,.06);
+    position: absolute; right: 0; margin-top: .4rem; min-width: 160px;
+    background: #fff; color: #111; border-radius: .5rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: .4rem; z-index: 2147483647;
+    border: 1px solid rgba(0,0,0,.06);
   }}
-  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
-  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
-  .lang-menu .item:hover {{ background:#f2f6ff; }}
+  .lang-menu .item, .lang-menu .item:visited {{ color: #000 !important; }}
+  .lang-menu .item {{ display: block; padding: .5rem .65rem; border-radius: .4rem; text-decoration: none; font-weight: 500; }}
+  .lang-menu .item:hover {{ background: #f2f6ff; }}
 
-  body>.main{{margin-top:4.5rem;}}
+  /* Shift main content down so the fixed header doesn't overlap it */
+  body > .main {{ margin-top: 4.5rem !important; }}
 
-  /* Ensure folium map height */
-  iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
+  /* Ensure the folium iframe never overlaps the header in stacking order */
+  iframe[title="streamlit_folium.st_folium"] {{
+    position: relative; z-index: 0 !important; height: {MAP_HEIGHT}px !important;
+  }}
 </style>
 """, unsafe_allow_html=True)
+
 
 # ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
