@@ -51,10 +51,10 @@ st.markdown(f"""
     position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
     gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
   }}
-  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
+  .custom-header .logo{{font-size:2.145rem;font-weight:600;color:#fff;}}
   .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
   .custom-header .nav a{{
-    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
+    text-decoration:none;font-size:1.26rem;color:#fff;padding-bottom:0.25rem;
     border-bottom:2px solid transparent;
   }}
   .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
