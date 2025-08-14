@@ -14,28 +14,33 @@ from plotting import plot_line_chart, display_statistics
 
 # ================== PAGE CONFIG ==================
 # ================== PAGE CONFIG ==================
+# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# Works on both newer and older Streamlit versions
-try:
-    params = st.query_params  # Newer API
-except Exception:
-    params = st.experimental_get_query_params()  # Fallback
+# Read query params compatibly across Streamlit versions
+def _qp() -> dict:
+    try:
+        # Newer API (1.30+): st.query_params behaves like a dict[str, str]
+        q = st.query_params
+        # Some builds expose .to_dict(); fall back to dict() otherwise
+        return q.to_dict() if hasattr(q, "to_dict") else dict(q)
+    except Exception:
+        # Older API: returns dict[str, list[str]]
+        return st.experimental_get_query_params() or {}
 
-def _as_scalar(v, default):
-    # Streamlit may return list-like values; pick the first if so
-    if isinstance(v, (list, tuple)):
-        return v[0] if v else default
-    return v if v is not None else default
+def _as_str(value, default):
+    # Normalize listy values from experimental_get_query_params
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else default
+    return default if value is None else str(value)
 
-page = _as_scalar(params.get("page"), "Overview")
-lang = _as_scalar(params.get("lang"), "vi")
+_params = _qp()
+page = _as_str(_params.get("page"), "Overview")
+lang = _as_str(_params.get("lang"), "vi")
 
-if page not in ("Overview", "About"):
-    page = "Overview"
-if lang not in ("en", "vi"):
-    lang = "vi"
-
+# Guardrails
+page = page if page in ("Overview", "About") else "Overview"
+lang = lang if lang in ("en", "vi") else "vi"
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
