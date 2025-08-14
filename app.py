@@ -51,10 +51,10 @@ st.markdown(f"""
     position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
     gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
   }}
-  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
+  .custom-header .logo{{font-size:2.1rem;font-weight:600;color:#fff;}}
   .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
   .custom-header .nav a{{
-    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
+    text-decoration:none;font-size:1.2rem;color:#fff;padding-bottom:0.25rem;
     border-bottom:2px solid transparent;
   }}
   .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
@@ -246,7 +246,7 @@ if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Picker + 2×42 table (scrollable) ----------
+    # ---------- RIGHT: Picker + 3×42 table (scrollable) ----------
     with col_right:
         st.markdown(f"#### {texts['info_panel_title']}")
 
@@ -263,6 +263,7 @@ if page == "Overview":
             # If previous selection doesn't exist in this language, reset to None
             default_label = texts["picker_none"]
 
+        # Picker UI
         picked_label = st.selectbox(
             label=texts["picker_label"],
             options=station_options_display,
@@ -272,10 +273,16 @@ if page == "Overview":
         # Normalize: store None or the actual station name
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # 2×42 table: localized headers; rows = 42 "Other" stations
+        # 3×42 table: Station | Current Measurement | Warning
         station_names = [s["name"] for s in OTHER_STATIONS]
-        warnings_col = ["-"] * len(station_names)
-        table_df = pd.DataFrame({texts["table_station"]: station_names, texts["table_warning"]: warnings_col})
+        n = len(station_names)
+
+        table_df = pd.DataFrame({
+            texts["table_station"]: station_names,
+            texts["current_measurement"]: ["-"] * n,
+            texts["table_warning"]: ["-"] * n,
+        })
+
         st.dataframe(
             table_df,
             use_container_width=True,
@@ -313,6 +320,7 @@ if page == "Overview":
             ).add_to(m)
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
+
 
     # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
