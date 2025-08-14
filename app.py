@@ -2,14 +2,15 @@ import re
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
+from datetime import datetime
 from folium.plugins import MarkerCluster
-from datetime import datetime, timedelta
 
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
+
 
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
@@ -29,90 +30,12 @@ LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
 
-# ================== SESSION DEFAULTS ==================
-for k, v in {
-    "target_col": COL_NAMES[0],
-    "date_from": None,      # will be set to last 1 month after data loads
-    "date_to": None,        # will be set to latest date after data loads
-    "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": COL_NAMES,
-}.items():
-    st.session_state.setdefault(k, v)
+# Keep a selected station in session (no full-page navigation needed)
+if "focus_slug" not in st.session_state:
+    st.session_state.focus_slug = None
 
-# ================== STYLES ==================
-MAP_HEIGHT = 520  # ~30% taller than original
-st.markdown(f"""
-<style>
-  header{{visibility:hidden;}}
-  .custom-header{{
-    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
-    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
-  }}
-  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
-  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
-  .custom-header .nav a{{
-    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
-    border-bottom:2px solid transparent;
-  }}
-  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
 
-  /* Language dropdown */
-  .lang-dd {{ position: relative; }}
-  .lang-dd summary {{
-    list-style:none; cursor:pointer; outline:none;
-    display:inline-flex; align-items:center; gap:.35rem;
-    padding:.35rem .6rem; border-radius:999px;
-    border:1px solid rgba(255,255,255,.35);
-    background:rgba(255,255,255,.12); color:#fff; font-weight:600;
-  }}
-  .lang-dd summary::-webkit-details-marker{{display:none;}}
-  .lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
-  .lang-menu {{
-    position:absolute; right:0; margin-top:.4rem; min-width:160px;
-    background:#fff; color:#111; border-radius:.5rem;
-    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
-    border:1px solid rgba(0,0,0,.06);
-  }}
-  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
-  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
-  .lang-menu .item:hover {{ background:#f2f6ff; }}
-
-  body>.main{{margin-top:4.5rem;}}
-
-  /* Ensure folium map height */
-  iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
-</style>
-""", unsafe_allow_html=True)
-
-# ================== HEADER ==================
-active_overview = "active" if page == "Overview" else ""
-active_about = "active" if page == "About" else ""
-st.markdown(f"""
-<div class="custom-header">
-  <div class="logo">BASWAP</div>
-  <div class="nav">
-    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
-    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
-  </div>
-  <div class="nav" style="margin-left:auto;">
-    <details class="lang-dd">
-      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
-        <span class="label">{current_lang_label}</span>
-        <span class="chev" aria-hidden="true">▾</span>
-      </summary>
-      <div class="lang-menu" role="menu">
-        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
-        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
-      </div>
-    </details>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ================== DATA BACKENDS ==================
-dm = DriveManager(SECRET_ACC)
-
-# ================== HARD-CODED other (non-BASWAP) stations ==================
+# ================== HARD-CODED STATIONS ==================
 OTHER_STATIONS = [
     {"name":"An Thuận","lon":106.6050222,"lat":9.976388889},
     {"name":"Trà Kha","lon":106.2498341,"lat":9.623059755},
@@ -158,126 +81,250 @@ OTHER_STATIONS = [
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
-# ================== MAP HELPERS ==================
-def add_layers(m: folium.Map):
-    """Add overlay groups: BASWAP stations & Other stations (no basemap toggle)."""
-    baswap_group = folium.FeatureGroup(name="BASWAP stations", show=True)
-    folium.Marker(
-        [10.099833, 106.208306],
-        tooltip="BASWAP Buoy",
-        icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
-    ).add_to(baswap_group)
-    baswap_group.add_to(m)
+def slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
-    cluster = MarkerCluster(name="Other stations", show=True)
+for s in OTHER_STATIONS:
+    s["slug"] = slugify(s["name"])
+
+STATIONS_BY_NAME = {s["name"]: s for s in OTHER_STATIONS}
+STATIONS_BY_SLUG = {s["slug"]: s for s in OTHER_STATIONS}
+
+
+# ================== STYLES ==================
+st.markdown(f"""
+<style>
+  header{{visibility:hidden;}}
+  .custom-header{{
+    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
+    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,0.1);z-index:1000;
+  }}
+  .custom-header .logo{{font-size:1.65rem;font-weight:600;color:#fff;}}
+  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
+  .custom-header .nav a{{
+    text-decoration:none;font-size:0.9rem;color:#fff;padding-bottom:0.25rem;
+    border-bottom:2px solid transparent;
+  }}
+  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
+
+  /* Language dropdown (no flag; words are black in menu items) */
+  .lang-dd {{ position: relative; }}
+  .lang-dd summary {{
+    list-style:none; cursor:pointer; outline:none;
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.35rem .6rem; border-radius:999px;
+    border:1px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.12); color:#fff; font-weight:600;
+  }}
+  .lang-dd summary::-webkit-details-marker {{ display:none; }}
+  .lang-dd summary .chev {{ margin-left:2px; opacity:.9; }}
+  .lang-dd[open] summary {{ background: rgba(255,255,255,.18); }}
+
+  .lang-menu {{
+    position:absolute; right:0; margin-top:.4rem; min-width:160px;
+    background:#fff; color:#111; border-radius:.5rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
+    border:1px solid rgba(0,0,0,.06);
+  }}
+  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
+  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
+  .lang-menu .item:hover {{ background:#f2f6ff; }}
+  .lang-menu .item.is-current {{ background:#eef6ff; font-weight:700; }}
+
+  body>.main{{margin-top:4.5rem;}}
+
+  /* Map: ~30% taller (520px) as a fallback */
+  iframe[title="streamlit_folium.st_folium"]{{height:520px!important;}}
+
+  /* Right list: make the radio options a scrollable panel the same height as the map */
+  /* Scope to all radio groups (we only have one) */
+  div[role="radiogroup"] {{
+    max-height: 520px;
+    overflow: auto;
+    padding-right: .35rem;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: .5rem;
+    background: rgba(255,255,255,.03);
+  }}
+  /* Make each option look like a box */
+  div[role="radiogroup"] label {{
+    display:block;
+    padding:.45rem .55rem;
+    margin:.25rem;
+    border-radius:.4rem;
+    background: rgba(255,255,255,.04);
+  }}
+  div[role="radiogroup"] label:hover {{
+    background: rgba(255,255,255,.08);
+  }}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ================== HEADER ==================
+active_overview = "active" if page == "Overview" else ""
+active_about = "active" if page == "About" else ""
+
+st.markdown(f"""
+<div class="custom-header">
+  <div class="logo">BASWAP</div>
+  <div class="nav">
+    <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
+    <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
+  </div>
+  <div class="nav" style="margin-left:auto;">
+    <details class="lang-dd">
+      <summary title="{toggle_tooltip}" aria-haspopup="menu" aria-expanded="false">
+        <span class="label">{current_lang_label}</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </summary>
+      <div class="lang-menu" role="menu">
+        <a href="?page={page}&lang=en" target="_self" class="item {'is-current' if lang=='en' else ''}" role="menuitem">English</a>
+        <a href="?page={page}&lang=vi" target="_self" class="item {'is-current' if lang=='vi' else ''}" role="menuitem">Tiếng Việt</a>
+      </div>
+    </details>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ================== DATA / STATE DEFAULTS ==================
+dm = DriveManager(SECRET_ACC)
+for k, v in {
+    "target_col": COL_NAMES[0],
+    "date_from": None,
+    "date_to": None,
+    "agg_stats": ["Min", "Max", "Median"],
+    "table_cols": COL_NAMES,
+}.items():
+    st.session_state.setdefault(k, v)
+
+
+# ================== HELPERS ==================
+def add_other_station_markers(m: folium.Map, selected_slug: str | None):
+    """Add other stations, highlighting the selected one."""
+    cluster = MarkerCluster(name="Other stations").add_to(m)
     for s in OTHER_STATIONS:
+        color = "orange" if s["slug"] == selected_slug else "gray"
         folium.Marker(
             [float(s["lat"]), float(s["lon"])],
             tooltip=s["name"],
-            icon=folium.Icon(icon="life-ring", prefix="fa", color="gray"),
+            icon=folium.Icon(icon="life-ring", prefix="fa", color=color),
         ).add_to(cluster)
-    cluster.add_to(m)
-
     folium.LayerControl(collapsed=False).add_to(m)
 
-# ================== SIDEBAR SETTINGS ==================
-def settings_panel(first_date, last_date, default_from, default_to):
+
+def settings_panel(first_date, last_date):
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
-
     c1, c2 = st.columns(2)
     if c1.button(side_texts["sidebar_first_day"]):
         st.session_state.date_from = first_date
     if c2.button(side_texts["sidebar_today"]):
-        st.session_state.date_from = default_to
-        st.session_state.date_to = default_to
-
-    # Set defaults if not chosen yet
+        st.session_state.date_from = st.session_state.date_to = last_date
     if st.session_state.date_from is None:
-        st.session_state.date_from = default_from
+        st.session_state.date_from = first_date
     if st.session_state.date_to is None:
-        st.session_state.date_to = default_to
-
-    st.date_input(
-        side_texts["sidebar_start_date"],
-        min_value=first_date, max_value=last_date, key="date_from"
-    )
-    st.date_input(
-        side_texts["sidebar_end_date"],
-        min_value=first_date, max_value=last_date, key="date_to"
-    )
-
-    st.multiselect(
-        side_texts["sidebar_summary_stats"],
-        ["Min", "Max", "Median"],
-        default=["Min", "Max", "Median"],
-        key="agg_stats"
-    )
+        st.session_state.date_to = last_date
+    st.date_input(side_texts["sidebar_start_date"], min_value=first_date, max_value=last_date, key="date_from")
+    st.date_input(side_texts["sidebar_end_date"], min_value=first_date, max_value=last_date, key="date_to")
+    st.multiselect(side_texts["sidebar_summary_stats"], ["Min", "Max", "Median"],
+                   default=["Min", "Max", "Median"], key="agg_stats")
     if not st.session_state.agg_stats:
         st.warning(texts["data_dimensions"])
         st.stop()
 
+
 # ================== PAGES ==================
 if page == "Overview":
-    # --- Map (full width, taller) ---
-    center = [10.2, 106.0]
-    zoom = 8
-    m = folium.Map(location=center, zoom_start=zoom, tiles=None)
-    folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
-    add_layers(m)
-    st_folium(m, width="100%", height=MAP_HEIGHT)
+    MAP_HEIGHT = 520  # ~30% taller than 400
+    left_col, right_col = st.columns([7, 3], gap="large")  # 70% / 30%
 
-    # --- Load data & set default date window = last 1 month ---
+    # --- RIGHT: scrollable list (native radio => no new tab) ---
+    with right_col:
+        station_names = [s["name"] for s in OTHER_STATIONS]
+
+        # Pre-select the currently focused one (if any)
+        default_idx = 0
+        if st.session_state.focus_slug:
+            try:
+                focused_name = STATIONS_BY_SLUG[st.session_state.focus_slug]["name"]
+                default_idx = station_names.index(focused_name)
+            except Exception:
+                default_idx = 0
+
+        choice = st.radio(
+            "Stations",
+            options=station_names,
+            index=default_idx,
+            label_visibility="collapsed",
+            key="station_radio",
+        )
+
+        # Update focus slug in session; Streamlit reruns automatically
+        st.session_state.focus_slug = STATIONS_BY_NAME[choice]["slug"]
+
+    # --- LEFT: map centered/zoomed by the selected station ---
+    with left_col:
+        if st.session_state.focus_slug and st.session_state.focus_slug in STATIONS_BY_SLUG:
+            center = [
+                STATIONS_BY_SLUG[st.session_state.focus_slug]["lat"],
+                STATIONS_BY_SLUG[st.session_state.focus_slug]["lon"],
+            ]
+            zoom = 11  # zoom in when a station is chosen
+        else:
+            center = [10.2, 106.0]
+            zoom = 8
+
+        m = folium.Map(location=center, zoom_start=zoom)
+
+        # BASWAP buoy (blue droplet)
+        folium.Marker(
+            [10.099833, 106.208306],
+            tooltip="BASWAP Buoy",
+            icon=folium.Icon(icon="tint", prefix="fa", color="blue"),
+        ).add_to(m)
+
+        # Other stations with highlight on selection
+        add_other_station_markers(m, selected_slug=st.session_state.focus_slug)
+
+        st_folium(m, width="100%", height=MAP_HEIGHT)
+
+    # ===== Rest of the page =====
     df = thingspeak_retrieve(combined_data_retrieve())
-    # Use actual min/max from data
-    first_date = df["Timestamp (GMT+7)"].min().date()
+    first_date = datetime(2025, 1, 17).date()
     last_date = df["Timestamp (GMT+7)"].max().date()
-    one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # --- Overall stats for current window (defaults to last month) ---
-    # Ensure defaults are set before computing
-    if st.session_state.date_from is None:
-        st.session_state.date_from = one_month_ago
-    if st.session_state.date_to is None:
-        st.session_state.date_to = last_date
-
-    stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    stats_df = filter_data(df, st.session_state.date_from or first_date, st.session_state.date_to or last_date)
     st.markdown(f"### 📊 {texts['overall_stats_title']}")
     display_statistics(stats_df, st.session_state.target_col)
 
     st.divider()
-
-    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
-        settings_panel(first_date, last_date, one_month_ago, last_date)
+        settings_panel(first_date, last_date)
 
-    # Use (possibly updated) dates
-    date_from = st.session_state.date_from
-    date_to = st.session_state.date_to
+    date_from = st.session_state.date_from or first_date
+    date_to = st.session_state.date_to or last_date
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
 
-    # --- Charts: ONLY Hourly and Daily (Raw removed) ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
-        tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
-
+        tabs = st.tabs([texts["raw_view"], texts["hourly_view"], texts["daily_view"]])
         with tabs[0]:
-            hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour")
-
+            plot_line_chart(filtered_df, target_col, "None")
         with tabs[1]:
-            daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day")
+            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs), target_col, "Hour")
+        with tabs[2]:
+            plot_line_chart(apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs), target_col, "Day")
 
     st.divider()
     st.subheader(texts["data_table"])
-    st.multiselect(texts["columns_select"], options=COL_NAMES,
-                   default=st.session_state.table_cols, key="table_cols")
+    st.multiselect(texts["columns_select"], options=COL_NAMES, default=st.session_state.table_cols, key="table_cols")
     table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
     st.dataframe(filtered_df[table_cols], use_container_width=True)
