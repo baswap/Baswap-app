@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster, FeatureGroupSubGroup
 from datetime import datetime, timedelta
 
-from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
+from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES, TIMESTAMP_COL
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
