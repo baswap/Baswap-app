@@ -12,8 +12,6 @@ COMBINED_FILENAME = "combined_data.csv"
 # Secrets from Streamlit's secrets management
 COMBINED_ID = st.secrets["FILE_ID"]
 SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
-# Column name used throughout the app for timestamps
-TIMESTAMP_COL = "Timestamp (GMT+7)"
 
 COL_NAMES = [
     "EC Value (us/cm)",
