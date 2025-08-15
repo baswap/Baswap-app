@@ -49,7 +49,7 @@ for k, v in {
     "date_from": None,      # set after data loads
     "date_to": None,        # set after data loads
     "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": COL_NAMES,
+    "table_cols": [COL_NAMES[0]],
     "selected_station": None,  # for map zooming (None or station name)
 }.items():
     st.session_state.setdefault(k, v)
