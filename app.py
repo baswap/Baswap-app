@@ -130,29 +130,8 @@ st.markdown(f"""
 
   .stButton > button{{ white-space: nowrap; }}
 
-    /* One-line stats bar: title left, refresh button right */
-  .stats-bar {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .75rem;
-    margin: .25rem 0 .5rem;
-    white-space: nowrap; /* keep title/button on one line */
-  }}
   .stats-title {{ font-weight: 600; }}
-  .refresh-btn {{
-    display: inline-block;
-    padding: .4rem .9rem;
-    border-radius: .5rem;
-    background: #2563eb;
-    color: #fff !important;
-    text-decoration: none;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    border: 1px solid rgba(0,0,0,0);
-  }}
-  .refresh-btn:hover {{ opacity: .92; }}
+
 
 .stats-scope{{
   display:inline-block;
