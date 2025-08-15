@@ -13,15 +13,24 @@ import torch
 
 _COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}  
 
-def _render_aggregation_legend(show_predicted: bool = False) -> None:
-    items = "".join(
-        f"<div class='agg-item'><span class='dot' style='background:{_COLOR_MAP[k]}'></span>{k}</div>"
-        for k in ["Max"]
+def _render_aggregation_legend(texts, show_predicted: bool = False) -> None:
+    """
+    Render legend showing only the observed (formerly 'Max') line,
+    localized using texts['legend_observed'] and texts['legend_predicted'].
+    """
+    observed_label  = texts.get("legend_observed", "Observed")
+    predicted_label = texts.get("legend_predicted", "Predicted")
+
+    items = (
+        f"<div class='agg-item'>"
+        f"<span class='dot' style='background:{_COLOR_MAP.get('Max', 'red')}'></span>"
+        f"{observed_label}</div>"
     )
     pred = (
-        "<div class='agg-item'><span class='dash' ></span>Predicted</div>"
+        f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>"
         if show_predicted else ""
     )
+
     st.markdown(
         f"""
         <style>
@@ -46,6 +55,7 @@ def _render_aggregation_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
     """Coerce any datetime-like series to tz-naive datetime64[ns]."""
     s = pd.to_datetime(s, errors="coerce")
