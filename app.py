@@ -169,7 +169,7 @@ st.markdown(f"""
   @media (max-width: 600px) {{
     .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
   }}
-  .stButton > button { white-space: nowrap; }
+  .stButton > button{{ white-space: nowrap; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -331,7 +331,6 @@ if page == "Overview":
         st.markdown(f"#### {texts['info_panel_title']}")
 
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
-
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
@@ -340,7 +339,6 @@ if page == "Overview":
             options=station_options_display,
             index=station_options_display.index(default_label),
         )
-
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
         station_names = [s["name"] for s in OTHER_STATIONS]
@@ -357,16 +355,11 @@ if page == "Overview":
         map_title = texts.get("map_title", "🗺️ Station Map")
         st.markdown(f"""<div class="map-title">{map_title}</div>""", unsafe_allow_html=True)
 
-        center = [10.2, 106.0]
-        zoom = 8
-        highlight_location = None
-
+        center = [10.2, 106.0]; zoom = 8; highlight_location = None
         sel = st.session_state.get("selected_station")
         if sel and sel in STATION_LOOKUP:
             lat, lon = STATION_LOOKUP[sel]
-            center = [lat, lon]
-            zoom = 12
-            highlight_location = (lat, lon)
+            center = [lat, lon]; zoom = 12; highlight_location = (lat, lon)
 
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
@@ -374,8 +367,7 @@ if page == "Overview":
 
         if highlight_location:
             folium.CircleMarker(
-                location=highlight_location,
-                radius=10, weight=3, fill=True, fill_opacity=0.2,
+                location=highlight_location, radius=10, weight=3, fill=True, fill_opacity=0.2,
                 color="#0077ff", tooltip=sel,
             ).add_to(m)
 
@@ -392,12 +384,28 @@ if page == "Overview":
     if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
+    # --- Overall Statistics header + REFRESH button on the same row ---
+    sh_left, sh_right = st.columns([8, 1], gap="small")
+    with sh_left:
+        st.markdown(f"### 📊 {texts['overall_stats_title']}")
+    with sh_right:
+        if st.button(
+            texts["clear_cache"],        # same label you already translate
+            key="clear_cache_btn",
+            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+            type="primary",
+            use_container_width=True,    # stays one line thanks to CSS above
+        ):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
-    st.markdown(f"### 📊 {texts['overall_stats_title']}")
     display_statistics(stats_df, st.session_state.target_col)
 
     st.divider()
 
+    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
@@ -423,39 +431,27 @@ if page == "Overview":
 
     st.divider()
 
-    hdr_left, hdr_right = st.columns([8, 1], gap="small")
-    with hdr_left:
-        st.subheader(texts["data_table"])
-    with hdr_right:
-        if st.button(
-            texts["clear_cache"],
-            key="clear_cache_btn",
-            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-            type="primary",
-            use_container_width=True,
-        ):
-            st.cache_data.clear()
-            st.rerun()
+    # Data table header (no button here anymore)
+    st.subheader(texts["data_table"])
 
-    # --- Column picker + table ---
-    # Use a different key for the widget to avoid write conflicts; keep app state in 'table_cols'
+    # Column picker + table
     table_cols_sel = st.multiselect(
         texts["columns_select"],
         options=COL_NAMES,
         default=st.session_state.get("table_cols", [COL_NAMES[0]]),
         key="table_cols_picker",
     )
-    st.session_state.table_cols = list(table_cols_sel)  # safe: different key than the widget
+    st.session_state.table_cols = list(table_cols_sel)
 
     show_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     existing = [c for c in show_cols if c in filtered_df.columns]
-
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
 
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
+
 
 # ---------- Bottom black block (full-bleed) ----------
 st.markdown(
