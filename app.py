@@ -416,64 +416,64 @@ if page == "Overview":
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
-# ---------- BELOW COLUMNS (full page width) ----------
-df = thingspeak_retrieve(combined_data_retrieve())
-first_date = df["Timestamp (GMT+7)"].min().date()
-last_date = df["Timestamp (GMT+7)"].max().date()
-one_month_ago = max(first_date, last_date - timedelta(days=30))
+    # ---------- BELOW COLUMNS (full page width) ----------
+    df = thingspeak_retrieve(combined_data_retrieve())
+    first_date = df["Timestamp (GMT+7)"].min().date()
+    last_date = df["Timestamp (GMT+7)"].max().date()
+    one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-if st.session_state.get("date_from") is None:
-    st.session_state.date_from = one_month_ago
-if st.session_state.get("date_to") is None:
-    st.session_state.date_to = last_date
+    if st.session_state.get("date_from") is None:
+        st.session_state.date_from = one_month_ago
+    if st.session_state.get("date_to") is None:
+        st.session_state.date_to = last_date
 
-# --- Overall Statistics header + REFRESH (one-line, no columns) ---
-refresh_url = f"?page={page}&lang={lang}&refresh=1"
-st.markdown(
-    f"""
-    <div class="stats-bar">
-      <div class="stats-title">📊 {texts['overall_stats_title']}</div>
-      <a class="refresh-btn" href="{refresh_url}" title="{texts.get('clear_cache_tooltip', '')}">
-        {texts['clear_cache']}
-      </a>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    # --- Overall Statistics header + REFRESH (one-line, no columns) ---
+    refresh_url = f"?page={page}&lang={lang}&refresh=1"
+    st.markdown(
+        f"""
+        <div class="stats-bar">
+          <div class="stats-title">📊 {texts['overall_stats_title']}</div>
+          <a class="refresh-btn" href="{refresh_url}" title="{texts.get('clear_cache_tooltip', '')}">
+            {texts['clear_cache']}
+          </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# Show the metrics
-stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
-display_statistics(stats_df, st.session_state.target_col)
+    # Show the metrics
+    stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    display_statistics(stats_df, st.session_state.target_col)
 
-st.divider()
+    st.divider()
 
-# --- Settings (in expander) ---
-chart_container = st.container()
-settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
-with st.expander(settings_label, expanded=False):
-    settings_panel(first_date, last_date, one_month_ago, last_date)
+    # --- Settings (in expander) ---
+    chart_container = st.container()
+    settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
+    with st.expander(settings_label, expanded=False):
+        settings_panel(first_date, last_date, one_month_ago, last_date)
 
-# Use (possibly updated) dates
-date_from = st.session_state.date_from
-date_to = st.session_state.date_to
-target_col = st.session_state.target_col
-agg_funcs = st.session_state.agg_stats
-filtered_df = filter_data(df, date_from, date_to)
+    # Use (possibly updated) dates
+    date_from = st.session_state.date_from
+    date_to = st.session_state.date_to
+    target_col = st.session_state.target_col
+    agg_funcs = st.session_state.agg_stats
+    filtered_df = filter_data(df, date_from, date_to)
 
-# --- Charts: Hourly & Daily ---
-with chart_container:
-    st.subheader(f"📈 {target_col}")
-    tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
+    # --- Charts: Hourly & Daily ---
+    with chart_container:
+        st.subheader(f"📈 {target_col}")
+        tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
 
-    with tabs[0]:
-        hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-        plot_line_chart(hourly, target_col, "Hour")
+        with tabs[0]:
+            hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
+            plot_line_chart(hourly, target_col, "Hour")
 
-    with tabs[1]:
-        daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-        plot_line_chart(daily, target_col, "Day")
+        with tabs[1]:
+            daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
+            plot_line_chart(daily, target_col, "Day")
 
-st.divider()
+    st.divider()
 
     # Data table header (no button here anymore)
     st.subheader(texts["data_table"])
@@ -495,7 +495,6 @@ st.divider()
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
-
 
 # ---------- Bottom black block (full-bleed) ----------
 st.markdown(
