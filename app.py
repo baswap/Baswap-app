@@ -74,7 +74,7 @@ for k, v in {
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
 TABLE_HEIGHT = MAP_HEIGHT - 80  # adjust to align visually with map
-BOTTOM_HEIGHT = 140
+
 st.markdown(f"""
 <style>
   /* Hide Streamlit default header */
@@ -128,16 +128,6 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* Responsive padding adjustments */
-  @media (max-width: 1200px) {{
-    .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
-  }}
-  @media (max-width: 900px) {{
-    .bottom-placeholder{{ --left-pad: 10vw; --right-pad: 10vw; }}
-  }}
-  @media (max-width: 600px) {{
-    .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
-  }}
   .stButton > button{{ white-space: nowrap; }}
 
     /* One-line stats bar: title left, refresh button right */
