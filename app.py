@@ -128,55 +128,6 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ====== Full-bleed helper + container fixes ====== */
-  .stApp{{ overflow-x:hidden; }}
-  /* Some Streamlit versions use 'section.main', others data-testid */
-  section.main > div[class*="block-container"]{{ padding-bottom:0 !important; }}
-  [data-testid="stMain"] > div[class*="block-container"]{{ padding-bottom:0 !important; }}
-
-  /* Paint Streamlit's own bottom padding so your block visually touches bottom */
-  section.main::after,
-  [data-testid="stMain"]::after {{
-    content:"";
-    display:block;
-    height:56px;                 /* bottom gap to cover; tweak if needed */
-    background:#111;             /* same black as the bottom block */
-    /* make this filler full-bleed too */
-    width:100vw; position:relative; left:50%; transform:translateX(-50vw);
-  }}
-
-  /* Full-bleed: pull element to viewport edges */
-  .full-bleed{{ width:100vw; position:relative; left:50%; transform:translateX(-50vw); }}
-
-  /* ===================== Bottom placeholder ===================== */
-  .bottom-placeholder{{
-    --left-pad: 18vw;  /* move team right */
-    --right-pad: 18vw; /* move icon left */
-    height:{BOTTOM_HEIGHT}px;
-    background:#111;
-    border-top:1px solid rgba(255,255,255,.08);
-    margin:2rem 0 0;   /* no side/bottom margins */
-    display:grid;
-    grid-template-rows: 80% 1px 20%;  /* exact split: 80% spacer, 1px divider, 20% row */
-  }}
-
-  .bp-divider{{
-    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
-  }}
-
-  .bp-bottomrow{{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:.45rem var(--right-pad) .35rem var(--left-pad);
-  }}
-  .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
-  .bp-bottomrow .fb{{
-    width:28px; height:28px; border-radius:50%;
-    border:1px solid rgba(255,255,255,.25);
-    display:inline-flex; align-items:center; justify-content:center;
-    color:#fff; text-decoration:none; opacity:.75;
-    user-select:none; pointer-events:none;
-  }}
-
   /* Responsive padding adjustments */
   @media (max-width: 1200px) {{
     .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
@@ -524,19 +475,3 @@ elif page == "About":
     st.markdown(texts["description"])
 
 
-
-
-# ---------- Bottom black block (full-bleed) ----------
-st.markdown(
-    '''
-    <div class="bottom-placeholder full-bleed">
-      <div></div>
-      <div class="bp-divider"></div>
-      <div class="bp-bottomrow">
-        <span class="team">VGU RANGERS</span>
-        <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
-      </div>
-    </div>
-    ''',
-    unsafe_allow_html=True
-)
