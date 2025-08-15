@@ -56,21 +56,26 @@ for k, v in {
 
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
-TABLE_HEIGHT = MAP_HEIGHT - 130  # adjust to align visually with map
+TABLE_HEIGHT = MAP_HEIGHT - 100  # adjust to align visually with map
+FOOTER_HEIGHT = 140
 st.markdown(f"""
 <style>
+  /* Hide Streamlit's default header */
   header{{visibility:hidden;}}
+
+  /* Fixed custom header */
   .custom-header{{
-    position:fixed;top:0;left:0;right:0;height:4.5rem;display:flex;align-items:center;
-    gap:2rem;padding:0 1rem;background:#09c;box-shadow:0 1px 2px rgba(0,0,0,.1);z-index:1000;
+    position:fixed; top:0; left:0; right:0; height:4.5rem;
+    display:flex; align-items:center; gap:2rem; padding:0 1rem;
+    background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
   }}
-  .custom-header .logo{{font-size:2.1rem;font-weight:600;color:#fff;}}
-  .custom-header .nav{{display:flex;gap:1rem;align-items:center;}}
+  .custom-header .logo{{font-size:2.1rem; font-weight:600; color:#fff;}}
+  .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
   .custom-header .nav a{{
-    text-decoration:none;font-size:1.2rem;color:#fff;padding-bottom:0.25rem;
+    text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
     border-bottom:2px solid transparent;
   }}
-  .custom-header .nav a.active{{border-bottom-color:#fff;font-weight:600;}}
+  .custom-header .nav a.active{{border-bottom-color:#fff; font-weight:600;}}
 
   /* Language dropdown */
   .lang-dd {{ position: relative; }}
@@ -93,28 +98,31 @@ st.markdown(f"""
   .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
   .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-  body>.main{{margin-top:4.5rem;}}
+  /* Push content below fixed header and reserve space for fixed footer */
+  body>.main{{ margin-top:4.5rem; padding-bottom:{FOOTER_HEIGHT}px; }}
 
   /* Ensure folium map height */
-  iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
+  iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
 
   /* Map title */
   .map-title{{
     margin:.75rem 0 .35rem;
-    font-size:1.25rem;
-    font-weight:700;
-    line-height:1.2;
-    display:flex;
-    align-items:center;
-    gap:.5rem;
+    font-size:1.25rem; font-weight:700; line-height:1.2;
+    display:flex; align-items:center; gap:.5rem;
   }}
-  .map-title .sub{{
-    font-size:.95rem;
-    font-weight:500;
-    opacity:.8;
+  .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
+
+  /* Blank footer placeholder */
+  .app-footer{{
+    position:fixed; left:0; right:0; bottom:0;
+    height:{FOOTER_HEIGHT}px;
+    background:#111;
+    border-top:1px solid rgba(255,255,255,.08);
+    z-index:900; /* below header (1000) */
   }}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ================== HEADER ==================
@@ -426,3 +434,6 @@ if page == "Overview":
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
+
+
+st.markdown('<div class="app-footer"></div>', unsafe_allow_html=True)
