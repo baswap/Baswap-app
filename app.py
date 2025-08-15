@@ -384,27 +384,34 @@ if page == "Overview":
 st.divider()
 
 # Header row: title (left) + clear cache button (right)
-hdr_left, hdr_right = st.columns([6, 1], gap="small")
-with hdr_left:
+left, right = st.columns([10, 2], gap="small")
+with left:
     st.subheader(texts["data_table"])
-with hdr_right:
-    st.button(
-        texts["clear_cache"],
+with right:
+    if st.button(
+        f"🧹 {texts['clear_cache']}",
         key="clear_cache_btn",
         help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
-        on_click=st.cache_data.clear,
-    )
+        type="primary",
+        use_container_width=True,  # stretches to the right column edge
+    ):
+        st.cache_data.clear()
+        st.rerun()
 
+    # Small, explicit hover hint
+    st.caption("Hover the button for details.")
+
+# The rest stays the same
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
     default=st.session_state.table_cols,
-    key="table_cols"
+    key="table_cols",
 )
-
 table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
 st.dataframe(filtered_df[table_cols], use_container_width=True)
+
 
 
 
