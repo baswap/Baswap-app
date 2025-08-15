@@ -106,7 +106,7 @@ st.markdown(f"""
 
   /* Map title */
   .map-title{{
-    margin:.75rem 0 .35rem; font-size:1.5rem; font-weight:500; line-height:1.2;
+    margin:.75rem 0 .35rem; font-size:1.5rem; font-weight:600; line-height:1.2;
     display:flex; align-items:center; gap:.5rem;
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
@@ -322,7 +322,6 @@ def settings_panel(first_date, last_date, default_from, default_to):
     st.session_state.agg_stats = ["Max"]
 
 # ================== PAGES ==================
-# ================== PAGES ==================
 if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
@@ -390,7 +389,7 @@ if page == "Overview":
             zoom = 12   # tweak (12–14) for tighter focus
             highlight_location = (lat, lon)
 
-        # Build map (always runs, not only when a station is selected)
+        # Build map (always runs)
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
         add_layers(m)
@@ -447,18 +446,11 @@ if page == "Overview":
 
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            # pass texts only if your plotting function accepts it
-            try:
-                plot_line_chart(hourly, target_col, "Hour", texts=texts)
-            except TypeError:
-                plot_line_chart(hourly, target_col, "Hour")
+            plot_line_chart(hourly, target_col, "Hour")
 
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            try:
-                plot_line_chart(daily, target_col, "Day", texts=texts)
-            except TypeError:
-                plot_line_chart(daily, target_col, "Day")
+            plot_line_chart(daily, target_col, "Day")
 
     st.divider()
 
@@ -475,7 +467,7 @@ if page == "Overview":
             use_container_width=True,
         ):
             st.cache_data.clear()
-            st.rerun()  # guarantees immediate refresh
+            st.rerun()
 
     # --- Column picker + table ---
     selected_cols = st.multiselect(
@@ -485,14 +477,16 @@ if page == "Overview":
         key="table_cols",
     )
 
-    # Make sure it's a list and sync back to state
-    selected_cols = list(selected_cols)
+    # Ensure list and sync back
+    selected_cols = list(selected_cols or [])
     st.session_state.table_cols = selected_cols
 
-    # Build table from the current selection
-    table_cols = ["Timestamp (GMT+7)"] + selected_cols
-    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
-    st.dataframe(filtered_df[table_cols], use_container_width=True)
+    # Build and show table safely
+    base_cols = ["Timestamp (GMT+7)"]
+    table_cols = base_cols + selected_cols
+    existing = [c for c in table_cols if c in filtered_df.columns]
+    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
+    st.dataframe(filtered_df[existing], use_container_width=True)
 
 elif page == "About":
     st.title(texts["app_title"])
@@ -512,5 +506,6 @@ st.markdown(
     ''',
     unsafe_allow_html=True
 )
+
 
 
