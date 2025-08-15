@@ -383,47 +383,56 @@ if page == "Overview":
 
 st.divider()
 
-left, right = st.columns([10, 1], gap="small")
-with left:
+# ---- Header row: title (left) + right-aligned Clear Cache (right) ----
+hdr_left, hdr_right = st.columns([1, 0.00001], gap="small")
+
+with hdr_left:
     st.subheader(texts["data_table"])
 
-with right:
-    # Scoped CSS to shrink just this button
-    st.markdown("""
-    <style>
-      .cc-compact { display:flex; justify-content:flex-end; }
-      .cc-compact .stButton>button{
-        padding: .35rem .55rem;           /* tighter button */
-        min-width: unset;                 /* no forced width */
-        border-radius: 999px;             /* pill look */
-      }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="cc-compact">', unsafe_allow_html=True)
-    if st.button(
-        "🧹Refresh",                              # icon-only keeps it short
+with hdr_right:
+    # Right-align + style the button and add a clear hover hint
+    st.markdown(
+        """
+        <style>
+          /* Keep the button small (fit content), right-aligned, and visually distinct */
+          .clear-cache-wrap { display: flex; justify-content: flex-end; align-items: center; }
+          .clear-cache-wrap .stButton > button {
+            width: fit-content; white-space: nowrap;
+            border-radius: 999px; font-weight: 700;
+            padding: .45rem .9rem; border: 0;
+            background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+            color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+            cursor: pointer;
+          }
+          .clear-cache-wrap .stButton > button:hover { filter: brightness(0.96); }
+          .hover-hint { margin-left: .5rem; opacity: .7; font-size: .85rem; }
+          @media (max-width: 640px) {
+            .hover-hint { display: none; } /* keep mobile clean */
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="clear-cache-wrap">', unsafe_allow_html=True)
+    st.button(
+        f"↻ {texts['clear_cache']}",
         key="clear_cache_btn",
-        type="primary",
-        help=texts.get(
-            "clear_cache_tooltip",
-            "Clear cached data and fetch the latest data from Thingspeak."
-        ),
-    ):
-        st.cache_data.clear()
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+        help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
+        on_click=st.cache_data.clear,
+    )
+    st.markdown('<span class="hover-hint">ℹ️ Hover for details</span></div>', unsafe_allow_html=True)
 
+# ---- The rest of your table controls ----
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
     default=st.session_state.table_cols,
-    key="table_cols",
+    key="table_cols"
 )
+
 table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
 st.dataframe(filtered_df[table_cols], use_container_width=True)
-
 
 
 
