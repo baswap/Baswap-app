@@ -13,25 +13,29 @@ import torch
 
 _COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}  
 
-def _render_aggregation_legend(
-    show_predicted: bool = False,
-    *,
-    observed_label: str = "Observed",
-    predicted_label: str = "Predicted",
-) -> None:
+def _render_aggregation_legend(show_predicted: bool = False) -> None:
     """
-    Render a compact custom legend. Shows only the observed (Max) series and,
-    optionally, a dashed predicted entry. Labels are localizable via args.
+    Render a compact custom legend.
+    - Shows a colored dot for the observed (Max) line.
+    - Optionally shows a dashed line label for predictions.
+    - Labels are localized using `texts['legend_observed']` and `texts['legend_predicted']` if available.
     """
+    # Try to read i18n labels from global `texts`, fall back to English.
+    _t = globals().get("texts", {}) or {}
+    obs_label = _t.get("legend_observed", "Observed")
+    pred_label = _t.get("legend_predicted", "Predicted")
+
     items = (
-        f"<div class='agg-item'><span class='dot' "
-        f"style='background:{_COLOR_MAP['Max']}'></span>{observed_label}</div>"
+        f"<div class='agg-item'>"
+        f"<span class='dot' style='background:{_COLOR_MAP['Max']}'></span>{obs_label}"
+        f"</div>"
     )
     pred = (
-        f"<div class='agg-item'><span class='dash' ></span>{predicted_label}</div>"
+        f"<div class='agg-item'><span class='dash'></span>{pred_label}</div>"
         if show_predicted
         else ""
     )
+
     st.markdown(
         f"""
         <style>
@@ -116,27 +120,17 @@ def _inject_nans_for_gaps(
 # ---------------------------------------------------------------------- #
 
 
-def plot_line_chart(
-    df: pd.DataFrame,
-    col: str,
-    resample_freq: str = "None",
-    *,
-    observed_label: str = "Observed",
-    predicted_label: str = "Predicted",
-) -> None:
+def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     """
-    Draw a line chart that only shows the observed (Max) series, keeps line breaks
-    across gaps, and optionally overlays predictions for Hourly EC series.
-    Labels are localizable via observed_label/predicted_label.
+    Draw a line chart that only shows the observed (Max) series,
+    with line breaks across gaps and an optional prediction overlay (Hour + EC).
+    Legend labels are localized via global `texts` if present.
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
 
     df_filtered = df.copy()
-
-    # Only the Max series is drawn; keep its color mapping
-    color_scale = alt.Scale(domain=["Max"], range=[_COLOR_MAP["Max"]])
 
     # --- timestamps & display format ---
     if resample_freq == "Hour":
@@ -158,12 +152,8 @@ def plot_line_chart(
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
-    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(
-        df_filtered["Timestamp (GMT+7)"]
-    )
-    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-        df_filtered["Timestamp (Rounded)"]
-    )
+    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
+    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (Rounded)"])
     df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
         df_filtered["Timestamp (Rounded)"]
     ).dt.strftime(disp_fmt)
@@ -181,41 +171,41 @@ def plot_line_chart(
         display_fmt=disp_fmt,
     )
 
-    # Filter to only Max so Min/Median lines disappear
-    if cat_col:
-        df_broken = df_broken[df_broken["Aggregation"] == "Max"]
+    # i18n labels for tooltips/legend
+    _t = globals().get("texts", {}) or {}
+    obs_label = _t.get("legend_observed", "Observed")
+    pred_label = _t.get("legend_predicted", "Predicted")
 
-    # Localized legend
+    # Keep only Max; relabel it to "Observed" (localized) for tooltips
+    if cat_col:
+        df_broken = df_broken[df_broken["Aggregation"] == "Max"].copy()
+        df_broken.loc[:, "Aggregation"] = obs_label  # rename for nicer tooltips
+
+    # Custom legend with optional predicted label
     _render_aggregation_legend(
-        show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]),
-        observed_label=observed_label,
-        predicted_label=predicted_label,
+        show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
     )
 
-    # Main observed chart
+    # Main observed line (force a fixed color; no Altair legend)
     main_chart = (
         alt.Chart(df_broken)
         .mark_line(point=True)
         .encode(
             x=alt.X("Timestamp (Rounded):T", title="Timestamp"),
             y=alt.Y(f"{col}:Q", title="Value"),
-            color=(
-                alt.Color("Aggregation:N", scale=color_scale, legend=None)
-                if cat_col
-                else alt.value(_COLOR_MAP["Max"])
-            ),
+            color=alt.value(_COLOR_MAP["Max"]),
             tooltip=[
                 alt.Tooltip("Timestamp (Rounded Display):N", title="Rounded Time"),
                 alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
                 alt.Tooltip(f"{col}:Q", title="Value"),
-                # Show localized series label instead of raw "Max"
-                alt.TooltipValue(observed_label),
+                # Only show this field if we had an Aggregation column originally
+                alt.Tooltip("Aggregation:N", title=obs_label) if cat_col else alt.TooltipValue(""),
             ],
         )
         .interactive()
     )
 
-    # (prediction overlay unchanged)
+    # Optional prediction overlay (Hour + EC series)
     if resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"] and "Aggregation" in df_filtered.columns:
         max_data = df_filtered[df_filtered["Aggregation"] == "Max"].copy()
         if not max_data.empty and len(max_data) >= 2:
@@ -223,6 +213,7 @@ def plot_line_chart(
             last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
             last_value = float(max_values_numeric.iloc[-1][col])
 
+            # Model expects μS/cm; convert g/L <-> μS/cm if needed
             if col == "EC Value (g/l)":
                 max_values_numeric = max_values_numeric * 2000
 
@@ -236,7 +227,11 @@ def plot_line_chart(
             combined_values = [last_value] + preds
 
             predictions_line_df = pd.DataFrame(
-                {"Timestamp": combined_timestamps, col: combined_values, "Aggregation": "Predicted"}
+                {
+                    "Timestamp": combined_timestamps,
+                    col: combined_values,
+                    "Aggregation": pred_label,  # localized tooltip label
+                }
             )
 
             predictions_chart = (
@@ -248,7 +243,7 @@ def plot_line_chart(
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title="Predicted Time", format="%d/%m/%Y %H:%M:%S"),
                         alt.Tooltip(f"{col}:Q", title="Predicted Value"),
-                        alt.Tooltip("Aggregation:N", title="Aggregation"),
+                        alt.Tooltip("Aggregation:N", title=pred_label),
                     ],
                 )
             )
