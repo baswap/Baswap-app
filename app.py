@@ -382,49 +382,22 @@ if page == "Overview":
             
 st.divider()
 
-# Header row with right-aligned red button
-st.markdown(f"""
-<div class="table-header-row">
-  <h3 style="margin:0">{texts['data_table']}</h3>
-  <a
-    href="?page={page}&lang={lang}&clear_cache=1"
-    class="btn-clear-cache"
-    role="button"
-    title="{texts.get('clear_cache_tooltip', 'Clear cached data and fetch the latest from Thingspeak.')}"
-  >{texts['clear_cache']}</a>
-</div>
+# Header row: title (left) + clear-cache button (right)
+hdr_left, hdr_right = st.columns([8, 1], gap="small")
+with hdr_left:
+    st.subheader(texts["data_table"])
+with hdr_right:
+    # Primary-style button, hover help preserved
+    if st.button(
+        texts["clear_cache"],
+        key="clear_cache_btn",
+        help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+        type="primary",
+        use_container_width=True,  # makes it flush to the right edge of this column
+    ):
+        st.cache_data.clear()
+        st.rerun()  # guarantees immediate refresh
 
-<style>
-.table-header-row {{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin: 0 0 .25rem 0;
-}}
-/* Red button with white text, right-aligned */
-.btn-clear-cache {{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: .45rem .9rem;
-  border-radius: .5rem;
-  background: #dc2626; /* red-600 */
-  color: #fff !important;
-  border: 1px solid #dc2626;
-  font-weight: 700;
-  text-decoration: none !important;
-  line-height: 1;
-}}
-.btn-clear-cache:hover {{ filter: brightness(.92); }}
-.btn-clear-cache:focus {{
-  outline: 2px solid rgba(220, 38, 38, .5);
-  outline-offset: 2px;
-}}
-</style>
-""", unsafe_allow_html=True)
-
-# ...keep the rest as-is
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
