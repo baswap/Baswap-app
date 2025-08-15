@@ -316,26 +316,31 @@ if page == "Overview":
         )
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
-    with col_left:
-      
-        map_title = texts.get("map_title", "🗺️ Station Map")
-    st.markdown(f"""
-      <div class="map-title">
-        {map_title}
-        <span class="sub">{texts.get('layer_baswap', 'BASWAP stations')} • {texts.get('layer_other', 'Other stations')}</span>
-      </div>
-    """, unsafe_allow_html=True)
-    
-        center = [10.2, 106.0]
-        zoom = 8
-        highlight_location = None
+  with col_left:
+    # ---- Map title (below the fixed header) ----
+    map_title = texts.get("map_title", "🗺️ Station Map")
+    st.markdown(
+        f"""
+        <div class="map-title">
+          {map_title}
+          <span class="sub">{texts.get('layer_baswap', 'BASWAP stations')} • {texts.get('layer_other', 'Other stations')}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        sel = st.session_state.selected_station
-        if sel and sel in STATION_LOOKUP:
-            lat, lon = STATION_LOOKUP[sel]
-            center = [lat, lon]
-            zoom = 12   # tweak (12–14) for tighter focus
-            highlight_location = (lat, lon)
+    # Default view
+    center = [10.2, 106.0]
+    zoom = 8
+    highlight_location = None
+
+    sel = st.session_state.get("selected_station")
+    if sel and sel in STATION_LOOKUP:
+        lat, lon = STATION_LOOKUP[sel]
+        center = [lat, lon]
+        zoom = 12   # tweak (12–14) for tighter focus
+        highlight_location = (lat, lon)
+
 
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
