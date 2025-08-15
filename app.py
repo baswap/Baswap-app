@@ -231,10 +231,10 @@ def settings_panel(first_date, last_date, default_from, default_to):
         st.session_state.date_to = default_to
 
     # Set defaults if not chosen yet
-    if st.session_state.date_from is None:
+    if st.session_state.get("date_from") is None:
         st.session_state.date_from = default_from
-    if st.session_state.date_to is None:
-        st.session_state.date_to = default_to
+    if st.session_state.get("date_to") is None:
+        st.session_state.date_to = last_date
 
     st.date_input(
         side_texts["sidebar_start_date"],
@@ -245,15 +245,28 @@ def settings_panel(first_date, last_date, default_from, default_to):
         min_value=first_date, max_value=last_date, key="date_to"
     )
 
-    st.multiselect(
-        side_texts["sidebar_summary_stats"],
-        ["Min", "Max", "Median"],
-        default=["Min", "Max", "Median"],
-        key="agg_stats"
-    )
+    # --- LOCK the stats selector to Max and disable the widget ---
+    # Ensure session value is Max
+    st.session_state.agg_stats = ["Max"]
+
+    # Try using Streamlit's disabled parameter (newer versions)
+    try:
+        st.multiselect(
+            side_texts["sidebar_summary_stats"],
+            options=["Max"],          # only Max available
+            default=["Max"],          # selected
+            key="agg_stats",
+            disabled=True,            # disable interaction
+            help="Locked to Observed (Max)."
+        )
+    except TypeError:
+        # Older Streamlit without `disabled`; don't render the widget.
+        st.caption(side_texts["sidebar_summary_stats"] + " — locked to Max")
+
+    # Safety: never proceed with empty stats
     if not st.session_state.agg_stats:
-        st.warning(texts["data_dimensions"])
-        st.stop()
+        st.session_state.agg_stats = ["Max"]
+
 
 # ================== PAGES ==================
 if page == "Overview":
