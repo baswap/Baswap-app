@@ -383,20 +383,39 @@ if page == "Overview":
 
 st.divider()
 
-# Header row: title (left) + clear cache button (right)
-left, right = st.columns([10, 2], gap="small")
+left, right = st.columns([10, 1], gap="small")
 with left:
     st.subheader(texts["data_table"])
+
 with right:
+    # Scoped CSS to shrink just this button
+    st.markdown("""
+    <style>
+      .cc-compact { display:flex; justify-content:flex-end; }
+      .cc-compact .stButton>button{
+        padding: .35rem .55rem;           /* tighter button */
+        min-width: unset;                 /* no forced width */
+        border-radius: 999px;             /* pill look */
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="cc-compact">', unsafe_allow_html=True)
     if st.button(
-        f"🧹 {texts['clear_cache']}",
+        "🧹",                              # icon-only keeps it short
         key="clear_cache_btn",
-        help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
         type="primary",
-        use_container_width=True,  # stretches to the right column edge
+        help=texts.get(
+            "clear_cache_tooltip",
+            "Clear cached data and fetch the latest data from Thingspeak."
+        ),
     ):
         st.cache_data.clear()
         st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Small nudge so users discover the tooltip
+    st.caption("Tip: hover the broom for details.")
 
 # The rest stays the same
 st.multiselect(
