@@ -113,40 +113,31 @@ st.markdown(f"""
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
   /* ===================== Bottom placeholder ===================== */
-
-  /* Outer black block */
   .bottom-placeholder{{
-    /* tweakables */
-    --divider-ratio: 0.80;     /* 80% from top */
-    --row-padding: 10vw;       /* pulls text right & icon left */
-    height:{BOTTOM_HEIGHT}px;  /* from your Python const */
+    --left-pad: 18vw;              /* move team further right */
+    --right-pad: 18vw;             /* move icon further left */
+    height:{BOTTOM_HEIGHT}px;      /* e.g., 140 */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
     width:100%;
-    position:relative;         /* needed for absolute children */
+
+    /* The key: exact 80% / 1px / 20% split */
+    display:grid;
+    grid-template-rows: 80% 1px 20%;
   }}
 
-  /* Divider pinned EXACTLY at 80% of the block height */
+  /* Thin divider exactly at the 80% mark */
   .bp-divider{{
-    position:absolute;
-    left:0; right:0;
-    top: calc(var(--divider-ratio) * 100%);
-    height:1px;
     background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
-    transform: translateY(-0.5px); /* crisp line */
+    align-self:stretch;
   }}
 
-  /* Bottom row occupies the remaining 20% exactly */
+  /* Bottom row (team + placeholder icon) */
   .bp-bottomrow{{
-    position:absolute;
-    left:0; right:0; bottom:0;
-    height: calc(100% - (var(--divider-ratio) * 100%));
     display:flex; align-items:center; justify-content:space-between;
-    padding:.45rem var(--row-padding) .35rem var(--row-padding);
+    padding:.45rem var(--right-pad) .35rem var(--left-pad);
   }}
-
-  /* Team label (thin gray) + FB placeholder */
   .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
   .bp-bottomrow .fb{{
     width:28px; height:28px; border-radius:50%;
@@ -156,15 +147,15 @@ st.markdown(f"""
     user-select:none; pointer-events:none; /* placeholder */
   }}
 
-  /* Tweaks on smaller screens */
+  /* Optional: adjust padding on smaller screens */
   @media (max-width: 1200px) {{
-    .bottom-placeholder{{ --row-padding: 12vw; }}
+    .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
   }}
   @media (max-width: 900px) {{
-    .bottom-placeholder{{ --row-padding: 14vw; }}
+    .bottom-placeholder{{ --left-pad: 10vw; --right-pad: 10vw; }}
   }}
   @media (max-width: 600px) {{
-    .bottom-placeholder{{ --row-padding: 16vw; }}
+    .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
   }}
 </style>
 """, unsafe_allow_html=True)
@@ -484,17 +475,16 @@ elif page == "About":
 st.markdown(
     '''
     <div class="bottom-placeholder full-bleed">
-      <div class="bp-inner">
-        <div></div> <!-- spacer (top ~80%) -->
-        <div class="bp-divider"></div>
-        <div class="bp-bottomrow">
-          <span class="team">VGU RANGERS</span>
-          <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
-        </div>
+      <div></div>                    <!-- 80% spacer -->
+      <div class="bp-divider"></div> <!-- 1px divider -->
+      <div class="bp-bottomrow">     <!-- 20% row -->
+        <span class="team">VGU RANGERS</span>
+        <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
       </div>
     </div>
     ''',
     unsafe_allow_html=True
 )
+
 
 
