@@ -379,25 +379,34 @@ if page == "Overview":
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
             plot_line_chart(daily, target_col, "Day")
+            
+st.markdown("""
+<style>
+.cache-btn button {
+  font-size: 1.45rem;      /* bigger icon */
+  padding: .25rem .45rem;  /* tighter button */
+  line-height: 1;          /* compact height */
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.divider()
 
-# Header row: [Data Table title] [icon-only button] [flex spacer]
-title_col, icon_col, _ = st.columns([0.24, 0.04, 0.72], gap="small")
+# Header row: [Data Table title] [icon-only button] [spacer]
+title_col, icon_col, _ = st.columns([3, 0.6, 25], gap="small")  # adjust to taste
 with title_col:
     st.subheader(texts["data_table"])
 with icon_col:
+    st.markdown('<div class="cache-btn">', unsafe_allow_html=True)  # <-- wrapper so CSS applies
     if st.button(
-        "🔄",                                   # icon-only
+        "🔄",
         key="clear_cache_icon",
-        help=texts.get(                         # hover tooltip
-            "clear_cache_tooltip",
-            "Clear cached data and reload the latest data."
-        ),
+        help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
         type="secondary",
     ):
         st.cache_data.clear()
         st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # (rest unchanged)
 st.multiselect(
