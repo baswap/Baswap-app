@@ -16,7 +16,7 @@ _COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}
 def _render_aggregation_legend(show_predicted: bool = False) -> None:
     items = "".join(
         f"<div class='agg-item'><span class='dot' style='background:{_COLOR_MAP[k]}'></span>{k}</div>"
-        for k in ["Max", "Min", "Median"]
+        for k in ["Max"]
     )
     pred = (
         "<div class='agg-item'><span class='dash' ></span>Predicted</div>"
@@ -46,7 +46,6 @@ def _render_aggregation_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
-
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
     """Coerce any datetime-like series to tz-naive datetime64[ns]."""
     s = pd.to_datetime(s, errors="coerce")
@@ -108,10 +107,9 @@ def _inject_nans_for_gaps(
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     """
-    Draw a line chart with:
-      - line breaks across missing intervals (NaN injection),
-      - custom legend outside the chart (no 'Raw'),
-      - optional predictions overlay for Hour + EC series.
+    Draw a line chart that only shows the Max series (Min/Median removed),
+    keeps line breaks across gaps, and optionally overlays predictions for
+    Hourly EC series.
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -119,8 +117,10 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     df_filtered = df.copy()
 
+    # only keep Max in the color scale
     color_scale = alt.Scale(domain=["Max"], range=[_COLOR_MAP["Max"]])
 
+    # --- timestamps & display format ---
     if resample_freq == "Hour":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
             df_filtered["Timestamp (GMT+7)"], errors="coerce"
@@ -145,9 +145,8 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     ).dt.strftime(disp_fmt)
 
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
-if cat_col:
-    df_broken = df_broken[df_broken["Aggregation"] == "Max"]
 
+    # Build chart data with NaN injection for gap breaking
     df_broken = _inject_nans_for_gaps(
         df_filtered,
         time_col="Timestamp (Rounded)",
@@ -157,6 +156,10 @@ if cat_col:
         display_col="Timestamp (Rounded Display)",
         display_fmt=disp_fmt,
     )
+
+    # Filter to only Max so Min/Median lines disappear
+    if cat_col:
+        df_broken = df_broken[df_broken["Aggregation"] == "Max"]
 
     _render_aggregation_legend(show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]))
 
@@ -168,8 +171,7 @@ if cat_col:
             y=alt.Y(f"{col}:Q", title="Value"),
             color=(
                 alt.Color("Aggregation:N", scale=color_scale, legend=None)
-                if cat_col
-                else alt.value("steelblue")
+                if cat_col else alt.value(_COLOR_MAP["Max"])
             ),
             tooltip=[
                 alt.Tooltip("Timestamp (Rounded Display):N", title="Rounded Time"),
@@ -181,6 +183,7 @@ if cat_col:
         .interactive()
     )
 
+    # (prediction overlay unchanged)
     if resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"] and "Aggregation" in df_filtered.columns:
         max_data = df_filtered[df_filtered["Aggregation"] == "Max"].copy()
         if not max_data.empty and len(max_data) >= 2:
