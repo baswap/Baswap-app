@@ -13,7 +13,6 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
 # ================== PAGE CONFIG ==================
-# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
 # Works on both newer and older Streamlit versions
@@ -387,7 +386,7 @@ st.divider()
 st.markdown("""
 <style>
 .cache-btn > div button {
-  font-size: 1.3em;     /* +30% icon size */
+  font-size: 10em;     /* +30% icon size */
   line-height: 1;
   padding: .25rem .45rem;
 }
