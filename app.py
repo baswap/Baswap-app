@@ -224,6 +224,14 @@ st.markdown(f"""
 .stats-scope .k{{ color:#111; font-weight:600; }}   /* label: Station/Trạm */
 .stats-scope .v{{ color:#111; font-weight:500; }}   /* value: name/Overall */
 
+
+.info-title{{
+  font-size: 1.5rem;   /* tweak size here */
+  font-weight: 700;
+  line-height: 1.2;
+  margin: .25rem 0 .6rem;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -382,7 +390,7 @@ if page == "Overview":
 
     # ---------- RIGHT: Picker + 3×42 table (scrollable) ----------
     with col_right:
-        st.markdown(f"#### {texts['info_panel_title']}")
+        st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         current_sel = st.session_state.get("selected_station")
