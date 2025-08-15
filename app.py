@@ -98,7 +98,8 @@ st.markdown(f"""
   /* Ensure folium map height */
   iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
 
-    .map-title{
+  /* Map title */
+  .map-title{{
     margin:.75rem 0 .35rem;
     font-size:1.25rem;
     font-weight:700;
@@ -106,16 +107,15 @@ st.markdown(f"""
     display:flex;
     align-items:center;
     gap:.5rem;
-  }
-  .map-title .sub{
+  }}
+  .map-title .sub{{
     font-size:.95rem;
     font-weight:500;
     opacity:.8;
-  }
-
-
+  }}
 </style>
 """, unsafe_allow_html=True)
+
 
 # ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
@@ -317,7 +317,15 @@ if page == "Overview":
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
-        # Default view
+      
+        map_title = texts.get("map_title", "🗺️ Station Map")
+    st.markdown(f"""
+      <div class="map-title">
+        {map_title}
+        <span class="sub">{texts.get('layer_baswap', 'BASWAP stations')} • {texts.get('layer_other', 'Other stations')}</span>
+      </div>
+    """, unsafe_allow_html=True)
+    
         center = [10.2, 106.0]
         zoom = 8
         highlight_location = None
