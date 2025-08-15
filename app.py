@@ -349,7 +349,6 @@ if page == "Overview":
             texts["current_measurement"]: ["-"] * n,
             texts["table_warning"]: ["-"] * n,
         })
-
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
@@ -438,19 +437,20 @@ if page == "Overview":
             st.rerun()
 
     # --- Column picker + table ---
-    # Column picker
-st.multiselect(
-    texts["columns_select"],
-    options=COL_NAMES,
-    default=st.session_state["table_cols"],  # used only on first render
-    key="table_cols",
-)
+    # Use a different key for the widget to avoid write conflicts; keep app state in 'table_cols'
+    table_cols_sel = st.multiselect(
+        texts["columns_select"],
+        options=COL_NAMES,
+        default=st.session_state.get("table_cols", [COL_NAMES[0]]),
+        key="table_cols_picker",
+    )
+    st.session_state.table_cols = list(table_cols_sel)  # safe: different key than the widget
 
-# Build the table from the current selection
-base_cols = ["Timestamp (GMT+7)"]
-picked = [c for c in st.session_state["table_cols"] if c in filtered_df.columns]
-st.dataframe(filtered_df[base_cols + picked], use_container_width=True)
+    show_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
+    existing = [c for c in show_cols if c in filtered_df.columns]
 
+    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
+    st.dataframe(filtered_df[existing], use_container_width=True)
 
 elif page == "About":
     st.title(texts["app_title"])
