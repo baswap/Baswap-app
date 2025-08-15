@@ -267,110 +267,76 @@ def settings_panel(first_date, last_date, default_from, default_to):
 
 
 # ================== PAGES ==================
+# ================== PAGES ==================
 if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Picker + 3×42 table (scrollable) ----------
+    # ---------- RIGHT: Picker + table ----------
     with col_right:
         st.markdown(f"#### {texts['info_panel_title']}")
-
-        # Build options with localized "None" and BASWAP name
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
-
-        # Determine default label from session value
         current_sel = st.session_state.get("selected_station", None)
-        if current_sel is None:
-            default_label = texts["picker_none"]
-        elif current_sel in station_options_display:
-            default_label = current_sel
-        else:
-            # If previous selection doesn't exist in this language, reset to None
-            default_label = texts["picker_none"]
-
-        # Picker UI
+        default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
         picked_label = st.selectbox(
             label=texts["picker_label"],
             options=station_options_display,
             index=station_options_display.index(default_label),
         )
-
-        # Normalize: store None or the actual station name
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # 3×42 table: Station | Current Measurement | Warning
         station_names = [s["name"] for s in OTHER_STATIONS]
         n = len(station_names)
-
         table_df = pd.DataFrame({
             texts["table_station"]: station_names,
             texts["current_measurement"]: ["-"] * n,
             texts["table_warning"]: ["-"] * n,
         })
+        st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
-        st.dataframe(
-            table_df,
-            use_container_width=True,
-            hide_index=True,
-            height=TABLE_HEIGHT,
+    # ---------- LEFT: Map only ----------
+    with col_left:
+        # Title under fixed header
+        map_title = texts.get("map_title", "🗺️ Station Map")
+        st.markdown(
+            f"""
+            <div class="map-title">
+              {map_title}
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-    # ---------- LEFT: Map (tall) with zoom-to-station ----------
-# ---------- LEFT: Map (tall) with zoom-to-station ----------
-with col_left:
-    # ---- Map title (below the fixed header) ----
-    map_title = texts.get("map_title", "🗺️ Station Map")
-    st.markdown(
-        f"""
-        <div class="map-title">
-          {map_title}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        # Default map view
+        center = [10.2, 106.0]
+        zoom = 8
+        highlight_location = None
 
-    # Default view
-    center = [10.2, 106.0]
-    zoom = 8
-    highlight_location = None
+        sel = st.session_state.get("selected_station")
+        if sel and sel in STATION_LOOKUP:
+            lat, lon = STATION_LOOKUP[sel]
+            center = [lat, lon]
+            zoom = 12
+            highlight_location = (lat, lon)
 
-    sel = st.session_state.get("selected_station")
-    if sel and sel in STATION_LOOKUP:
-        lat, lon = STATION_LOOKUP[sel]
-        center = [lat, lon]
-        zoom = 12   # tweak (12–14) for tighter focus
-        highlight_location = (lat, lon)
+        m = folium.Map(location=center, zoom_start=zoom, tiles=None)
+        folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
+        add_layers(m)
+        if highlight_location:
+            folium.CircleMarker(location=highlight_location, radius=10, weight=3,
+                                fill=True, fill_opacity=0.2, color="#0077ff", tooltip=sel).add_to(m)
+        st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
-    # Build map (always runs, not only when a station is selected)
-    m = folium.Map(location=center, zoom_start=zoom, tiles=None)
-    folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
-    add_layers(m)
-
-    if highlight_location:
-        folium.CircleMarker(
-            location=highlight_location,
-            radius=10,
-            weight=3,
-            fill=True,
-            fill_opacity=0.2,
-            color="#0077ff",
-            tooltip=sel,
-        ).add_to(m)
-
-    st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
-
-
-
-    # --- Load data & set default date window = last 1 month ---
+    # ---------- BELOW COLUMNS (full page width) ----------
+    # Load data & defaults
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # --- Overall stats defaults ---
-    if st.session_state.date_from is None:
+    if st.session_state.get("date_from") is None:
         st.session_state.date_from = one_month_ago
-    if st.session_state.date_to is None:
+    if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
@@ -379,60 +345,49 @@ with col_left:
 
     st.divider()
 
-    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
         settings_panel(first_date, last_date, one_month_ago, last_date)
 
-    # Use (possibly updated) dates
     date_from = st.session_state.date_from
     date_to = st.session_state.date_to
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
-    st.session_state["texts"] = texts
 
-    # --- Charts: Hourly & Daily ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
-
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour", texts=texts)
-
+            plot_line_chart(hourly, target_col, "Hour")  # <- keep signature consistent
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day", texts=texts)
-            
-st.divider()
+            plot_line_chart(daily, target_col, "Day")
 
-# Header row: title (left) + clear-cache button (right)
-hdr_left, hdr_right = st.columns([8, 1], gap="small")
-with hdr_left:
-    st.subheader(texts["data_table"])
-with hdr_right:
-    # Primary-style button, hover help preserved
-    if st.button(
-        texts["clear_cache"],
-        key="clear_cache_btn",
-        help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-        type="primary",
-        use_container_width=True,  # makes it flush to the right edge of this column
-    ):
-        st.cache_data.clear()
-        st.rerun()  # guarantees immediate refresh
+    st.divider()
 
-st.multiselect(
-    texts["columns_select"],
-    options=COL_NAMES,
-    default=st.session_state.table_cols,
-    key="table_cols"
-)
-table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
-st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
-st.dataframe(filtered_df[table_cols], use_container_width=True)
+    hdr_left, hdr_right = st.columns([8, 1], gap="small")
+    with hdr_left:
+        st.subheader(texts["data_table"])
+    with hdr_right:
+        if st.button(
+            texts["clear_cache"],
+            key="clear_cache_btn",
+            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+            type="primary",
+            use_container_width=True,
+        ):
+            st.cache_data.clear()
+            st.rerun()
+
+    st.multiselect(texts["columns_select"], options=COL_NAMES,
+                   default=st.session_state.table_cols, key="table_cols")
+    table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
+    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
+    st.dataframe(filtered_df[table_cols], use_container_width=True)
+
 
 st.divider()
 
