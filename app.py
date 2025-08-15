@@ -61,129 +61,124 @@ BOTTOM_HEIGHT = 140
 st.markdown(f"""
 <style>
   /* Hide Streamlit's default header */
-  header{{visibility:hidden;}}
+  header{visibility:hidden;}
 
   /* Fixed custom header */
-  .custom-header{{
+  .custom-header{
     position:fixed; top:0; left:0; right:0; height:4.5rem;
     display:flex; align-items:center; gap:2rem; padding:0 1rem;
     background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
-  }}
-  .custom-header .logo{{font-size:2.1rem; font-weight:600; color:#fff;}}
-  .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
-  .custom-header .nav a{{
+  }
+  .custom-header .logo{font-size:2.1rem; font-weight:600; color:#fff;}
+  .custom-header .nav{display:flex; gap:1rem; align-items:center;}
+  .custom-header .nav a{
     text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
     border-bottom:2px solid transparent;
-  }}
-  .custom-header .nav a.active{{border-bottom-color:#fff; font-weight:600;}}
+  }
+  .custom-header .nav a.active{border-bottom-color:#fff; font-weight:600;}
 
   /* Language dropdown */
-  .lang-dd {{ position: relative; }}
-  .lang-dd summary {{
+  .lang-dd { position: relative; }
+  .lang-dd summary {
     list-style:none; cursor:pointer; outline:none;
     display:inline-flex; align-items:center; gap:.35rem;
     padding:.35rem .6rem; border-radius:999px;
     border:1px solid rgba(255,255,255,.35);
     background:rgba(255,255,255,.12); color:#fff; font-weight:600;
-  }}
-  .lang-dd summary::-webkit-details-marker{{display:none;}}
-  .lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
-  .lang-menu {{
+  }
+  .lang-dd summary::-webkit-details-marker{display:none;}
+  .lang-dd[open] summary{background:rgba(255,255,255,.18);}
+  .lang-menu {
     position:absolute; right:0; margin-top:.4rem; min-width:160px;
     background:#fff; color:#111; border-radius:.5rem;
     box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
     border:1px solid rgba(0,0,0,.06);
-  }}
-  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
-  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
-  .lang-menu .item:hover {{ background:#f2f6ff; }}
+  }
+  .lang-menu .item, .lang-menu .item:visited { color:#000 !important; }
+  .lang-menu .item { display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }
+  .lang-menu .item:hover { background:#f2f6ff; }
 
   /* Push content below fixed header */
-  body>.main{{ margin-top:4.5rem; }}
+  body>.main{ margin-top:4.5rem; }
 
-  /* Ensure folium map height */
-  iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
+  /* Folium map height */
+  iframe[title="streamlit_folium.st_folium"]{ height:{MAP_HEIGHT}px!important; }
 
   /* Map title */
-  .map-title{{
+  .map-title{
     margin:.75rem 0 .35rem;
     font-size:1.25rem; font-weight:700; line-height:1.2;
     display:flex; align-items:center; gap:.5rem;
-  }}
-  .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
+  }
+  .map-title .sub{ font-size:.95rem; font-weight:500; opacity:.8; }
 
-  /* ====== Full-bleed + container tweaks ====== */
-  .stApp{{ overflow-x:hidden; }}                         /* prevent horiz scroll */
-  .appview-container .main .block-container{{           /* nuke bottom padding (old) */
+  /* ====== container tweaks + full-bleed helper ====== */
+  .stApp{ overflow-x:hidden; } /* avoid horizontal scroll */
+  /* remove bottom padding across Streamlit versions */
+  .block-container, div[class^="block-container"], div[class*="block-container"],
+  section.main, section[class*="main"], [data-testid="stMain"]{
     padding-bottom:0 !important;
-  }}
-  section.main > div.block-container{{                   /* nuke bottom padding (new) */
-    padding-bottom:0 !important;
-  }}
-  section[data-testid="stMain"]{{ padding-bottom:0 !important; }}
+    margin-bottom:0 !important;
+  }
 
-  /* Pull element to viewport edges (left & right) */
-  .full-bleed{{
-    width:100vw;
-    position:relative;
-    left:50%;
-    transform:translateX(-50vw);
-  }}
+  /* pull element to viewport edges */
+  .full-bleed{
+    width:100vw; position:relative; left:50%; transform:translateX(-50vw);
+  }
 
   /* ===================== Bottom placeholder ===================== */
-  .bottom-placeholder{{
+  .bottom-placeholder{
     --left-pad: 18vw;    /* move team right */
     --right-pad: 18vw;   /* move icon left */
-    --bleed-fix: 56px;   /* <— amount of Streamlit's bottom gap to cancel */
     height:{BOTTOM_HEIGHT}px;
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
-
-    /* key: cancel the page's bottom gap so it touches the bottom */
-    margin:2rem 0 0;
-    margin-bottom: calc(-1 * var(--bleed-fix));  /* pull down */
-    padding-bottom: var(--bleed-fix);            /* give space back inside */
+    margin:2rem 0 0;     /* no extra side/bottom margins */
 
     display:grid;
-    grid-template-rows: 80% 1px 20%;            /* exact 80% / divider / 20% */
-  }}
+    grid-template-rows: 80% 1px 20%;  /* exact split */
+    z-index:1;
+  }
 
-  /* Divider exactly at the 80% mark */
-  .bp-divider{{
+  .bp-divider{
     background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
-  }}
+  }
 
-  /* Bottom row */
-  .bp-bottomrow{{
+  .bp-bottomrow{
     display:flex; align-items:center; justify-content:space-between;
     padding:.45rem var(--right-pad) .35rem var(--left-pad);
-  }}
-  .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
-  .bp-bottomrow .fb{{
+  }
+  .bp-bottomrow .team{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }
+  .bp-bottomrow .fb{
     width:28px; height:28px; border-radius:50%;
     border:1px solid rgba(255,255,255,.25);
     display:inline-flex; align-items:center; justify-content:center;
     color:#fff; text-decoration:none; opacity:.75;
     user-select:none; pointer-events:none; /* placeholder */
-  }}
+  }
+
+  /* ====== Bottom gap killer: paints a small fixed black tail ====== */
+  .stApp::after{
+    content:"";
+    position:fixed; left:0; right:0; bottom:0;
+    height:64px;              /* adjust if needed */
+    background:#111;
+    pointer-events:none; z-index:0;
+  }
 
   /* Responsive padding adjustments */
-  @media (max-width: 1200px) {{
-    .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
-  }}
-  @media (max-width: 900px) {{
-    .bottom-placeholder{{ --left-pad: 10vw; --right-pad: 10vw; }}
-  }}
-  @media (max-width: 600px) {{
-    .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
-  }}
+  @media (max-width: 1200px){
+    .bottom-placeholder{ --left-pad: 14vw; --right-pad: 14vw; }
+  }
+  @media (max-width: 900px){
+    .bottom-placeholder{ --left-pad: 10vw; --right-pad: 10vw; }
+  }
+  @media (max-width: 600px){
+    .bottom-placeholder{ --left-pad: 8vw; --right-pad: 8vw; }
+  }
 </style>
 """, unsafe_allow_html=True)
 
-
-
-
-# ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
