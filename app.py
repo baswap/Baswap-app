@@ -435,7 +435,7 @@ table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
 st.dataframe(filtered_df[table_cols], use_container_width=True)
 
-
+st.divider()
 
 # else:
 #     st.title(texts["app_title"])
