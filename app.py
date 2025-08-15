@@ -169,6 +169,7 @@ st.markdown(f"""
   @media (max-width: 600px) {{
     .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
   }}
+  .stButton > button { white-space: nowrap; }
 </style>
 """, unsafe_allow_html=True)
 
