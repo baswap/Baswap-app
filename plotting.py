@@ -13,15 +13,15 @@ import torch
 
 _COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}  
 
-def _render_aggregation_legend(show_predicted: bool = False) -> None:
+def _render_aggregation_legend(show_predicted: bool = False, texts: dict | None = None) -> None:
     """
     Render a compact custom legend.
     - Shows a colored dot for the observed (Max) line.
     - Optionally shows a dashed line label for predictions.
-    - Labels are localized using `texts['legend_observed']` and `texts['legend_predicted']` if available.
+    - Labels are localized via `texts['legend_observed']` and `texts['legend_predicted']`.
     """
-    # Try to read i18n labels from global `texts`, fall back to English.
-    _t = globals().get("texts", {}) or {}
+    # Prefer explicit param, then Streamlit session, else fallback to English
+    _t = texts or st.session_state.get("texts", {}) or {}
     obs_label = _t.get("legend_observed", "Observed")
     pred_label = _t.get("legend_predicted", "Predicted")
 
@@ -32,8 +32,7 @@ def _render_aggregation_legend(show_predicted: bool = False) -> None:
     )
     pred = (
         f"<div class='agg-item'><span class='dash'></span>{pred_label}</div>"
-        if show_predicted
-        else ""
+        if show_predicted else ""
     )
 
     st.markdown(
@@ -60,6 +59,7 @@ def _render_aggregation_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
     """Coerce any datetime-like series to tz-naive datetime64[ns]."""
@@ -120,15 +120,25 @@ def _inject_nans_for_gaps(
 # ---------------------------------------------------------------------- #
 
 
-def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
+def plot_line_chart(
+    df: pd.DataFrame,
+    col: str,
+    resample_freq: str = "None",
+    texts: dict | None = None,  # <-- new optional param
+) -> None:
     """
     Draw a line chart that only shows the observed (Max) series,
     with line breaks across gaps and an optional prediction overlay (Hour + EC).
-    Legend labels are localized via global `texts` if present.
+    Legend/tooltip labels are localized via `texts` or `st.session_state['texts']`.
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
+
+    # Prefer explicit param, then Streamlit session, else fallback to English
+    _t = texts or st.session_state.get("texts", {}) or {}
+    obs_label = _t.get("legend_observed", "Observed")
+    pred_label = _t.get("legend_predicted", "Predicted")
 
     df_filtered = df.copy()
 
@@ -171,22 +181,18 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         display_fmt=disp_fmt,
     )
 
-    # i18n labels for tooltips/legend
-    _t = globals().get("texts", {}) or {}
-    obs_label = _t.get("legend_observed", "Observed")
-    pred_label = _t.get("legend_predicted", "Predicted")
-
-    # Keep only Max; relabel it to "Observed" (localized) for tooltips
+    # Keep only Max; relabel it to localized "Observed" for tooltips
     if cat_col:
         df_broken = df_broken[df_broken["Aggregation"] == "Max"].copy()
-        df_broken.loc[:, "Aggregation"] = obs_label  # rename for nicer tooltips
+        df_broken.loc[:, "Aggregation"] = obs_label
 
-    # Custom legend with optional predicted label
+    # Custom legend (localized)
     _render_aggregation_legend(
-        show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
+        show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]),
+        texts=_t,
     )
 
-    # Main observed line (force a fixed color; no Altair legend)
+    # Main observed line (fixed color; no Altair legend)
     main_chart = (
         alt.Chart(df_broken)
         .mark_line(point=True)
@@ -198,7 +204,6 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                 alt.Tooltip("Timestamp (Rounded Display):N", title="Rounded Time"),
                 alt.Tooltip("Timestamp (GMT+7):T", title="Exact Time", format="%d/%m/%Y %H:%M:%S"),
                 alt.Tooltip(f"{col}:Q", title="Value"),
-                # Only show this field if we had an Aggregation column originally
                 alt.Tooltip("Aggregation:N", title=obs_label) if cat_col else alt.TooltipValue(""),
             ],
         )
@@ -227,11 +232,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             combined_values = [last_value] + preds
 
             predictions_line_df = pd.DataFrame(
-                {
-                    "Timestamp": combined_timestamps,
-                    col: combined_values,
-                    "Aggregation": pred_label,  # localized tooltip label
-                }
+                {"Timestamp": combined_timestamps, col: combined_values, "Aggregation": pred_label}
             )
 
             predictions_chart = (
@@ -253,6 +254,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             return
 
     st.altair_chart(main_chart, use_container_width=True)
+
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
