@@ -112,11 +112,17 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ====== Container tweaks so the bottom block can hit the edges ====== */
-  .stApp{{ overflow-x:hidden; }}  /* prevent horizontal scroll from full-bleed */
-  section.main > div.block-container{{ padding-bottom:0 !important; }}
+  /* ====== Full-bleed + container tweaks ====== */
+  .stApp{{ overflow-x:hidden; }}                         /* prevent horiz scroll */
+  .appview-container .main .block-container{{           /* nuke bottom padding (old) */
+    padding-bottom:0 !important;
+  }}
+  section.main > div.block-container{{                   /* nuke bottom padding (new) */
+    padding-bottom:0 !important;
+  }}
+  section[data-testid="stMain"]{{ padding-bottom:0 !important; }}
 
-  /* Full-bleed helper: pulls the element to the viewport edges */
+  /* Pull element to viewport edges (left & right) */
   .full-bleed{{
     width:100vw;
     position:relative;
@@ -126,14 +132,20 @@ st.markdown(f"""
 
   /* ===================== Bottom placeholder ===================== */
   .bottom-placeholder{{
-    --left-pad: 18vw;      /* move team right */
-    --right-pad: 18vw;     /* move icon left */
+    --left-pad: 18vw;    /* move team right */
+    --right-pad: 18vw;   /* move icon left */
+    --bleed-fix: 56px;   /* <— amount of Streamlit's bottom gap to cancel */
     height:{BOTTOM_HEIGHT}px;
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
-    margin:2rem 0 0;       /* no extra side/bottom margins */
+
+    /* key: cancel the page's bottom gap so it touches the bottom */
+    margin:2rem 0 0;
+    margin-bottom: calc(-1 * var(--bleed-fix));  /* pull down */
+    padding-bottom: var(--bleed-fix);            /* give space back inside */
+
     display:grid;
-    grid-template-rows: 80% 1px 20%;  /* exact split: 80% spacer, divider, 20% row */
+    grid-template-rows: 80% 1px 20%;            /* exact 80% / divider / 20% */
   }}
 
   /* Divider exactly at the 80% mark */
@@ -167,6 +179,7 @@ st.markdown(f"""
   }}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
