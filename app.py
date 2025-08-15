@@ -98,6 +98,7 @@ st.markdown(f"""
 
   /* Ensure folium map height */
   iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
+  
 </style>
 """, unsafe_allow_html=True)
 
@@ -383,8 +384,18 @@ if page == "Overview":
 
 st.divider()
 
+st.markdown("""
+<style>
+.cache-btn > div button {
+  font-size: 1.3em;     /* +30% icon size */
+  line-height: 1;
+  padding: .25rem .45rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Header row: [Data Table title] [icon-only button] [spacer]
-title_col, icon_col, _ = st.columns([3, 0.6, 25], gap="small")  # adjust to taste
+title_col, icon_col, _ = st.columns([3, 0.6, 20], gap="small")  # adjust to taste
 with title_col:
     st.subheader(texts["data_table"])
 with icon_col:
@@ -399,7 +410,6 @@ with icon_col:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# (rest unchanged)
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
