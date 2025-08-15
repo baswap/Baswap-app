@@ -380,20 +380,26 @@ if page == "Overview":
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
             plot_line_chart(daily, target_col, "Day")
 
-    st.divider()
+st.divider()
 
-# Header row: title (left) + clear cache button (right)
-hdr_left, hdr_right = st.columns([6, 1], gap="small")
-with hdr_left:
+# Header row: [Data Table title] [icon-only button] [flex spacer]
+title_col, icon_col, _ = st.columns([0.24, 0.04, 0.72], gap="small")
+with title_col:
     st.subheader(texts["data_table"])
-with hdr_right:
-    st.button(
-        texts["clear_cache"],
-        key="clear_cache_btn",
-        help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
-        on_click=st.cache_data.clear,
-    )
+with icon_col:
+    if st.button(
+        "🔄",                                   # icon-only
+        key="clear_cache_icon",
+        help=texts.get(                         # hover tooltip
+            "clear_cache_tooltip",
+            "Clear cached data and reload the latest data."
+        ),
+        type="secondary",
+    ):
+        st.cache_data.clear()
+        st.rerun()
 
+# (rest unchanged)
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
@@ -404,6 +410,7 @@ st.multiselect(
 table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
 st.dataframe(filtered_df[table_cols], use_container_width=True)
+
 
 # else:
 #     st.title(texts["app_title"])
