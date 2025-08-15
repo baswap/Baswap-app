@@ -380,15 +380,6 @@ if page == "Overview":
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
             plot_line_chart(daily, target_col, "Day")
             
-st.markdown("""
-<style>
-.cache-btn button {
-  font-size: 1.45rem;      /* bigger icon */
-  padding: .25rem .45rem;  /* tighter button */
-  line-height: 1;          /* compact height */
-}
-</style>
-""", unsafe_allow_html=True)
 
 st.divider()
 
