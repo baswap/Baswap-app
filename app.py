@@ -98,8 +98,8 @@ st.markdown(f"""
   .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
   .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-  /* Push content below fixed header and reserve space for fixed footer */
-  body>.main{{ margin-top:4.5rem; padding-bottom:{FOOTER_HEIGHT}px; }}
+  /* Push content below fixed header (no fixed footer) */
+  body>.main{{ margin-top:4.5rem; }}
 
   /* Ensure folium map height */
   iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
@@ -112,18 +112,24 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* Blank footer placeholder */
-  .app-footer{{
-    position:fixed; left:0; right:0; bottom:0;
-    height:{FOOTER_HEIGHT}px;
+  /* ---- Bottom placeholder (appears only when scrolled to bottom) ---- */
+  .bottom-placeholder{{
+    height:{BOTTOM_HEIGHT}px;         /* define BOTTOM_HEIGHT in Python, e.g., 140 */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
-    z-index:900; /* below header (1000) */
+    margin-top:2rem;
+    width:100%;
+  }}
+
+  /* Make the placeholder span edge-to-edge (full-bleed) */
+  .full-bleed{{
+    position:relative;
+    left:50%; right:50%;
+    margin-left:-50vw; margin-right:-50vw;
+    width:100vw;
   }}
 </style>
 """, unsafe_allow_html=True)
-
-
 
 # ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
@@ -436,4 +442,5 @@ elif page == "About":
     st.markdown(texts["description"])
 
 
-st.markdown('<div class="app-footer"></div>', unsafe_allow_html=True)
+st.markdown('<div class="bottom-placeholder full-bleed"></div>', unsafe_allow_html=True)
+
