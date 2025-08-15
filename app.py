@@ -30,19 +30,21 @@ lang = _as_scalar(params.get("lang"), "vi")
 # --- refresh via query param ---
 if _as_scalar(params.get("refresh"), "0") == "1":
     st.cache_data.clear()
-    # remove the flag and rerun
+    # remove the flag from the URL, then rerun
     try:
-        # Newer API
-        new_q = dict(st.query_params)
-        new_q.pop("refresh", None)
-        st.query_params.clear()
-        for k, v in new_q.items():
-            st.query_params[k] = v
+        if hasattr(st, "query_params"):
+            qp = dict(st.query_params)
+            qp.pop("refresh", None)
+            st.query_params.clear()
+            for k, v in qp.items():
+                st.query_params[k] = v
+        else:
+            cleaned = {k: v for k, v in params.items() if k != "refresh"}
+            st.experimental_set_query_params(**cleaned)
     except Exception:
-        # Fallback API
-        cleaned = {k: v for k, v in params.items() if k != "refresh"}
-        st.experimental_set_query_params(**cleaned)
+        pass
     st.rerun()
+
 
 if page not in ("Overview", "About"):
     page = "Overview"
@@ -125,10 +127,7 @@ st.markdown(f"""
     display:flex; align-items:center; gap:.5rem;
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
-.stats-bar{{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.25rem 0 .5rem; white-space:nowrap; }}
-  .stats-title{{ font-weight:600; }}
-  .refresh-btn{{ display:inline-block; padding:.4rem .9rem; border-radius:.5rem; background:#2563eb; color:#fff !important; text-decoration:none; font-weight:600; line-height:1; white-space:nowrap; border:1px solid rgba(0,0,0,0); }}
-  .refresh-btn:hover{{ opacity:.92; }}
+
   /* ====== Full-bleed helper + container fixes ====== */
   .stApp{{ overflow-x:hidden; }}
   /* Some Streamlit versions use 'section.main', others data-testid */
@@ -189,6 +188,31 @@ st.markdown(f"""
     .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
   }}
   .stButton > button{{ white-space: nowrap; }}
+
+    /* One-line stats bar: title left, refresh button right */
+  .stats-bar {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin: .25rem 0 .5rem;
+    white-space: nowrap; /* keep title/button on one line */
+  }}
+  .stats-title {{ font-weight: 600; }}
+  .refresh-btn {{
+    display: inline-block;
+    padding: .4rem .9rem;
+    border-radius: .5rem;
+    background: #2563eb;
+    color: #fff !important;
+    text-decoration: none;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid rgba(0,0,0,0);
+  }}
+  .refresh-btn:hover {{ opacity: .92; }}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -406,7 +430,20 @@ if page == "Overview":
     # --- Overall Statistics header + REFRESH button on the same row ---
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
-        st.markdown(f"### 📊 {texts['overall_stats_title']}")
+        # One-line stats bar with a link-styled refresh button
+refresh_url = f"?page={page}&lang={lang}&refresh=1"
+st.markdown(
+    f"""
+    <div class="stats-bar">
+      <div class="stats-title">📊 {texts['overall_stats_title']}</div>
+      <a class="refresh-btn" href="{refresh_url}" title="{texts.get('clear_cache_tooltip', '')}">
+        {texts['clear_cache']}
+      </a>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
     with sh_right:
         if st.button(
             texts["clear_cache"],        # same label you already translate
