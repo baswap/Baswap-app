@@ -270,9 +270,17 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None", tex
 
 
 
-def display_statistics(df: pd.DataFrame, target_col: str) -> None:
+def display_statistics(df: pd.DataFrame, target_col: str, texts: dict | None = None) -> None:
+
+    texts = texts or {}
+    max_label = texts.get("stat_maximum", "Maximum")
+    min_label = texts.get("stat_minimum", "Minimum")
+    avg_label = texts.get("stat_average", "Average")
+    std_label = texts.get("stat_stddev",  "Std Dev")
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric(label="Maximum", value=f"{df[target_col].max():.2f}")
-    col2.metric(label="Minimum", value=f"{df[target_col].min():.2f}")
-    col3.metric(label="Average", value=f"{df[target_col].mean():.2f}")
-    col4.metric(label="Std Dev", value=f"{df[target_col].std():.2f}")
+    col1.metric(label=max_label, value=f"{df[target_col].max():.2f}")
+    col2.metric(label=min_label, value=f"{df[target_col].min():.2f}")
+    col3.metric(label=avg_label, value=f"{df[target_col].mean():.2f}")
+    col4.metric(label=std_label, value=f"{df[target_col].std():.2f}")
+
