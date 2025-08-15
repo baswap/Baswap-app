@@ -416,7 +416,6 @@ if page == "Overview":
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
-    # ---------- BELOW COLUMNS (full page width) ----------
 # ---------- BELOW COLUMNS (full page width) ----------
 df = thingspeak_retrieve(combined_data_retrieve())
 first_date = df["Timestamp (GMT+7)"].min().date()
@@ -445,6 +444,7 @@ st.markdown(
 # Show the metrics
 stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
 display_statistics(stats_df, st.session_state.target_col)
+
 
 st.divider()
 
