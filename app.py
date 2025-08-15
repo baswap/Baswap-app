@@ -46,13 +46,14 @@ toggle_tooltip = texts.get("toggle_tooltip", "")
 # ================== SESSION DEFAULTS ==================
 for k, v in {
     "target_col": COL_NAMES[0],
-    "date_from": None,      # set after data loads
-    "date_to": None,        # set after data loads
+    "date_from": None,
+    "date_to": None,
     "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": [COL_NAMES[0]],
-    "selected_station": None,  # for map zooming (None or station name)
+    "table_cols": [COL_NAMES[0]],  # default: only EC Value (us/cm)
+    "selected_station": None,
 }.items():
     st.session_state.setdefault(k, v)
+
 
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
@@ -330,54 +331,34 @@ if page == "Overview":
     with col_right:
         st.markdown(f"#### {texts['info_panel_title']}")
 
-        # Build options with localized "None" and BASWAP name
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
 
-        # Determine default label from session value
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
-        # Picker UI
         picked_label = st.selectbox(
             label=texts["picker_label"],
             options=station_options_display,
             index=station_options_display.index(default_label),
         )
 
-        # Normalize: store None or the actual station name
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # 3×42 table: Station | Current Measurement | Warning
         station_names = [s["name"] for s in OTHER_STATIONS]
         n = len(station_names)
-
         table_df = pd.DataFrame({
             texts["table_station"]: station_names,
             texts["current_measurement"]: ["-"] * n,
             texts["table_warning"]: ["-"] * n,
         })
 
-        st.dataframe(
-            table_df,
-            use_container_width=True,
-            hide_index=True,
-            height=TABLE_HEIGHT,
-        )
+        st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
-        # ---- Map title (below the fixed header) ----
         map_title = texts.get("map_title", "🗺️ Station Map")
-        st.markdown(
-            f"""
-            <div class="map-title">
-              {map_title}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"""<div class="map-title">{map_title}</div>""", unsafe_allow_html=True)
 
-        # Default view
         center = [10.2, 106.0]
         zoom = 8
         highlight_location = None
@@ -386,10 +367,9 @@ if page == "Overview":
         if sel and sel in STATION_LOOKUP:
             lat, lon = STATION_LOOKUP[sel]
             center = [lat, lon]
-            zoom = 12   # tweak (12–14) for tighter focus
+            zoom = 12
             highlight_location = (lat, lon)
 
-        # Build map (always runs)
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
         add_layers(m)
@@ -397,24 +377,18 @@ if page == "Overview":
         if highlight_location:
             folium.CircleMarker(
                 location=highlight_location,
-                radius=10,
-                weight=3,
-                fill=True,
-                fill_opacity=0.2,
-                color="#0077ff",
-                tooltip=sel,
+                radius=10, weight=3, fill=True, fill_opacity=0.2,
+                color="#0077ff", tooltip=sel,
             ).add_to(m)
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # ---------- BELOW COLUMNS (full page width) ----------
-    # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # --- Overall stats defaults ---
     if st.session_state.get("date_from") is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.get("date_to") is None:
@@ -426,20 +400,17 @@ if page == "Overview":
 
     st.divider()
 
-    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
         settings_panel(first_date, last_date, one_month_ago, last_date)
 
-    # Use (possibly updated) dates
     date_from = st.session_state.date_from
     date_to = st.session_state.date_to
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
 
-    # --- Charts: Hourly & Daily ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
@@ -454,7 +425,6 @@ if page == "Overview":
 
     st.divider()
 
-    # Header row: title (left) + clear-cache button (right)
     hdr_left, hdr_right = st.columns([8, 1], gap="small")
     with hdr_left:
         st.subheader(texts["data_table"])
@@ -474,17 +444,13 @@ if page == "Overview":
         texts["columns_select"],
         options=COL_NAMES,
         default=st.session_state.get("table_cols", [COL_NAMES[0]]),
-        key="table_cols",
+        key="table_cols",  # do NOT assign to this key manually later
     )
 
-    # Ensure list and sync back
-    selected_cols = list(selected_cols or [])
-    st.session_state.table_cols = selected_cols
-
-    # Build and show table safely
     base_cols = ["Timestamp (GMT+7)"]
-    table_cols = base_cols + selected_cols
+    table_cols = base_cols + list(selected_cols or [])
     existing = [c for c in table_cols if c in filtered_df.columns]
+
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
 
@@ -506,6 +472,7 @@ st.markdown(
     ''',
     unsafe_allow_html=True
 )
+
 
 
 
