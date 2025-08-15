@@ -373,55 +373,91 @@ if page == "Overview":
     with col_right:
         st.markdown(f"#### {texts['info_panel_title']}")
 
+        # Build options with localized "None" and BASWAP name
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
+
+        # Determine default label from session value
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
+        # Picker UI
         picked_label = st.selectbox(
             label=texts["picker_label"],
             options=station_options_display,
             index=station_options_display.index(default_label),
         )
+
+        # Normalize: store None or the actual station name
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
+        # 3×42 table: Station | Current Measurement | Warning
         station_names = [s["name"] for s in OTHER_STATIONS]
         n = len(station_names)
+
         table_df = pd.DataFrame({
             texts["table_station"]: station_names,
             texts["current_measurement"]: ["-"] * n,
             texts["table_warning"]: ["-"] * n,
         })
-        st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
+
+        st.dataframe(
+            table_df,
+            use_container_width=True,
+            hide_index=True,
+            height=TABLE_HEIGHT,
+        )
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
+        # ---- Map title (below the fixed header) ----
         map_title = texts.get("map_title", "🗺️ Station Map")
-        st.markdown(f"""<div class="map-title">{map_title}</div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="map-title">
+              {map_title}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        center = [10.2, 106.0]; zoom = 8; highlight_location = None
+        # Default view
+        center = [10.2, 106.0]
+        zoom = 8
+        highlight_location = None
+
         sel = st.session_state.get("selected_station")
         if sel and sel in STATION_LOOKUP:
             lat, lon = STATION_LOOKUP[sel]
-            center = [lat, lon]; zoom = 12; highlight_location = (lat, lon)
+            center = [lat, lon]
+            zoom = 12   # tweak (12–14) for tighter focus
+            highlight_location = (lat, lon)
 
+        # Build map (always runs, not only when a station is selected)
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
         add_layers(m)
 
         if highlight_location:
             folium.CircleMarker(
-                location=highlight_location, radius=10, weight=3, fill=True, fill_opacity=0.2,
-                color="#0077ff", tooltip=sel,
+                location=highlight_location,
+                radius=10,
+                weight=3,
+                fill=True,
+                fill_opacity=0.2,
+                color="#0077ff",
+                tooltip=sel,
             ).add_to(m)
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # ---------- BELOW COLUMNS (full page width) ----------
+    # --- Load data & set default date window = last 1 month ---
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
+    # --- Overall stats defaults ---
     if st.session_state.get("date_from") is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.get("date_to") is None:
@@ -441,7 +477,7 @@ if page == "Overview":
         unsafe_allow_html=True,
     )
 
-    # Show the metrics
+    # Stats metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     display_statistics(stats_df, st.session_state.target_col)
 
@@ -467,18 +503,18 @@ if page == "Overview":
 
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour")
+            plot_line_chart(hourly, target_col, "Hour", texts=texts)
 
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day")
+            plot_line_chart(daily, target_col, "Day", texts=texts)
 
     st.divider()
 
-    # Data table header (no button here anymore)
+    # Data table header (no refresh button here)
     st.subheader(texts["data_table"])
 
-    # Column picker + table
+    # --- Column picker + table ---
     table_cols_sel = st.multiselect(
         texts["columns_select"],
         options=COL_NAMES,
@@ -491,6 +527,7 @@ if page == "Overview":
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 elif page == "About":
     st.title(texts["app_title"])
@@ -511,7 +548,4 @@ st.markdown(
     ''',
     unsafe_allow_html=True
 )
-
-
-
 
