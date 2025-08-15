@@ -380,56 +380,57 @@ if page == "Overview":
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
             plot_line_chart(daily, target_col, "Day")
             
-
 st.divider()
 
-# ---- Header row: title (left) + right-aligned Clear Cache (right) ----
-hdr_left, hdr_right = st.columns([1, 0.00001], gap="small")
+# Header row with right-aligned red button
+st.markdown(f"""
+<div class="table-header-row">
+  <h3 style="margin:0">{texts['data_table']}</h3>
+  <a
+    href="?page={page}&lang={lang}&clear_cache=1"
+    class="btn-clear-cache"
+    role="button"
+    title="{texts.get('clear_cache_tooltip', 'Clear cached data and fetch the latest from Thingspeak.')}"
+  >{texts['clear_cache']}</a>
+</div>
 
-with hdr_left:
-    st.subheader(texts["data_table"])
+<style>
+.table-header-row {{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 .25rem 0;
+}}
+/* Red button with white text, right-aligned */
+.btn-clear-cache {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .45rem .9rem;
+  border-radius: .5rem;
+  background: #dc2626; /* red-600 */
+  color: #fff !important;
+  border: 1px solid #dc2626;
+  font-weight: 700;
+  text-decoration: none !important;
+  line-height: 1;
+}}
+.btn-clear-cache:hover {{ filter: brightness(.92); }}
+.btn-clear-cache:focus {{
+  outline: 2px solid rgba(220, 38, 38, .5);
+  outline-offset: 2px;
+}}
+</style>
+""", unsafe_allow_html=True)
 
-with hdr_right:
-    # Right-align + style the button and add a clear hover hint
-    st.markdown(
-        """
-        <style>
-          /* Keep the button small (fit content), right-aligned, and visually distinct */
-          .clear-cache-wrap { display: flex; justify-content: flex-end; align-items: center; }
-          .clear-cache-wrap .stButton > button {
-            width: fit-content; white-space: nowrap;
-            border-radius: 999px; font-weight: 700;
-            padding: .45rem .9rem; border: 0;
-            background: linear-gradient(90deg, #ff6b6b, #ff8e53);
-            color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);
-            cursor: pointer;
-          }
-          .clear-cache-wrap .stButton > button:hover { filter: brightness(0.96); }
-          .hover-hint { margin-left: .5rem; opacity: .7; font-size: .85rem; }
-          @media (max-width: 640px) {
-            .hover-hint { display: none; } /* keep mobile clean */
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div class="clear-cache-wrap">', unsafe_allow_html=True)
-    st.button(
-        f"↻ {texts['clear_cache']}",
-        key="clear_cache_btn",
-        help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
-        on_click=st.cache_data.clear,
-    )
-    st.markdown('<span class="hover-hint">ℹ️ Hover for details</span></div>', unsafe_allow_html=True)
-
-# ---- The rest of your table controls ----
+# ...keep the rest as-is
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
     default=st.session_state.table_cols,
     key="table_cols"
 )
-
 table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
 st.dataframe(filtered_df[table_cols], use_container_width=True)
