@@ -402,7 +402,7 @@ with right:
 
     st.markdown('<div class="cc-compact">', unsafe_allow_html=True)
     if st.button(
-        "🧹",                              # icon-only keeps it short
+        "🧹Refresh",                              # icon-only keeps it short
         key="clear_cache_btn",
         type="primary",
         help=texts.get(
@@ -414,10 +414,6 @@ with right:
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Small nudge so users discover the tooltip
-    st.caption("Tip: hover the broom for details.")
-
-# The rest stays the same
 st.multiselect(
     texts["columns_select"],
     options=COL_NAMES,
