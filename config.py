@@ -83,7 +83,7 @@ APP_TEXTS = {
         "table_station": "Trạm",
         "table_warning": "Cảnh báo",
         "current_measurement": "Chỉ số hiện tại",
-        "legend_observed": "Quan trắc",
+        "legend_observed": "Quan sát",
         "legend_predicted": "Dự báo",
         "clear_cache_tooltip": "Xóa bộ nhớ đệm và tải lại dữ liệu mới nhất từ Thingspeak.",
     }
