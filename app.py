@@ -444,22 +444,18 @@ if page == "Overview":
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
         if st.button(
-            texts["clear_cache"],        # same label you already translate
+            texts["clear_cache"],
             key="clear_cache_btn",
             help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
             type="primary",
-            use_container_width=True,    # stays one line thanks to CSS above
+            use_container_width=True,   # will stay one line if you added the CSS rule
         ):
             st.cache_data.clear()
             st.rerun()
-            
-# ---- NEW: stats scope pill (default or selected station) ----
-pill_text = st.session_state.get("selected_station") or texts.get("stats_scope_overall", "Trạm / Station overall")
-st.markdown(f'<div class="stats-pill">{pill_text}</div>', unsafe_allow_html=True)
 
-# Show the metrics
-stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
-display_statistics(stats_df, st.session_state.target_col)
+    # ---- NEW: stats scope pill (default or selected station) ----
+    pill_text = st.session_state.get("selected_station") or texts.get("stats_scope_overall", "Trạm / Station overall")
+    st.markdown(f'<div class="stats-pill">{pill_text}</div>', unsafe_allow_html=True)
 
     # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
@@ -493,7 +489,7 @@ display_statistics(stats_df, st.session_state.target_col)
 
     st.divider()
 
-    # Data table header (no button here anymore)
+    # Data table header (no refresh button here)
     st.subheader(texts["data_table"])
 
     # Column picker + table
@@ -513,6 +509,7 @@ display_statistics(stats_df, st.session_state.target_col)
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
+
 
 
 # ---------- Bottom black block (full-bleed) ----------
