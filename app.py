@@ -324,7 +324,6 @@ with col_left:
         f"""
         <div class="map-title">
           {map_title}
-          <span class="sub">{texts.get('layer_baswap', 'BASWAP stations')} • {texts.get('layer_other', 'Other stations')}</span>
         </div>
         """,
         unsafe_allow_html=True,
