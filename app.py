@@ -114,7 +114,7 @@ st.markdown(f"""
 
   /* ---- Bottom placeholder (appears at page end) ---- */
   .bottom-placeholder{{
-    height:{BOTTOM_HEIGHT}px;   /* define BOTTOM_HEIGHT above (e.g., 140) */
+    height:{BOTTOM_HEIGHT}px;         /* define BOTTOM_HEIGHT above */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
@@ -129,43 +129,65 @@ st.markdown(f"""
     width:100vw;
   }}
 
-  /* Internal layout: exact 80% / 1px / 20% split */
-  .bp-inner{{
-    display:grid;
-    grid-template-rows: calc(80% - 1px) 1px 20%;
-    height:100%;
+  /* Internal layout: use flex so divider sits exactly at 80% */
+  .bp-inner{{ 
+    display:flex; 
+    flex-direction:column; 
+    height:100%; 
+  }}
+  /* First child is the 80% spacer */
+  .bp-inner > :first-child{{ 
+    flex:0 0 80%; 
+    min-height:80%; 
   }}
 
-  /* Divider at the 80% mark */
-  .bp-divider{{
-    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
-    margin:0;
+  /* Divider line (1px) */
+  .bp-divider{{ 
+    height:1px; 
+    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); 
+    flex:0 0 1px;
   }}
 
-  /* Bottom row (team + placeholder icon) with inward padding */
+  /* Bottom row (20%) */
   .bp-bottomrow{{
-    display:flex; align-items:center; justify-content:space-between;
-    padding-left: clamp(12px, 5vw, 48px);
-    padding-right: clamp(12px, 5vw, 48px);
-    padding-top:.45rem; padding-bottom:.35rem;
+    flex:1 0 20%;
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between;
+    padding:.45rem .9rem .35rem;
   }}
-  .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
+
+  /* Pull team text rightward and FB icon leftward (closer together) */
+  .bp-bottomrow .team{{ 
+    color:rgba(255,255,255,.6); 
+    font-weight:300; 
+    letter-spacing:.08em; 
+    margin-left:24vw;        /* move "VGU RANGER" right */
+  }}
   .bp-bottomrow .fb{{
     width:28px; height:28px; border-radius:50%;
     border:1px solid rgba(255,255,255,.25);
     display:inline-flex; align-items:center; justify-content:center;
     color:#fff; text-decoration:none; opacity:.75;
     user-select:none; pointer-events:none; /* placeholder */
+    margin-right:24vw;      /* move icon left */
   }}
 
-  /* Optional tiny-screen tweak */
-  @media (max-width: 480px) {{
-    .bp-bottomrow .team{{ font-size:.95rem; }}
+  /* Tighter margins on smaller screens */
+  @media (max-width: 1200px) {{
+    .bp-bottomrow .team{{ margin-left:18vw; }}
+    .bp-bottomrow .fb{{ margin-right:18vw; }}
+  }}
+  @media (max-width: 900px) {{
+    .bp-bottomrow .team{{ margin-left:12vw; }}
+    .bp-bottomrow .fb{{ margin-right:12vw; }}
+  }}
+  @media (max-width: 600px) {{
+    .bp-bottomrow .team{{ margin-left:8vw; }}
+    .bp-bottomrow .fb{{ margin-right:8vw; }}
   }}
 </style>
 """, unsafe_allow_html=True)
-
-
 
 
 # ================== HEADER ==================
