@@ -212,17 +212,17 @@ st.markdown(f"""
     border: 1px solid rgba(0,0,0,0);
   }}
   .refresh-btn:hover {{ opacity: .92; }}
-/* Scope pill shown above the metrics */
-.stats-pill{{
+
+.stats-scope{{
   display:inline-block;
-  margin:.25rem 0 .75rem;
-  padding:.35rem .7rem;
-  border-radius:999px;
-  background:#f2f6ff;
-  border:1px solid rgba(0,0,0,.06);
-  font-size:.95rem;
-  font-weight:600;
+  margin:.25rem 0 .8rem;
+  padding:.4rem .6rem;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:4px;         /* small, not a rounded pill */
+  background:#fff;           /* looks non-clickable */
 }}
+.stats-scope .k{{ color:#111; font-weight:600; }}   /* label: Station/Trạm */
+.stats-scope .v{{ color:#111; font-weight:500; }}   /* value: name/Overall */
 
 </style>
 """, unsafe_allow_html=True)
@@ -448,14 +448,19 @@ if page == "Overview":
             key="clear_cache_btn",
             help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
             type="primary",
-            use_container_width=True,   # will stay one line if you added the CSS rule
+            use_container_width=True,   # stays on one line if you added the CSS: .stButton > button { white-space: nowrap; }
         ):
             st.cache_data.clear()
             st.rerun()
 
-    # ---- NEW: stats scope pill (default or selected station) ----
-    pill_text = st.session_state.get("selected_station") or texts.get("stats_scope_overall", "Trạm / Station overall")
-    st.markdown(f'<div class="stats-pill">{pill_text}</div>', unsafe_allow_html=True)
+    # ---- Scope label (language-aware): "Trạm: <name>" or "Station: <name>" ----
+    scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
+    overall_text = texts.get("scope_overall") or ("Overall" if lang == "en" else "Chung")
+    station_name = st.session_state.get("selected_station") or overall_text
+    st.markdown(
+        f'<div class="stats-scope"><span class="k">{scope_label}:</span> <span class="v">{station_name}</span></div>',
+        unsafe_allow_html=True,
+    )
 
     # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
@@ -489,10 +494,10 @@ if page == "Overview":
 
     st.divider()
 
-    # Data table header (no refresh button here)
+    # Data table header
     st.subheader(texts["data_table"])
 
-    # Column picker + table
+    # Column picker + table (separate widget key to avoid state conflicts)
     table_cols_sel = st.multiselect(
         texts["columns_select"],
         options=COL_NAMES,
@@ -509,6 +514,7 @@ if page == "Overview":
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
+
 
 
 
