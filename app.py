@@ -212,6 +212,17 @@ st.markdown(f"""
     border: 1px solid rgba(0,0,0,0);
   }}
   .refresh-btn:hover {{ opacity: .92; }}
+/* Scope pill shown above the metrics */
+.stats-pill{{
+  display:inline-block;
+  margin:.25rem 0 .75rem;
+  padding:.35rem .7rem;
+  border-radius:999px;
+  background:#f2f6ff;
+  border:1px solid rgba(0,0,0,.06);
+  font-size:.95rem;
+  font-weight:600;
+}}
 
 </style>
 """, unsafe_allow_html=True)
@@ -441,6 +452,14 @@ if page == "Overview":
         ):
             st.cache_data.clear()
             st.rerun()
+            
+# ---- NEW: stats scope pill (default or selected station) ----
+pill_text = st.session_state.get("selected_station") or texts.get("stats_scope_overall", "Trạm / Station overall")
+st.markdown(f'<div class="stats-pill">{pill_text}</div>', unsafe_allow_html=True)
+
+# Show the metrics
+stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+display_statistics(stats_df, st.session_state.target_col)
 
     # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
