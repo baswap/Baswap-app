@@ -66,7 +66,7 @@ APP_TEXTS = {
         "data_table": "🔍 Bảng Dữ Liệu",
         "columns_select": "Chọn các cột để hiển thị trong bảng:",
         "data_dimensions": "Kích thước dữ liệu (hàng, cột):",
-        "clear_cache": "Cập nhật thông tin các trạm",
+        "clear_cache": "Cập nhật thông tin",
         "toggle_button": "Tiếng Việt", 
         "toggle_tooltip": "Click to change language",
         "nav_overview": "Tổng quan",
