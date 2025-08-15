@@ -54,6 +54,10 @@ APP_TEXTS = {
         "legend_predicted": "Predicted",
         "clear_cache_tooltip": "Clear cached data and fetch the latest data from Thingspeak.",
         "map_title": "🗺️ Station Map",
+        "stats_max": "Maximum",
+        "stats_min": "Minimum",
+        "stats_avg": "Average",
+        "stats_std": "Std Dev",
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -88,6 +92,10 @@ APP_TEXTS = {
         "legend_predicted": "Dự báo",
         "clear_cache_tooltip": "Xóa bộ nhớ đệm và tải lại dữ liệu mới nhất từ Thingspeak.",
         "map_title": "🗺️ Bản đồ trạm đo mặn",
+        "stats_max": "Giá trị lớn nhất",
+        "stats_min": "Giá trị nhỏ nhất",
+        "stats_avg": "Giá trị trung bình",
+        "stats_std": "Độ lệch chuẩn",
     }
 }
 
