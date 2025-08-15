@@ -130,22 +130,20 @@ st.markdown(f"""
 
   /* ====== Full-bleed helper + container fixes ====== */
   .stApp{{ overflow-x:hidden; }}
-  /* Some Streamlit versions use 'section.main', others data-testid */
   section.main > div[class*="block-container"]{{ padding-bottom:0 !important; }}
   [data-testid="stMain"] > div[class*="block-container"]{{ padding-bottom:0 !important; }}
 
-  /* Paint Streamlit's own bottom padding so your block visually touches bottom */
+  /* Paint Streamlit bottom padding so your block touches the bottom visually */
   section.main::after,
   [data-testid="stMain"]::after {{
     content:"";
     display:block;
-    height:56px;                 /* bottom gap to cover; tweak if needed */
+    height:56px;                 /* tweak if you see a gap */
     background:#111;             /* same black as the bottom block */
-    /* make this filler full-bleed too */
     width:100vw; position:relative; left:50%; transform:translateX(-50vw);
   }}
 
-  /* Full-bleed: pull element to viewport edges */
+  /* Full-bleed helper: pull element to viewport edges */
   .full-bleed{{ width:100vw; position:relative; left:50%; transform:translateX(-50vw); }}
 
   /* ===================== Bottom placeholder ===================== */
@@ -155,14 +153,12 @@ st.markdown(f"""
     height:{BOTTOM_HEIGHT}px;
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
-    margin:2rem 0 0;   /* no side/bottom margins */
+    margin:2rem 0 0;
     display:grid;
-    grid-template-rows: 80% 1px 20%;  /* exact split: 80% spacer, 1px divider, 20% row */
+    grid-template-rows: 80% 1px 20%;  /* 80% spacer, 1px divider, 20% row */
   }}
 
-  .bp-divider{{
-    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
-  }}
+  .bp-divider{{ background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); }}
 
   .bp-bottomrow{{
     display:flex; align-items:center; justify-content:space-between;
@@ -187,34 +183,20 @@ st.markdown(f"""
   @media (max-width: 600px) {{
     .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
   }}
+
+  /* Keep Streamlit buttons on one line */
   .stButton > button{{ white-space: nowrap; }}
 
-    /* One-line stats bar: title left, refresh button right */
-  .stats-bar {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .75rem;
-    margin: .25rem 0 .5rem;
-    white-space: nowrap; /* keep title/button on one line */
+  /* Make the button compact on smaller screens so it resists wrapping */
+  @media (max-width: 1200px) {{
+    .stButton > button{{ padding:0.35rem 0.6rem; font-size:0.9rem; }}
   }}
-  .stats-title {{ font-weight: 600; }}
-  .refresh-btn {{
-    display: inline-block;
-    padding: .4rem .9rem;
-    border-radius: .5rem;
-    background: #2563eb;
-    color: #fff !important;
-    text-decoration: none;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    border: 1px solid rgba(0,0,0,0);
+  @media (max-width: 900px) {{
+    .stButton > button{{ padding:0.28rem 0.5rem; font-size:0.85rem; }}
   }}
-  .refresh-btn:hover {{ opacity: .92; }}
-
 </style>
 """, unsafe_allow_html=True)
+
 
 
 active_overview = "active" if page == "Overview" else ""
@@ -427,20 +409,20 @@ if page == "Overview":
     if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
-    # --- Overall Statistics header + REFRESH button on the same row ---
-    sh_left, sh_right = st.columns([8, 1], gap="small")
-    with sh_left:
-        st.markdown(f"### 📊 {texts['overall_stats_title']}")
-    with sh_right:
-        if st.button(
-            texts["clear_cache"],        # same label you already translate
-            key="clear_cache_btn",
-            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-            type="primary",
-            use_container_width=True,    # stays one line thanks to CSS above
-        ):
-            st.cache_data.clear()
-            st.rerun()
+   # --- Overall Statistics header + REFRESH button on the same row ---
+sh_left, sh_right = st.columns([12, 1], gap="small")  # big left, tiny right
+with sh_left:
+    st.markdown(f"### 📊 {texts['overall_stats_title']}")
+with sh_right:
+    if st.button(
+        texts["clear_cache"],
+        key="clear_cache_btn",
+        help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+        type="primary",
+    ):
+        st.cache_data.clear()
+        st.rerun()
+
 
     # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
