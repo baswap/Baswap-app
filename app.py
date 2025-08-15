@@ -98,7 +98,7 @@ st.markdown(f"""
   .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
   .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-  /* Push content below fixed header (no fixed footer) */
+  /* Push content below fixed header */
   body>.main{{ margin-top:4.5rem; }}
 
   /* Ensure folium map height */
@@ -112,16 +112,16 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ---- Bottom placeholder (appears only when scrolled to bottom) ---- */
+  /* Bottom placeholder (shows only when you reach page end) */
   .bottom-placeholder{{
-    height:{BOTTOM_HEIGHT}px;         /* define BOTTOM_HEIGHT in Python, e.g., 140 */
+    height:{BOTTOM_HEIGHT}px;            /* set BOTTOM_HEIGHT = e.g., 140 */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
     width:100%;
   }}
 
-  /* Make the placeholder span edge-to-edge (full-bleed) */
+  /* Make placeholder span edge-to-edge (optional) */
   .full-bleed{{
     position:relative;
     left:50%; right:50%;
@@ -130,6 +130,7 @@ st.markdown(f"""
   }}
 </style>
 """, unsafe_allow_html=True)
+
 
 # ================== HEADER ==================
 active_overview = "active" if page == "Overview" else ""
