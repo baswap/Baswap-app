@@ -123,7 +123,7 @@ st.markdown(f"""
 
   /* Map title */
   .map-title{{
-    margin:.75rem 0 .35rem; font-size:1.5rem; font-weight:600; line-height:1.2;
+    margin:.75rem 0 .35rem; font-size:1.7rem; font-weight:600; line-height:1.2;
     display:flex; align-items:center; gap:.5rem;
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
@@ -226,8 +226,8 @@ st.markdown(f"""
 
 
 .info-title{{
-  font-size: 1.5rem;   /* tweak size here */
-  font-weight: 700;
+  font-size: 1.7rem;   /* tweak size here */
+  font-weight: 600;
   line-height: 1.2;
   margin: .25rem 0 .6rem;
 }}
