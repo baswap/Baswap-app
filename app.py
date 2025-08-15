@@ -97,7 +97,23 @@ st.markdown(f"""
 
   /* Ensure folium map height */
   iframe[title="streamlit_folium.st_folium"]{{height:{MAP_HEIGHT}px!important;}}
-  
+
+    .map-title{
+    margin:.75rem 0 .35rem;
+    font-size:1.25rem;
+    font-weight:700;
+    line-height:1.2;
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+  }
+  .map-title .sub{
+    font-size:.95rem;
+    font-weight:500;
+    opacity:.8;
+  }
+
+
 </style>
 """, unsafe_allow_html=True)
 
