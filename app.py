@@ -316,7 +316,8 @@ if page == "Overview":
         )
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
-  with col_left:
+# ---------- LEFT: Map (tall) with zoom-to-station ----------
+with col_left:
     # ---- Map title (below the fixed header) ----
     map_title = texts.get("map_title", "🗺️ Station Map")
     st.markdown(
@@ -341,23 +342,24 @@ if page == "Overview":
         zoom = 12   # tweak (12–14) for tighter focus
         highlight_location = (lat, lon)
 
+    # Build map (always runs, not only when a station is selected)
+    m = folium.Map(location=center, zoom_start=zoom, tiles=None)
+    folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
+    add_layers(m)
 
-        m = folium.Map(location=center, zoom_start=zoom, tiles=None)
-        folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
-        add_layers(m)
+    if highlight_location:
+        folium.CircleMarker(
+            location=highlight_location,
+            radius=10,
+            weight=3,
+            fill=True,
+            fill_opacity=0.2,
+            color="#0077ff",
+            tooltip=sel,
+        ).add_to(m)
 
-        if highlight_location:
-            folium.CircleMarker(
-                location=highlight_location,
-                radius=10,
-                weight=3,
-                fill=True,
-                fill_opacity=0.2,
-                color="#0077ff",
-                tooltip=sel,
-            ).add_to(m)
+    st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
-        st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
 
     # --- Load data & set default date window = last 1 month ---
