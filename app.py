@@ -114,7 +114,7 @@ st.markdown(f"""
 
   /* ---- Bottom placeholder (appears at page end) ---- */
   .bottom-placeholder{{
-    height:{BOTTOM_HEIGHT}px;         /* define BOTTOM_HEIGHT above */
+    height:{BOTTOM_HEIGHT}px;   /* define BOTTOM_HEIGHT above (e.g., 140) */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
@@ -129,19 +129,25 @@ st.markdown(f"""
     width:100vw;
   }}
 
-  /* Internal layout: ~80% spacer, 1px divider, ~20% info row */
-  .bp-inner{{ display:grid; grid-template-rows:4fr 1px 1fr; height:100%; }}
-
-  /* Divider line — ALWAYS SHOW */
-  .bp-divider{{ 
-    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); 
-    display:block; 
+  /* Internal layout: exact 80% / 1px / 20% split */
+  .bp-inner{{
+    display:grid;
+    grid-template-rows: calc(80% - 1px) 1px 20%;
+    height:100%;
   }}
 
-  /* Bottom row (team + placeholder icon) — ALWAYS SHOW */
+  /* Divider at the 80% mark */
+  .bp-divider{{
+    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
+    margin:0;
+  }}
+
+  /* Bottom row (team + placeholder icon) with inward padding */
   .bp-bottomrow{{
     display:flex; align-items:center; justify-content:space-between;
-    padding:.45rem .9rem .35rem;
+    padding-left: clamp(12px, 5vw, 48px);
+    padding-right: clamp(12px, 5vw, 48px);
+    padding-top:.45rem; padding-bottom:.35rem;
   }}
   .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
   .bp-bottomrow .fb{{
@@ -152,9 +158,8 @@ st.markdown(f"""
     user-select:none; pointer-events:none; /* placeholder */
   }}
 
-  /* Optional small-screen tweaks */
+  /* Optional tiny-screen tweak */
   @media (max-width: 480px) {{
-    .bp-bottomrow{{ padding:.4rem .7rem .3rem; }}
     .bp-bottomrow .team{{ font-size:.95rem; }}
   }}
 </style>
