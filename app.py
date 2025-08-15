@@ -417,20 +417,18 @@ if page == "Overview":
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # ---------- BELOW COLUMNS (full page width) ----------
-    df = thingspeak_retrieve(combined_data_retrieve())
-    first_date = df["Timestamp (GMT+7)"].min().date()
-    last_date = df["Timestamp (GMT+7)"].max().date()
-    one_month_ago = max(first_date, last_date - timedelta(days=30))
+# ---------- BELOW COLUMNS (full page width) ----------
+df = thingspeak_retrieve(combined_data_retrieve())
+first_date = df["Timestamp (GMT+7)"].min().date()
+last_date = df["Timestamp (GMT+7)"].max().date()
+one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    if st.session_state.get("date_from") is None:
-        st.session_state.date_from = one_month_ago
-    if st.session_state.get("date_to") is None:
-        st.session_state.date_to = last_date
+if st.session_state.get("date_from") is None:
+    st.session_state.date_from = one_month_ago
+if st.session_state.get("date_to") is None:
+    st.session_state.date_to = last_date
 
-    # --- Overall Statistics header + REFRESH button on the same row ---
-    sh_left, sh_right = st.columns([8, 1], gap="small")
-    with sh_left:
-        # One-line stats bar with a link-styled refresh button
+# --- Overall Statistics header + REFRESH (one-line, no columns) ---
 refresh_url = f"?page={page}&lang={lang}&refresh=1"
 st.markdown(
     f"""
@@ -444,22 +442,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-    with sh_right:
-        if st.button(
-            texts["clear_cache"],        # same label you already translate
-            key="clear_cache_btn",
-            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-            type="primary",
-            use_container_width=True,    # stays one line thanks to CSS above
-        ):
-            st.cache_data.clear()
-            st.rerun()
+# Show the metrics
+stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+display_statistics(stats_df, st.session_state.target_col)
 
-    # Show the metrics
-    stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
-    display_statistics(stats_df, st.session_state.target_col)
+st.divider()
 
-    st.divider()
 
     # --- Settings (in expander) ---
     chart_container = st.container()
