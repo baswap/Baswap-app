@@ -496,6 +496,7 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
+
 # ---------- Bottom black block (full-bleed) ----------
 st.markdown(
     '''
