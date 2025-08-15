@@ -16,7 +16,7 @@ _COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}
 def _render_aggregation_legend(show_predicted: bool = False) -> None:
     items = "".join(
         f"<div class='agg-item'><span class='dot' style='background:{_COLOR_MAP[k]}'></span>{k}</div>"
-        for k in ["Max", "Min", "Median"]
+        for k in keys
     )
     pred = (
         "<div class='agg-item'><span class='dash' ></span>Predicted</div>"
@@ -148,6 +148,10 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     ).dt.strftime(disp_fmt)
 
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
+
+    if cat_col:
+        df_filtered = df_filtered[df_filtered["Aggregation"].isin(["Max"])].copy()
+        
     df_broken = _inject_nans_for_gaps(
         df_filtered,
         time_col="Timestamp (Rounded)",
@@ -158,7 +162,11 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         display_fmt=disp_fmt,
     )
 
-    _render_aggregation_legend(show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]))
+        _render_aggregation_legend(
+        show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]),
+        keys=("Max",)
+    )
+
 
     main_chart = (
         alt.Chart(df_broken)
