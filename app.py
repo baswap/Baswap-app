@@ -391,6 +391,6 @@ if page == "Overview":
 
 st.divider()
 
-# else:
-#     st.title(texts["app_title"])
-#     st.markdown(texts["description"])
+ else:
+     st.title(texts["app_title"])
+     st.markdown(texts["description"])
