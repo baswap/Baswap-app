@@ -112,79 +112,59 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ---- Bottom placeholder (appears at page end) ---- */
+  /* ===================== Bottom placeholder ===================== */
+
+  /* Outer black block */
   .bottom-placeholder{{
-    height:{BOTTOM_HEIGHT}px;         /* define BOTTOM_HEIGHT above */
+    /* tweakables */
+    --divider-ratio: 0.80;     /* 80% from top */
+    --row-padding: 10vw;       /* pulls text right & icon left */
+    height:{BOTTOM_HEIGHT}px;  /* from your Python const */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
     width:100%;
+    position:relative;         /* needed for absolute children */
   }}
 
-  /* Full-bleed option (edge-to-edge) */
-  .full-bleed{{
-    position:relative;
-    left:50%; right:50%;
-    margin-left:-50vw; margin-right:-50vw;
-    width:100vw;
+  /* Divider pinned EXACTLY at 80% of the block height */
+  .bp-divider{{
+    position:absolute;
+    left:0; right:0;
+    top: calc(var(--divider-ratio) * 100%);
+    height:1px;
+    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
+    transform: translateY(-0.5px); /* crisp line */
   }}
 
-  /* Internal layout: use flex so divider sits exactly at 80% */
-  .bp-inner{{ 
-    display:flex; 
-    flex-direction:column; 
-    height:100%; 
-  }}
-  /* First child is the 80% spacer */
-  .bp-inner > :first-child{{ 
-    flex:0 0 80%; 
-    min-height:80%; 
-  }}
-
-  /* Divider line (1px) */
-  .bp-divider{{ 
-    height:1px; 
-    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); 
-    flex:0 0 1px;
-  }}
-
-  /* Bottom row (20%) */
+  /* Bottom row occupies the remaining 20% exactly */
   .bp-bottomrow{{
-    flex:1 0 20%;
-    display:flex; 
-    align-items:center; 
-    justify-content:space-between;
-    padding:.45rem .9rem .35rem;
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height: calc(100% - (var(--divider-ratio) * 100%));
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.45rem var(--row-padding) .35rem var(--row-padding);
   }}
 
-  /* Pull team text rightward and FB icon leftward (closer together) */
-  .bp-bottomrow .team{{ 
-    color:rgba(255,255,255,.6); 
-    font-weight:300; 
-    letter-spacing:.08em; 
-    margin-left:24vw;        /* move "VGU RANGER" right */
-  }}
+  /* Team label (thin gray) + FB placeholder */
+  .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
   .bp-bottomrow .fb{{
     width:28px; height:28px; border-radius:50%;
     border:1px solid rgba(255,255,255,.25);
     display:inline-flex; align-items:center; justify-content:center;
     color:#fff; text-decoration:none; opacity:.75;
     user-select:none; pointer-events:none; /* placeholder */
-    margin-right:24vw;      /* move icon left */
   }}
 
-  /* Tighter margins on smaller screens */
+  /* Tweaks on smaller screens */
   @media (max-width: 1200px) {{
-    .bp-bottomrow .team{{ margin-left:18vw; }}
-    .bp-bottomrow .fb{{ margin-right:18vw; }}
+    .bottom-placeholder{{ --row-padding: 12vw; }}
   }}
   @media (max-width: 900px) {{
-    .bp-bottomrow .team{{ margin-left:12vw; }}
-    .bp-bottomrow .fb{{ margin-right:12vw; }}
+    .bottom-placeholder{{ --row-padding: 14vw; }}
   }}
   @media (max-width: 600px) {{
-    .bp-bottomrow .team{{ margin-left:8vw; }}
-    .bp-bottomrow .fb{{ margin-right:8vw; }}
+    .bottom-placeholder{{ --row-padding: 16vw; }}
   }}
 </style>
 """, unsafe_allow_html=True)
@@ -508,7 +488,7 @@ st.markdown(
         <div></div> <!-- spacer (top ~80%) -->
         <div class="bp-divider"></div>
         <div class="bp-bottomrow">
-          <span class="team">VGU RANGER</span>
+          <span class="team">VGU RANGERS</span>
           <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
         </div>
       </div>
