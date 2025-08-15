@@ -27,6 +27,22 @@ def _as_scalar(v, default):
 
 page = _as_scalar(params.get("page"), "Overview")
 lang = _as_scalar(params.get("lang"), "vi")
+# --- refresh via query param ---
+if _as_scalar(params.get("refresh"), "0") == "1":
+    st.cache_data.clear()
+    # remove the flag and rerun
+    try:
+        # Newer API
+        new_q = dict(st.query_params)
+        new_q.pop("refresh", None)
+        st.query_params.clear()
+        for k, v in new_q.items():
+            st.query_params[k] = v
+    except Exception:
+        # Fallback API
+        cleaned = {k: v for k, v in params.items() if k != "refresh"}
+        st.experimental_set_query_params(**cleaned)
+    st.rerun()
 
 if page not in ("Overview", "About"):
     page = "Overview"
@@ -55,7 +71,7 @@ for k, v in {
 
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
-TABLE_HEIGHT = MAP_HEIGHT - 100  # adjust to align visually with map
+TABLE_HEIGHT = MAP_HEIGHT - 90  # adjust to align visually with map
 BOTTOM_HEIGHT = 140
 st.markdown(f"""
 <style>
@@ -109,7 +125,10 @@ st.markdown(f"""
     display:flex; align-items:center; gap:.5rem;
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
-
+.stats-bar{{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.25rem 0 .5rem; white-space:nowrap; }}
+  .stats-title{{ font-weight:600; }}
+  .refresh-btn{{ display:inline-block; padding:.4rem .9rem; border-radius:.5rem; background:#2563eb; color:#fff !important; text-decoration:none; font-weight:600; line-height:1; white-space:nowrap; border:1px solid rgba(0,0,0,0); }}
+  .refresh-btn:hover{{ opacity:.92; }}
   /* ====== Full-bleed helper + container fixes ====== */
   .stApp{{ overflow-x:hidden; }}
   /* Some Streamlit versions use 'section.main', others data-testid */
