@@ -112,9 +112,9 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ---- Bottom placeholder (appears at page end only) ---- */
+  /* ---- Bottom placeholder (appears at page end) ---- */
   .bottom-placeholder{{
-    height:{BOTTOM_HEIGHT}px;        /* define BOTTOM_HEIGHT above */
+    height:{BOTTOM_HEIGHT}px;         /* define BOTTOM_HEIGHT above */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
@@ -132,10 +132,13 @@ st.markdown(f"""
   /* Internal layout: ~80% spacer, 1px divider, ~20% info row */
   .bp-inner{{ display:grid; grid-template-rows:4fr 1px 1fr; height:100%; }}
 
-  /* Divider line */
-  .bp-divider{{ background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); }}
+  /* Divider line — ALWAYS SHOW */
+  .bp-divider{{ 
+    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); 
+    display:block; 
+  }}
 
-  /* Bottom row (team + placeholder icon) */
+  /* Bottom row (team + placeholder icon) — ALWAYS SHOW */
   .bp-bottomrow{{
     display:flex; align-items:center; justify-content:space-between;
     padding:.45rem .9rem .35rem;
@@ -149,14 +152,14 @@ st.markdown(f"""
     user-select:none; pointer-events:none; /* placeholder */
   }}
 
-  /* Show divider + row only in portrait (vertical) view */
-  .bp-divider, .bp-bottomrow{{ display:none; }}
-  @media (orientation: portrait) {{
-    .bp-divider{{ display:block; }}
-    .bp-bottomrow{{ display:flex; }}
+  /* Optional small-screen tweaks */
+  @media (max-width: 480px) {{
+    .bp-bottomrow{{ padding:.4rem .7rem .3rem; }}
+    .bp-bottomrow .team{{ font-size:.95rem; }}
   }}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
