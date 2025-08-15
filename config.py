@@ -52,6 +52,7 @@ APP_TEXTS = {
         "current_measurement": "Current Measurement",
         "legend_observed": "Observed",
         "legend_predicted": "Predicted",
+        "clear_cache_tooltip": "Clear cached data and fetch the latest data from Thingspeak.",
     },
     "vi": {
         "app_title": "ỨNG DỤNG BASWAP",
@@ -84,6 +85,7 @@ APP_TEXTS = {
         "current_measurement": "Chỉ số hiện tại",
         "legend_observed": "Quan trắc",
         "legend_predicted": "Dự báo",
+        "clear_cache_tooltip": "Xóa bộ nhớ đệm và tải lại dữ liệu mới nhất từ Thingspeak.",
     }
 }
 
