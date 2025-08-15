@@ -239,8 +239,15 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
+    # translate via session (uses your existing _t helper)
+    t_max = _t("stats_max", "Maximum")
+    t_min = _t("stats_min", "Minimum")
+    t_avg = _t("stats_avg", "Average")
+    t_std = _t("stats_std", "Std Dev")
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric(label="Maximum", value=f"{df[target_col].max():.2f}")
-    col2.metric(label="Minimum", value=f"{df[target_col].min():.2f}")
-    col3.metric(label="Average", value=f"{df[target_col].mean():.2f}")
-    col4.metric(label="Std Dev", value=f"{df[target_col].std():.2f}")
+    col1.metric(label=t_max, value=f"{df[target_col].max():.2f}")
+    col2.metric(label=t_min, value=f"{df[target_col].min():.2f}")
+    col3.metric(label=t_avg, value=f"{df[target_col].mean():.2f}")
+    col4.metric(label=t_std, value=f"{df[target_col].std():.2f}")
+
