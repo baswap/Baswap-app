@@ -322,6 +322,7 @@ def settings_panel(first_date, last_date, default_from, default_to):
     st.session_state.agg_stats = ["Max"]
 
 # ================== PAGES ==================
+# ================== PAGES ==================
 if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
@@ -446,11 +447,18 @@ if page == "Overview":
 
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour")
+            # pass texts only if your plotting function accepts it
+            try:
+                plot_line_chart(hourly, target_col, "Hour", texts=texts)
+            except TypeError:
+                plot_line_chart(hourly, target_col, "Hour")
 
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day")
+            try:
+                plot_line_chart(daily, target_col, "Day", texts=texts)
+            except TypeError:
+                plot_line_chart(daily, target_col, "Day")
 
     st.divider()
 
@@ -469,28 +477,28 @@ if page == "Overview":
             st.cache_data.clear()
             st.rerun()  # guarantees immediate refresh
 
-selected_cols = st.multiselect(
-    texts["columns_select"],
-    options=COL_NAMES,
-    default=st.session_state.get("table_cols", [COL_NAMES[0]]),
-    key="table_cols",
-)
+    # --- Column picker + table ---
+    selected_cols = st.multiselect(
+        texts["columns_select"],
+        options=COL_NAMES,
+        default=st.session_state.get("table_cols", [COL_NAMES[0]]),
+        key="table_cols",
+    )
 
-# Make sure it's a list and sync back to state
-selected_cols = list(selected_cols)
-st.session_state.table_cols = selected_cols
+    # Make sure it's a list and sync back to state
+    selected_cols = list(selected_cols)
+    st.session_state.table_cols = selected_cols
 
-# Build table from the current selection
-table_cols = ["Timestamp (GMT+7)"] + selected_cols
-st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
-st.dataframe(filtered_df[table_cols], use_container_width=True)
-
+    # Build table from the current selection
+    table_cols = ["Timestamp (GMT+7)"] + selected_cols
+    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
+    st.dataframe(filtered_df[table_cols], use_container_width=True)
 
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
-
+# ---------- Bottom black block (full-bleed) ----------
 st.markdown(
     '''
     <div class="bottom-placeholder full-bleed">
@@ -504,7 +512,5 @@ st.markdown(
     ''',
     unsafe_allow_html=True
 )
-
-
 
 
