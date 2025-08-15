@@ -130,20 +130,22 @@ st.markdown(f"""
 
   /* ====== Full-bleed helper + container fixes ====== */
   .stApp{{ overflow-x:hidden; }}
+  /* Some Streamlit versions use 'section.main', others data-testid */
   section.main > div[class*="block-container"]{{ padding-bottom:0 !important; }}
   [data-testid="stMain"] > div[class*="block-container"]{{ padding-bottom:0 !important; }}
 
-  /* Paint Streamlit bottom padding so your block touches the bottom visually */
+  /* Paint Streamlit's own bottom padding so your block visually touches bottom */
   section.main::after,
   [data-testid="stMain"]::after {{
     content:"";
     display:block;
-    height:56px;                 /* tweak if you see a gap */
+    height:56px;                 /* bottom gap to cover; tweak if needed */
     background:#111;             /* same black as the bottom block */
+    /* make this filler full-bleed too */
     width:100vw; position:relative; left:50%; transform:translateX(-50vw);
   }}
 
-  /* Full-bleed helper: pull element to viewport edges */
+  /* Full-bleed: pull element to viewport edges */
   .full-bleed{{ width:100vw; position:relative; left:50%; transform:translateX(-50vw); }}
 
   /* ===================== Bottom placeholder ===================== */
@@ -153,12 +155,14 @@ st.markdown(f"""
     height:{BOTTOM_HEIGHT}px;
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
-    margin:2rem 0 0;
+    margin:2rem 0 0;   /* no side/bottom margins */
     display:grid;
-    grid-template-rows: 80% 1px 20%;  /* 80% spacer, 1px divider, 20% row */
+    grid-template-rows: 80% 1px 20%;  /* exact split: 80% spacer, 1px divider, 20% row */
   }}
 
-  .bp-divider{{ background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); }}
+  .bp-divider{{
+    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
+  }}
 
   .bp-bottomrow{{
     display:flex; align-items:center; justify-content:space-between;
@@ -183,20 +187,34 @@ st.markdown(f"""
   @media (max-width: 600px) {{
     .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
   }}
-
-  /* Keep Streamlit buttons on one line */
   .stButton > button{{ white-space: nowrap; }}
 
-  /* Make the button compact on smaller screens so it resists wrapping */
-  @media (max-width: 1200px) {{
-    .stButton > button{{ padding:0.35rem 0.6rem; font-size:0.9rem; }}
+    /* One-line stats bar: title left, refresh button right */
+  .stats-bar {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin: .25rem 0 .5rem;
+    white-space: nowrap; /* keep title/button on one line */
   }}
-  @media (max-width: 900px) {{
-    .stButton > button{{ padding:0.28rem 0.5rem; font-size:0.85rem; }}
+  .stats-title {{ font-weight: 600; }}
+  .refresh-btn {{
+    display: inline-block;
+    padding: .4rem .9rem;
+    border-radius: .5rem;
+    background: #2563eb;
+    color: #fff !important;
+    text-decoration: none;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid rgba(0,0,0,0);
   }}
+  .refresh-btn:hover {{ opacity: .92; }}
+
 </style>
 """, unsafe_allow_html=True)
-
 
 
 active_overview = "active" if page == "Overview" else ""
@@ -355,24 +373,17 @@ if page == "Overview":
     with col_right:
         st.markdown(f"#### {texts['info_panel_title']}")
 
-        # Build options with localized "None" and BASWAP name
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
-
-        # Determine default label from session value
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
-        # Picker UI
         picked_label = st.selectbox(
             label=texts["picker_label"],
             options=station_options_display,
             index=station_options_display.index(default_label),
         )
-
-        # Normalize: store None or the actual station name
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # 3×42 table: Station | Current Measurement | Warning
         station_names = [s["name"] for s in OTHER_STATIONS]
         n = len(station_names)
         table_df = pd.DataFrame({
@@ -380,81 +391,58 @@ if page == "Overview":
             texts["current_measurement"]: ["-"] * n,
             texts["table_warning"]: ["-"] * n,
         })
-
-        st.dataframe(
-            table_df,
-            use_container_width=True,
-            hide_index=True,
-            height=TABLE_HEIGHT,
-        )
+        st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
-        # ---- Map title (below the fixed header) ----
         map_title = texts.get("map_title", "🗺️ Station Map")
-        st.markdown(
-            f"""<div class="map-title">{map_title}</div>""",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"""<div class="map-title">{map_title}</div>""", unsafe_allow_html=True)
 
-        # Default view
-        center = [10.2, 106.0]
-        zoom = 8
-        highlight_location = None
-
+        center = [10.2, 106.0]; zoom = 8; highlight_location = None
         sel = st.session_state.get("selected_station")
         if sel and sel in STATION_LOOKUP:
             lat, lon = STATION_LOOKUP[sel]
-            center = [lat, lon]
-            zoom = 12   # tighter focus
-            highlight_location = (lat, lon)
+            center = [lat, lon]; zoom = 12; highlight_location = (lat, lon)
 
-        # Build map (always runs, not only when a station is selected)
         m = folium.Map(location=center, zoom_start=zoom, tiles=None)
         folium.TileLayer("OpenStreetMap", name="Basemap", control=False).add_to(m)
         add_layers(m)
 
         if highlight_location:
             folium.CircleMarker(
-                location=highlight_location,
-                radius=10,
-                weight=3,
-                fill=True,
-                fill_opacity=0.2,
-                color="#0077ff",
-                tooltip=sel,
+                location=highlight_location, radius=10, weight=3, fill=True, fill_opacity=0.2,
+                color="#0077ff", tooltip=sel,
             ).add_to(m)
 
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # ---------- BELOW COLUMNS (full page width) ----------
-    # Load data & set default date window = last 1 month
     df = thingspeak_retrieve(combined_data_retrieve())
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # Overall stats defaults
     if st.session_state.get("date_from") is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
     # --- Overall Statistics header + REFRESH button on the same row ---
-    sh_left, sh_right = st.columns([12, 1], gap="small")
+    sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
         if st.button(
-            texts["clear_cache"],
+            texts["clear_cache"],        # same label you already translate
             key="clear_cache_btn",
             help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
             type="primary",
+            use_container_width=True,    # stays one line thanks to CSS above
         ):
             st.cache_data.clear()
             st.rerun()
 
-    # Show metrics
+    # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
     display_statistics(stats_df, st.session_state.target_col)
 
@@ -466,14 +454,12 @@ if page == "Overview":
     with st.expander(settings_label, expanded=False):
         settings_panel(first_date, last_date, one_month_ago, last_date)
 
-    # Use (possibly updated) dates
     date_from = st.session_state.date_from
     date_to = st.session_state.date_to
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
 
-    # --- Charts: Hourly & Daily ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
@@ -488,10 +474,10 @@ if page == "Overview":
 
     st.divider()
 
-    # Data table header
+    # Data table header (no button here anymore)
     st.subheader(texts["data_table"])
 
-    # --- Column picker + table ---
+    # Column picker + table
     table_cols_sel = st.multiselect(
         texts["columns_select"],
         options=COL_NAMES,
@@ -510,7 +496,6 @@ elif page == "About":
     st.markdown(texts["description"])
 
 
-
 # ---------- Bottom black block (full-bleed) ----------
 st.markdown(
     '''
@@ -525,4 +510,3 @@ st.markdown(
     ''',
     unsafe_allow_html=True
 )
-
