@@ -57,7 +57,7 @@ for k, v in {
 # ================== STYLES / HEIGHTS ==================
 MAP_HEIGHT = 720            # tall map
 TABLE_HEIGHT = MAP_HEIGHT - 100  # adjust to align visually with map
-FOOTER_HEIGHT = 140
+BOTTOM_HEIGHT = 140
 st.markdown(f"""
 <style>
   /* Hide Streamlit's default header */
@@ -112,24 +112,52 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* Bottom placeholder (shows only when you reach page end) */
+  /* ---- Bottom placeholder (appears at page end only) ---- */
   .bottom-placeholder{{
-    height:{FOOTER_HEIGHT}px;            /* set BOTTOM_HEIGHT = e.g., 140 */
+    height:{BOTTOM_HEIGHT}px;        /* define BOTTOM_HEIGHT above */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
     width:100%;
   }}
 
-  /* Make placeholder span edge-to-edge (optional) */
+  /* Full-bleed option (edge-to-edge) */
   .full-bleed{{
     position:relative;
     left:50%; right:50%;
     margin-left:-50vw; margin-right:-50vw;
     width:100vw;
   }}
+
+  /* Internal layout: ~80% spacer, 1px divider, ~20% info row */
+  .bp-inner{{ display:grid; grid-template-rows:4fr 1px 1fr; height:100%; }}
+
+  /* Divider line */
+  .bp-divider{{ background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent); }}
+
+  /* Bottom row (team + placeholder icon) */
+  .bp-bottomrow{{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.45rem .9rem .35rem;
+  }}
+  .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
+  .bp-bottomrow .fb{{
+    width:28px; height:28px; border-radius:50%;
+    border:1px solid rgba(255,255,255,.25);
+    display:inline-flex; align-items:center; justify-content:center;
+    color:#fff; text-decoration:none; opacity:.75;
+    user-select:none; pointer-events:none; /* placeholder */
+  }}
+
+  /* Show divider + row only in portrait (vertical) view */
+  .bp-divider, .bp-bottomrow{{ display:none; }}
+  @media (orientation: portrait) {{
+    .bp-divider{{ display:block; }}
+    .bp-bottomrow{{ display:flex; }}
+  }}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ================== HEADER ==================
@@ -443,5 +471,20 @@ elif page == "About":
     st.markdown(texts["description"])
 
 
-st.markdown('<div class="bottom-placeholder full-bleed"></div>', unsafe_allow_html=True)
+st.markdown(
+    '''
+    <div class="bottom-placeholder full-bleed">
+      <div class="bp-inner">
+        <div></div> <!-- spacer (top ~80%) -->
+        <div class="bp-divider"></div>
+        <div class="bp-bottomrow">
+          <span class="team">VGU RANGER</span>
+          <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
+        </div>
+      </div>
+    </div>
+    ''',
+    unsafe_allow_html=True
+)
+
 
