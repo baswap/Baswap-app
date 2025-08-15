@@ -112,15 +112,16 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ======= Full-bleed helper + remove bottom gap ======= */
-  .stApp{{ overflow-x: clip; }}  /* stop horiz scrollbar from full-bleed */
+  /* ====== Container tweaks so the bottom block can hit the edges ====== */
+  .stApp{{ overflow-x:hidden; }}  /* prevent horizontal scroll from full-bleed */
   section.main > div.block-container{{ padding-bottom:0 !important; }}
 
+  /* Full-bleed helper: pulls the element to the viewport edges */
   .full-bleed{{
-    position:relative;
-    left:50%; right:50%;
-    margin-left:-50vw; margin-right:-50vw;
     width:100vw;
+    position:relative;
+    left:50%;
+    transform:translateX(-50vw);
   }}
 
   /* ===================== Bottom placeholder ===================== */
@@ -130,9 +131,9 @@ st.markdown(f"""
     height:{BOTTOM_HEIGHT}px;
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
-    margin:2rem 0 0;       /* no side/bottom margins */
+    margin:2rem 0 0;       /* no extra side/bottom margins */
     display:grid;
-    grid-template-rows: 80% 1px 20%;  /* exact split */
+    grid-template-rows: 80% 1px 20%;  /* exact split: 80% spacer, divider, 20% row */
   }}
 
   /* Divider exactly at the 80% mark */
@@ -154,7 +155,7 @@ st.markdown(f"""
     user-select:none; pointer-events:none; /* placeholder */
   }}
 
-  /* Responsive tweaks */
+  /* Responsive padding adjustments */
   @media (max-width: 1200px) {{
     .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
   }}
@@ -483,9 +484,9 @@ elif page == "About":
 st.markdown(
     '''
     <div class="bottom-placeholder full-bleed">
-      <div></div>                    <!-- 80% spacer -->
-      <div class="bp-divider"></div> <!-- 1px divider -->
-      <div class="bp-bottomrow">     <!-- 20% row -->
+      <div></div>
+      <div class="bp-divider"></div>
+      <div class="bp-bottomrow">
         <span class="team">VGU RANGERS</span>
         <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
       </div>
@@ -493,6 +494,7 @@ st.markdown(
     ''',
     unsafe_allow_html=True
 )
+
 
 
 
