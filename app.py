@@ -38,7 +38,7 @@ if lang not in ("en", "vi"):
 
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
-
+st.session_state["texts"] = texts
 LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
 current_lang_label = LANG_LABEL.get(lang, "English")
 toggle_tooltip = texts.get("toggle_tooltip", "")
