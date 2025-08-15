@@ -171,7 +171,11 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     if cat_col:
         df_broken = df_broken[df_broken["Aggregation"] == "Max"]
 
-    _render_aggregation_legend(show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"]))
+   _render_aggregation_legend(
+    texts,
+    show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
+)
+
 
     main_chart = (
         alt.Chart(df_broken)
