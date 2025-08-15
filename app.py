@@ -114,26 +114,38 @@ st.markdown(f"""
 
   /* ===================== Bottom placeholder ===================== */
   .bottom-placeholder{{
-    --left-pad: 18vw;              /* move team further right */
-    --right-pad: 18vw;             /* move icon further left */
-    height:{BOTTOM_HEIGHT}px;      /* e.g., 140 */
+    --left-pad: 18vw;
+    --right-pad: 18vw;
+    height:{BOTTOM_HEIGHT}px;
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
+    margin-bottom:0;                 /* make sure it touches page bottom */
     width:100%;
 
-    /* The key: exact 80% / 1px / 20% split */
     display:grid;
     grid-template-rows: 80% 1px 20%;
   }}
 
-  /* Thin divider exactly at the 80% mark */
+  /* Make it span edge-to-edge across the viewport */
+  .full-bleed{{
+    position:relative;
+    left:50%; right:50%;
+    margin-left:-50vw; margin-right:-50vw;
+    width:100vw;
+  }}
+  /* Better on mobile viewports with dynamic vw */
+  @supports (width: 100dvw) {{
+    .full-bleed{{ margin-left: calc(50% - 50dvw); margin-right: calc(50% - 50dvw); width:100dvw; }}
+  }}
+
+  /* Divider at exactly 80% */
   .bp-divider{{
     background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
     align-self:stretch;
   }}
 
-  /* Bottom row (team + placeholder icon) */
+  /* Bottom row */
   .bp-bottomrow{{
     display:flex; align-items:center; justify-content:space-between;
     padding:.45rem var(--right-pad) .35rem var(--left-pad);
@@ -144,10 +156,9 @@ st.markdown(f"""
     border:1px solid rgba(255,255,255,.25);
     display:inline-flex; align-items:center; justify-content:center;
     color:#fff; text-decoration:none; opacity:.75;
-    user-select:none; pointer-events:none; /* placeholder */
+    user-select:none; pointer-events:none;
   }}
 
-  /* Optional: adjust padding on smaller screens */
   @media (max-width: 1200px) {{
     .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
   }}
@@ -159,6 +170,7 @@ st.markdown(f"""
   }}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ================== HEADER ==================
