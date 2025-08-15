@@ -119,10 +119,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     df_filtered = df.copy()
 
-    color_scale = alt.Scale(
-        domain=["Max", "Min", "Median"],
-        range=[_COLOR_MAP["Max"], _COLOR_MAP["Min"], _COLOR_MAP["Median"]],
-    )
+    color_scale = alt.Scale(domain=["Max"], range=[_COLOR_MAP["Max"]])
 
     if resample_freq == "Hour":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
@@ -148,6 +145,9 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     ).dt.strftime(disp_fmt)
 
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
+if cat_col:
+    df_broken = df_broken[df_broken["Aggregation"] == "Max"]
+
     df_broken = _inject_nans_for_gaps(
         df_filtered,
         time_col="Timestamp (Rounded)",
