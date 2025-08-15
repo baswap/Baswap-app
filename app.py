@@ -114,7 +114,7 @@ st.markdown(f"""
 
   /* Bottom placeholder (shows only when you reach page end) */
   .bottom-placeholder{{
-    height:{BOTTOM_HEIGHT}px;            /* set BOTTOM_HEIGHT = e.g., 140 */
+    height:{FOOTER_HEIGHT}px;            /* set BOTTOM_HEIGHT = e.g., 140 */
     background:#111;
     border-top:1px solid rgba(255,255,255,.08);
     margin-top:2rem;
