@@ -75,142 +75,165 @@ for k, v in {
 MAP_HEIGHT = 720            # tall map
 TABLE_HEIGHT = MAP_HEIGHT - 80  # adjust to align visually with map
 BOTTOM_HEIGHT = 140
-# ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 720  # keep this in sync with your map
 st.markdown(f"""
 <style>
-/* ---------------- Base/Resets ---------------- */
-header{{visibility:hidden;}}                  /* hide Streamlit's default header */
-.stApp{{overflow-x:hidden;}}                  /* prevent horizontal scroll */
-body>.main{{margin-top:4.5rem;}}              /* push content below fixed header */
+  /* Hide Streamlit default header */
+  header{{visibility:hidden;}}
 
-/* Some Streamlit versions use different main selectors; keep bottom padding sane */
-section.main > div[class*="block-container"],
-[data-testid="stMain"] > div[class*="block-container"] {{
-  padding-bottom: 0 !important;
-}}
+  /* Fixed custom header */
+  .custom-header{{
+    position:fixed; top:0; left:0; right:0; height:4.5rem;
+    display:flex; align-items:center; gap:2rem; padding:0 1rem;
+    background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
+  }}
+  .custom-header .logo{{font-size:2.1rem; font-weight:600; color:#fff;}}
+  .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
+  .custom-header .nav a{{
+    text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
+    border-bottom:2px solid transparent;
+  }}
+  .custom-header .nav a.active{{border-bottom-color:#fff; font-weight:600;}}
 
-/* Ensure folium map height */
-iframe[title="streamlit_folium.st_folium"] {{
-  height:{MAP_HEIGHT}px !important;
-}}
+  /* Language dropdown */
+  .lang-dd {{ position: relative; }}
+  .lang-dd summary {{
+    list-style:none; cursor:pointer; outline:none;
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.35rem .6rem; border-radius:999px;
+    border:1px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.12); color:#fff; font-weight:600;
+  }}
+  .lang-dd summary::-webkit-details-marker{{display:none;}}
+  .lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
+  .lang-menu {{
+    position:absolute; right:0; margin-top:.4rem; min-width:160px;
+    background:#fff; color:#111; border-radius:.5rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
+    border:1px solid rgba(0,0,0,.06);
+  }}
+  .lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
+  .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
+  .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-/* Make buttons never wrap (e.g., Refresh) */
-.stButton > button{{ white-space: nowrap; }}
+  /* Push content below fixed header */
+  body>.main{{ margin-top:4.5rem; }}
 
+  /* Ensure folium map height */
+  iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
 
-/* ---------------- Custom Header ---------------- */
-.custom-header{{
-  position:fixed; top:0; left:0; right:0; height:4.5rem;
-  display:flex; align-items:center; gap:2rem; padding:0 1rem;
-  background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
-}}
-.custom-header .logo{{font-size:2.1rem; font-weight:600; color:#fff;}}
-.custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
-.custom-header .nav a{{
-  text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
-  border-bottom:2px solid transparent;
-}}
-.custom-header .nav a.active{{border-bottom-color:#fff; font-weight:600;}}
+  /* Map title */
+  .map-title{{
+    margin:.75rem 0 .35rem; font-size:1.7rem; font-weight:600; line-height:1.2;
+    display:flex; align-items:center; gap:.5rem;
+  }}
+  .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-/* Language dropdown */
-.lang-dd {{ position: relative; }}
-.lang-dd summary {{
-  list-style:none; cursor:pointer; outline:none;
-  display:inline-flex; align-items:center; gap:.35rem;
-  padding:.35rem .6rem; border-radius:999px;
-  border:1px solid rgba(255,255,255,.35);
-  background:rgba(255,255,255,.12); color:#fff; font-weight:600;
-}}
-.lang-dd summary::-webkit-details-marker{{display:none;}}
-.lang-dd[open] summary{{background:rgba(255,255,255,.18);}}
-.lang-menu {{
-  position:absolute; right:0; margin-top:.4rem; min-width:160px;
-  background:#fff; color:#111; border-radius:.5rem;
-  box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.4rem; z-index:1200;
-  border:1px solid rgba(0,0,0,.06);
-}}
-.lang-menu .item, .lang-menu .item:visited {{ color:#000 !important; }}
-.lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
-.lang-menu .item:hover {{ background:#f2f6ff; }}
+  /* ====== Full-bleed helper + container fixes ====== */
+  .stApp{{ overflow-x:hidden; }}
+  /* Some Streamlit versions use 'section.main', others data-testid */
+  section.main > div[class*="block-container"]{{ padding-bottom:0 !important; }}
+  [data-testid="stMain"] > div[class*="block-container"]{{ padding-bottom:0 !important; }}
 
+  /* Paint Streamlit's own bottom padding so your block visually touches bottom */
+  section.main::after,
+  [data-testid="stMain"]::after {{
+    content:"";
+    display:block;
+    height:56px;                 /* bottom gap to cover; tweak if needed */
+    background:#111;             /* same black as the bottom block */
+    /* make this filler full-bleed too */
+    width:100vw; position:relative; left:50%; transform:translateX(-50vw);
+  }}
 
-/* ---------------- Titles & Labels ---------------- */
-/* Map title: larger, not bold (requested) */
-.map-title{{
-  margin:.75rem 0 .35rem;
-  font-size:1.7rem;
-  font-weight:400;            /* not bold */
-  line-height:1.2;
-  display:flex; align-items:center; gap:.5rem;
-}}
-.map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
+  /* Full-bleed: pull element to viewport edges */
+  .full-bleed{{ width:100vw; position:relative; left:50%; transform:translateX(-50vw); }}
 
-/* "Information" panel title (right column) */
-.info-title{{
-  font-size:1.7rem;
-  font-weight:600;
-  line-height:1.2;
-  margin:.25rem 0 .6rem;
-}}
+  /* ===================== Bottom placeholder ===================== */
+  .bottom-placeholder{{
+    --left-pad: 18vw;  /* move team right */
+    --right-pad: 18vw; /* move icon left */
+    height:{BOTTOM_HEIGHT}px;
+    background:#111;
+    border-top:1px solid rgba(255,255,255,.08);
+    margin:2rem 0 0;   /* no side/bottom margins */
+    display:grid;
+    grid-template-rows: 80% 1px 20%;  /* exact split: 80% spacer, 1px divider, 20% row */
+  }}
 
-/* Stats header bar: title left, button right (single line) */
-.stats-bar {{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:.75rem; margin:.25rem 0 .5rem; white-space:nowrap;
-}}
-.stats-title {{ font-weight:600; }}
-.refresh-btn {{
-  display:inline-block; padding:.4rem .9rem; border-radius:.5rem;
-  background:#2563eb; color:#fff !important; text-decoration:none;
-  font-weight:600; line-height:1; white-space:nowrap; border:1px solid transparent;
-}}
-.refresh-btn:hover {{ opacity:.92; }}
+  .bp-divider{{
+    background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
+  }}
 
-/* Scope label box: looks informational, not clickable */
+  .bp-bottomrow{{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.45rem var(--right-pad) .35rem var(--left-pad);
+  }}
+  .bp-bottomrow .team{{ color:rgba(255,255,255,.6); font-weight:300; letter-spacing:.08em; }}
+  .bp-bottomrow .fb{{
+    width:28px; height:28px; border-radius:50%;
+    border:1px solid rgba(255,255,255,.25);
+    display:inline-flex; align-items:center; justify-content:center;
+    color:#fff; text-decoration:none; opacity:.75;
+    user-select:none; pointer-events:none;
+  }}
+
+  /* Responsive padding adjustments */
+  @media (max-width: 1200px) {{
+    .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
+  }}
+  @media (max-width: 900px) {{
+    .bottom-placeholder{{ --left-pad: 10vw; --right-pad: 10vw; }}
+  }}
+  @media (max-width: 600px) {{
+    .bottom-placeholder{{ --left-pad: 8vw; --right-pad: 8vw; }}
+  }}
+  .stButton > button{{ white-space: nowrap; }}
+
+    /* One-line stats bar: title left, refresh button right */
+  .stats-bar {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin: .25rem 0 .5rem;
+    white-space: nowrap; /* keep title/button on one line */
+  }}
+  .stats-title {{ font-weight: 600; }}
+  .refresh-btn {{
+    display: inline-block;
+    padding: .4rem .9rem;
+    border-radius: .5rem;
+    background: #2563eb;
+    color: #fff !important;
+    text-decoration: none;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid rgba(0,0,0,0);
+  }}
+  .refresh-btn:hover {{ opacity: .92; }}
+
 .stats-scope{{
   display:inline-block;
   margin:.25rem 0 .8rem;
   padding:.4rem .6rem;
   border:1px solid rgba(0,0,0,.12);
-  border-radius:4px;          /* small radius so it doesn't look like a pill */
-  background:#fff;
+  border-radius:4px;         /* small, not a rounded pill */
+  background:#fff;           /* looks non-clickable */
 }}
-.stats-scope .k{{ color:#111; font-weight:600; }}  /* label: Station/Trạm */
-.stats-scope .v{{ color:#111; font-weight:500; }}  /* value: name/Overall */
+.stats-scope .k{{ color:#111; font-weight:600; }}   /* label: Station/Trạm */
+.stats-scope .v{{ color:#111; font-weight:500; }}   /* value: name/Overall */
 
 
-/* ---------------- Full-bleed Helper ---------------- */
-/* Use on any element you want edge-to-edge (e.g., the bottom black box) */
-.full-bleed{{
-  width:100vw; position:relative; left:50%; right:50%;
-  margin-left:-50vw; margin-right:-50vw;
+.info-title{{
+  font-size: 1.7rem;   /* tweak size here */
+  font-weight: 600;
+  line-height: 1.2;
+  margin: .25rem 0 .6rem;
 }}
 
-
-/* ---------------- Bottom Black Box (non-sticky) ---------------- */
-/* This only defines the style; render it once at the end of your script: 
-   st.markdown('<div class="page-bottom-box full-bleed"></div>', unsafe_allow_html=True) */
-.page-bottom-box{{
-  height:160px;                      /* fixed size; adjust as you like */
-  background:#000;                   /* black */
-  border-top:1px solid rgba(255,255,255,.08);
-  margin-top:2rem;                   /* space above the box */
-}}
-.page-bottom-box.full-bleed{{        /* edge-to-edge */
-  width:100vw; position:relative; left:50%; right:50%;
-  margin-left:-50vw; margin-right:-50vw;
-}}
-
-/* ---------------- Responsive tweaks ---------------- */
-@media (max-width: 600px) {{
-  .custom-header .logo{{font-size:1.8rem;}}
-  .map-title{{font-size:1.45rem;}}
-  .info-title{{font-size:1.5rem;}}
-}}
 </style>
 """, unsafe_allow_html=True)
-
 
 
 active_overview = "active" if page == "Overview" else ""
@@ -501,3 +524,19 @@ elif page == "About":
     st.markdown(texts["description"])
 
 
+
+
+# ---------- Bottom black block (full-bleed) ----------
+st.markdown(
+    '''
+    <div class="bottom-placeholder full-bleed">
+      <div></div>
+      <div class="bp-divider"></div>
+      <div class="bp-bottomrow">
+        <span class="team">VGU RANGERS</span>
+        <a class="fb" href="#" aria-label="Facebook" title="Facebook (coming soon)">f</a>
+      </div>
+    </div>
+    ''',
+    unsafe_allow_html=True
+)
