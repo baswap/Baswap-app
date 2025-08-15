@@ -383,31 +383,17 @@ if page == "Overview":
 
 st.divider()
 
-st.markdown("""
-<style>
-.cache-btn > div button {
-  font-size: 10em;     /* +30% icon size */
-  line-height: 1;
-  padding: .25rem .45rem;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Header row: [Data Table title] [icon-only button] [spacer]
-title_col, icon_col, _ = st.columns([3, 0.6, 20], gap="small")  # adjust to taste
-with title_col:
+# Header row: title (left) + clear cache button (right)
+hdr_left, hdr_right = st.columns([6, 1], gap="small")
+with hdr_left:
     st.subheader(texts["data_table"])
-with icon_col:
-    st.markdown('<div class="cache-btn">', unsafe_allow_html=True)  # <-- wrapper so CSS applies
-    if st.button(
-        "🔄",
-        key="clear_cache_icon",
+with hdr_right:
+    st.button(
+        texts["clear_cache"],
+        key="clear_cache_btn",
         help=texts.get("clear_cache_tooltip", "Clear cached data and reload the latest data."),
-        type="secondary",
-    ):
-        st.cache_data.clear()
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        on_click=st.cache_data.clear,
+    )
 
 st.multiselect(
     texts["columns_select"],
@@ -419,6 +405,7 @@ st.multiselect(
 table_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
 st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(table_cols)}).")
 st.dataframe(filtered_df[table_cols], use_container_width=True)
+
 
 
 # else:
