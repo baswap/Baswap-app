@@ -398,9 +398,6 @@ with right:
         st.cache_data.clear()
         st.rerun()
 
-    # Small, explicit hover hint
-    st.caption("Hover the button for details.")
-
 # The rest stays the same
 st.multiselect(
     texts["columns_select"],
