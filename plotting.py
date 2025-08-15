@@ -6,28 +6,45 @@ import pandas as pd
 import numpy as np
 from typing import Optional
 
-from model import make_predictions  # only function needed
-
-# Colors for aggregated series
-_COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}
-
-
-def _t(key: str, default: str) -> str:
-    """Translate via st.session_state['texts'] with fallback to `default`."""
-    return st.session_state.get("texts", {}).get(key, default)
+from model import LITModel, LSTMTimeseries, make_predictions  
+import pytorch_lightning as pl 
+import torch 
 
 
-def _render_aggregation_legend(show_predicted: bool = False) -> None:
-    items = "".join(
-        f"<div class='agg-item'><span class='dot' style='background:{_COLOR_MAP[k]}'></span>{k}</div>"
-        for k in ["Max", "Min", "Median"]
-    )
-    pred_label = _t("legend_predicted", "Predicted")
+_COLOR_MAP = {"Max": "red", "Min": "blue", "Median": "green"}  
+
+def _render_aggregation_legend(
+    show_predicted: bool = False,
+    *,
+    show_observed: bool = False,
+    agg_present: bool = True,
+    texts: dict | None = None,
+) -> None:
+    """
+    Renders a compact legend:
+      - If agg_present=True: colored dots for Max/Min/Median
+      - If agg_present=False: single 'Observed' dot
+      - Optional dashed 'Predicted' item
+    Localized via `texts` (optional).
+    """
+    texts = texts or {}
+    obs_label = texts.get("legend_observed", "Observed")
+    pred_label = texts.get("legend_predicted", "Predicted")
+
+    if agg_present:
+        items = "".join(
+            f"<div class='agg-item'><span class='dot' style='background:{_COLOR_MAP[k]}'></span>{k}</div>"
+            for k in ["Max", "Min", "Median"]
+        )
+    else:
+        # Single observed swatch (steelblue to match main line)
+        items = f"<div class='agg-item'><span class='dot' style='background:steelblue'></span>{obs_label}</div>"
+
     pred = (
         f"<div class='agg-item'><span class='dash'></span>{pred_label}</div>"
-        if show_predicted
-        else ""
+        if show_predicted else ""
     )
+
     st.markdown(
         f"""
         <style>
@@ -52,6 +69,7 @@ def _render_aggregation_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 
 
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
@@ -110,15 +128,24 @@ def _inject_nans_for_gaps(
     out[time_col] = _coerce_naive_datetime(out[time_col])
     out = out.sort_values(by=[time_col], kind="mergesort").reset_index(drop=True)
     return out
+# ---------------------------------------------------------------------- #
 
 
-def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
+def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None", texts: dict | None = None) -> None:
     """
     Draw a line chart with:
       - line breaks across missing intervals (NaN injection),
-      - custom legend outside the chart (no 'Raw'),
+      - localized legend & tooltips,
       - optional predictions overlay for Hour + EC series.
     """
+    texts = texts or {}
+    ts_label       = texts.get("axis_timestamp", "Timestamp")
+    val_label      = texts.get("axis_value", "Value")
+    rounded_title  = texts.get("tooltip_time_rounded", ts_label)
+    exact_title    = texts.get("tooltip_time_exact",   ts_label)
+    pred_time_ttl  = texts.get("tooltip_pred_time",    f"{texts.get('legend_predicted','Predicted')} {ts_label}")
+    pred_value_ttl = texts.get("tooltip_pred_value",   f"{texts.get('legend_predicted','Predicted')} {val_label}")
+
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
@@ -130,7 +157,6 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         range=[_COLOR_MAP["Max"], _COLOR_MAP["Min"], _COLOR_MAP["Median"]],
     )
 
-    # Round time and choose gap/format
     if resample_freq == "Hour":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
             df_filtered["Timestamp (GMT+7)"], errors="coerce"
@@ -144,24 +170,18 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         gap = pd.Timedelta(days=3)
         disp_fmt = "%d/%m/%Y"
     else:
-        df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-            df_filtered["Timestamp (GMT+7)"]
-        )
+        df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
-    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(
-        df_filtered["Timestamp (GMT+7)"]
-    )
-    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-        df_filtered["Timestamp (Rounded)"]
-    )
+    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
+    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (Rounded)"])
     df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
         df_filtered["Timestamp (Rounded)"]
     ).dt.strftime(disp_fmt)
 
+    # If aggregated data is present, we have an "Aggregation" category; otherwise it's the raw/observed series
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
-
     df_broken = _inject_nans_for_gaps(
         df_filtered,
         time_col="Timestamp (Rounded)",
@@ -172,52 +192,45 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         display_fmt=disp_fmt,
     )
 
-    # Localized axis & tooltip labels
-    axis_x = _t("axis_timestamp", "Timestamp")
-    axis_y = _t("axis_value", "Value")
-    t_rounded = _t("tooltip_rounded_time", axis_x)
-    t_exact = _t("tooltip_exact_time", axis_x)
-    t_value = _t("tooltip_value", axis_y)
-    t_pred_time = _t("tooltip_predicted_time", axis_x)
-    t_pred_value = _t("tooltip_predicted_value", axis_y)
-
+    # Legend (localized)
+    show_predicted = (resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
     _render_aggregation_legend(
-        show_predicted=(resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
+        show_predicted=show_predicted,
+        show_observed=(cat_col is None),
+        agg_present=(cat_col is not None),
+        texts=texts,
     )
 
-    # Main observed chart
+    # Main chart
     main_chart = (
         alt.Chart(df_broken)
         .mark_line(point=True)
         .encode(
-            x=alt.X("Timestamp (Rounded):T", title=axis_x),
-            y=alt.Y(f"{col}:Q", title=axis_y),
+            x=alt.X("Timestamp (Rounded):T", title=ts_label),
+            y=alt.Y(f"{col}:Q", title=val_label),
             color=(
                 alt.Color("Aggregation:N", scale=color_scale, legend=None)
-                if cat_col
-                else alt.value("steelblue")
+                if cat_col else alt.value("steelblue")
             ),
             tooltip=[
-                alt.Tooltip("Timestamp (Rounded Display):N", title=t_rounded),
-                alt.Tooltip("Timestamp (GMT+7):T", title=t_exact, format="%d/%m/%Y %H:%M:%S"),
-                alt.Tooltip(f"{col}:Q", title=t_value),
+                alt.Tooltip("Timestamp (Rounded Display):N", title=rounded_title),
+                alt.Tooltip("Timestamp (GMT+7):T",           title=exact_title, format="%d/%m/%Y %H:%M:%S"),
+                alt.Tooltip(f"{col}:Q",                      title=val_label),
+                # Aggregation tooltip intentionally removed
             ],
         )
         .interactive()
     )
 
-    # Optional predictions overlay (hourly EC)
-    if (
-        resample_freq == "Hour"
-        and col in ["EC Value (us/cm)", "EC Value (g/l)"]
-        and "Aggregation" in df_filtered.columns
-    ):
+    # Optional predictions (only Hourly EC series, using last window of Max series)
+    if show_predicted and cat_col:
         max_data = df_filtered[df_filtered["Aggregation"] == "Max"].copy()
         if not max_data.empty and len(max_data) >= 2:
             max_values_numeric = max_data[[col]].iloc[-7:].copy()
             last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
             last_value = float(max_values_numeric.iloc[-1][col])
 
+            # Maintain your original scale conversion behavior
             if col == "EC Value (g/l)":
                 max_values_numeric = max_values_numeric * 2000
 
@@ -238,20 +251,23 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                 alt.Chart(predictions_line_df)
                 .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
                 .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y(f"{col}:Q", title=axis_y),
+                    x=alt.X("Timestamp:T", title=ts_label),
+                    y=alt.Y(f"{col}:Q",    title=val_label),
                     tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip(f"{col}:Q", title=t_pred_value),
+                        alt.Tooltip("Timestamp:T", title=pred_time_ttl, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip(f"{col}:Q",    title=pred_value_ttl),
+                        # Aggregation tooltip intentionally removed
                     ],
                 )
             )
 
-            chart = alt.layer(predictions_chart, main_chart).resolve_scale(color="independent")
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(alt.layer(predictions_chart, main_chart).resolve_scale(color="independent"),
+                            use_container_width=True)
             return
 
     st.altair_chart(main_chart, use_container_width=True)
+
+
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
