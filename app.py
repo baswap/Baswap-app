@@ -361,6 +361,7 @@ if page == "Overview":
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
+    st.session_state["texts"] = texts
 
     # --- Charts: Hourly & Daily ---
     with chart_container:
@@ -369,11 +370,11 @@ if page == "Overview":
 
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
-            plot_line_chart(hourly, target_col, "Hour")
+            plot_line_chart(hourly, target_col, "Hour", texts=texts)
 
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
-            plot_line_chart(daily, target_col, "Day")
+            plot_line_chart(daily, target_col, "Day", texts=texts)
             
 st.divider()
 
