@@ -112,37 +112,32 @@ st.markdown(f"""
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
-  /* ===================== Bottom placeholder ===================== */
-  .bottom-placeholder{{
-    --left-pad: 18vw;
-    --right-pad: 18vw;
-    height:{BOTTOM_HEIGHT}px;
-    background:#111;
-    border-top:1px solid rgba(255,255,255,.08);
-    margin-top:2rem;
-    margin-bottom:0;                 /* make sure it touches page bottom */
-    width:100%;
+  /* ======= Full-bleed helper + remove bottom gap ======= */
+  .stApp{{ overflow-x: clip; }}  /* stop horiz scrollbar from full-bleed */
+  section.main > div.block-container{{ padding-bottom:0 !important; }}
 
-    display:grid;
-    grid-template-rows: 80% 1px 20%;
-  }}
-
-  /* Make it span edge-to-edge across the viewport */
   .full-bleed{{
     position:relative;
     left:50%; right:50%;
     margin-left:-50vw; margin-right:-50vw;
     width:100vw;
   }}
-  /* Better on mobile viewports with dynamic vw */
-  @supports (width: 100dvw) {{
-    .full-bleed{{ margin-left: calc(50% - 50dvw); margin-right: calc(50% - 50dvw); width:100dvw; }}
+
+  /* ===================== Bottom placeholder ===================== */
+  .bottom-placeholder{{
+    --left-pad: 18vw;      /* move team right */
+    --right-pad: 18vw;     /* move icon left */
+    height:{BOTTOM_HEIGHT}px;
+    background:#111;
+    border-top:1px solid rgba(255,255,255,.08);
+    margin:2rem 0 0;       /* no side/bottom margins */
+    display:grid;
+    grid-template-rows: 80% 1px 20%;  /* exact split */
   }}
 
-  /* Divider at exactly 80% */
+  /* Divider exactly at the 80% mark */
   .bp-divider{{
     background:linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
-    align-self:stretch;
   }}
 
   /* Bottom row */
@@ -156,9 +151,10 @@ st.markdown(f"""
     border:1px solid rgba(255,255,255,.25);
     display:inline-flex; align-items:center; justify-content:center;
     color:#fff; text-decoration:none; opacity:.75;
-    user-select:none; pointer-events:none;
+    user-select:none; pointer-events:none; /* placeholder */
   }}
 
+  /* Responsive tweaks */
   @media (max-width: 1200px) {{
     .bottom-placeholder{{ --left-pad: 14vw; --right-pad: 14vw; }}
   }}
