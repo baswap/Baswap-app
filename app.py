@@ -15,14 +15,12 @@ from plotting import plot_line_chart, display_statistics
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# Works on both newer and older Streamlit versions
 try:
-    params = st.query_params  # Newer API
+    params = st.query_params  
 except Exception:
-    params = st.experimental_get_query_params()  # Fallback
+    params = st.experimental_get_query_params()  
 
 def _as_scalar(v, default):
-    # Streamlit may return list-like values; pick the first if so
     if isinstance(v, (list, tuple)):
         return v[0] if v else default
     return v if v is not None else default
@@ -49,7 +47,7 @@ for k, v in {
     "date_from": None,
     "date_to": None,
     "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": [COL_NAMES[0]],  # default: only EC Value (us/cm)
+    "table_cols": [COL_NAMES[0]],  
     "selected_station": None,
 }.items():
     st.session_state.setdefault(k, v)
@@ -440,19 +438,19 @@ if page == "Overview":
             st.rerun()
 
     # --- Column picker + table ---
-    selected_cols = st.multiselect(
-        texts["columns_select"],
-        options=COL_NAMES,
-        default=st.session_state.get("table_cols", [COL_NAMES[0]]),
-        key="table_cols",  # do NOT assign to this key manually later
-    )
+    # Column picker
+st.multiselect(
+    texts["columns_select"],
+    options=COL_NAMES,
+    default=st.session_state["table_cols"],  # used only on first render
+    key="table_cols",
+)
 
-    base_cols = ["Timestamp (GMT+7)"]
-    table_cols = base_cols + list(selected_cols or [])
-    existing = [c for c in table_cols if c in filtered_df.columns]
+# Build the table from the current selection
+base_cols = ["Timestamp (GMT+7)"]
+picked = [c for c in st.session_state["table_cols"] if c in filtered_df.columns]
+st.dataframe(filtered_df[base_cols + picked], use_container_width=True)
 
-    st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
-    st.dataframe(filtered_df[existing], use_container_width=True)
 
 elif page == "About":
     st.title(texts["app_title"])
