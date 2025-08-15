@@ -249,24 +249,6 @@ def settings_panel(first_date, last_date, default_from, default_to):
     # Ensure session value is Max
     st.session_state.agg_stats = ["Max"]
 
-    # Try using Streamlit's disabled parameter (newer versions)
-    try:
-        st.multiselect(
-            side_texts["sidebar_summary_stats"],
-            options=["Max"],          # only Max available
-            default=["Max"],          # selected
-            key="agg_stats",
-            disabled=True,            # disable interaction
-            help="Locked to Observed (Max)."
-        )
-    except TypeError:
-        # Older Streamlit without `disabled`; don't render the widget.
-        st.caption(side_texts["sidebar_summary_stats"] + " — locked to Max")
-
-    # Safety: never proceed with empty stats
-    if not st.session_state.agg_stats:
-        st.session_state.agg_stats = ["Max"]
-
 
 # ================== PAGES ==================
 if page == "Overview":
