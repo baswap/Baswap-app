@@ -182,6 +182,7 @@ st.markdown("""
   .custom-header{ transition: transform .25s ease; will-change: transform; }
   .custom-header.hide{ transform: translateY(-100%); }
   
+  .refresh-holder .stButton > button{ transform: translateY(2px); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -399,15 +400,17 @@ if page == "Overview":
     with sh_left:
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
-        if st.button(
-            texts["clear_cache"],
-            key="clear_cache_btn",
-            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-            type="primary",
-            use_container_width=True,   # stays on one line if you added the CSS: .stButton > button { white-space: nowrap; }
-        ):
-            st.cache_data.clear()
-            st.rerun()
+        st.markdown('<div class="refresh-holder">', unsafe_allow_html=True)
+    if st.button(
+        texts["clear_cache"],
+        key="clear_cache_btn",
+        help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+        type="primary",
+        use_container_width=True,
+    ):
+        st.cache_data.clear()
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ---- Scope label (language-aware): "Trạm: <name>" or "Station: <name>" ----
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
