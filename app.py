@@ -443,4 +443,47 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
+# === FOOTER (Option B: top placeholder + bottom bar) ===
+st.markdown("""
+<style>
+  .app-footer{margin-top:2rem;border-top:1px solid #e5e7eb;}
+  .app-footer .footer-top{
+    min-height:120px; background:#f9fafb; border-radius:.5rem;
+    border:1px dashed #e5e7eb; display:flex; align-items:center; justify-content:center;
+    color:#9ca3af; font-weight:600;
+  }
+  .app-footer .footer-bottom{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:1rem; padding:1rem 0; color:#111;
+  }
+  .app-footer .brand{font-weight:700; letter-spacing:.5px;}
+  .app-footer .social{display:flex; align-items:center; gap:.5rem;}
+  .app-footer .icon-btn{
+    display:inline-flex; width:36px; height:36px; border-radius:999px;
+    border:1px solid #e5e7eb; align-items:center; justify-content:center;
+    text-decoration:none;
+  }
+  .app-footer .icon-btn:hover{background:#f3f4f6;}
+  .app-footer .icon-btn svg{width:18px; height:18px;}
+  @media (max-width: 640px){
+    .app-footer .footer-bottom{flex-direction:column; align-items:flex-start;}
+  }
+</style>
+
+<div class="app-footer">
+  <div class="footer-top" aria-label="Footer placeholder">
+    <!-- Placeholder (leave empty for now) -->
+  </div>
+  <div class="footer-bottom">
+    <div class="brand">VGU RANGERS</div>
+    <div class="social">
+      <a href="#" class="icon-btn" title="Facebook (coming soon)" aria-label="Facebook">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+          <path d="M22 12.07C22 6.48 17.52 2 11.93 2 6.35 2 1.87 6.48 1.87 12.07c0 4.99 3.65 9.13 8.43 9.93v-7.02H7.9v-2.91h2.41V9.41c0-2.38 1.42-3.69 3.6-3.69 1.04 0 2.13.19 2.13.19v2.35h-1.2c-1.18 0-1.55.73-1.55 1.48v1.78h2.64l-.42 2.91h-2.22V22c4.78-.8 8.43-4.94 8.43-9.93z"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
