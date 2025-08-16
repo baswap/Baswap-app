@@ -443,69 +443,49 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
-# === FOOTER (full-bleed, edge-to-edge) ===
+# === FOOTER (sticky, full-bleed) ===
 st.markdown("""
 <style>
-  /* Full-bleed wrapper: span entire viewport width even inside Streamlit container */
+  /* Full-bleed wrapper */
   .vgu-footer{
-    margin-top: 2rem;
     position: relative;
     left: 50%; right: 50%;
     margin-left: -50vw; margin-right: -50vw;
-    width: 100vw;            /* go edge-to-edge */
+    width: 100vw;
     box-sizing: border-box;
   }
-
   /* Top placeholder band */
   .vgu-footer .vgu-hero{
-    width: 100%;
-    min-height: 160px;       /* adjust as you like */
-    background: #f8fafc;     /* subtle light band */
+    width:100%;
+    min-height:160px;           /* placeholder space for future content */
+    background:#f8fafc;
   }
-
   /* Bottom bar (full width background) */
   .vgu-footer .vgu-meta{
-    width: 100%;
-    background: #ffffff;
-    border-top: 1px solid #e5e7eb;
+    width:100%;
+    background:#ffffff;
+    border-top:1px solid #e5e7eb;
   }
-
-  /* Constrain inner content while background stays full-bleed */
+  /* Constrained inner content while background stays full-bleed */
   .vgu-footer .inner{
-    max-width: 1200px;       /* match your app's content width */
-    margin: 0 auto;
-    padding: 1rem 16px;
-    box-sizing: border-box;
+    max-width:1200px;
+    margin:0 auto;
+    padding:1rem 16px;
+    box-sizing:border-box;
   }
-
   .vgu-footer .meta-row{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
   }
-
-  .vgu-footer .brand{
-    font-weight: 700;
-    letter-spacing: .3px;
-  }
-
-  .vgu-footer .social{
-    display: flex; align-items: center; gap: .5rem;
-  }
-
+  .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
+  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
   .vgu-footer .icon-btn{
-    display: inline-flex; width: 36px; height: 36px;
-    border-radius: 999px; border: 1px solid #e5e7eb;
-    align-items: center; justify-content: center;
-    text-decoration: none;
+    display:inline-flex; width:36px; height:36px; border-radius:999px;
+    border:1px solid #e5e7eb; align-items:center; justify-content:center; text-decoration:none;
   }
-  .vgu-footer .icon-btn:hover{ background: #f3f4f6; }
-  .vgu-footer .icon-btn svg{ width: 18px; height: 18px; }
-
-  /* Stack nicely on small screens */
-  @media (max-width: 640px){
-    .vgu-footer .meta-row{ flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
+  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
+  @media (max-width:640px){
+    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
   }
 </style>
 
@@ -527,5 +507,6 @@ st.markdown("""
   </div>
 </footer>
 """, unsafe_allow_html=True)
+
 
 
