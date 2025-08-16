@@ -465,7 +465,14 @@ if page == "Overview":
 elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
-
+st.divider()
+st.divider()
+st.divider()
+st.divider()
+st.divider()
+st.divider()
+st.divider()
+st.divider()
 # === FOOTER (normal flow, full-bleed, black theme) ===
 st.markdown("""
 <style>
