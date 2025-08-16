@@ -174,7 +174,7 @@ st.markdown("""
   .block-container, [data-testid="block-container"]{
     display:flex !important; flex-direction:column !important;
     min-height: calc(100vh - 4.5rem) !important;
-    padding-top: 0.6rem;
+    padding-top: 1rem;
     overflow: visible !important;   /* so full-bleed footer isn't clipped */
   }
 </style>
