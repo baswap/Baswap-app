@@ -165,19 +165,22 @@ st.markdown("""
     margin-top:4.5rem !important;
   }
 
-  /* make the central block a flex column that can push the footer down */
-  .block-container{
+  /* make the central block a flex column (handle both old/new selectors) */
+  .block-container,
+  [data-testid="block-container"]{
     display:flex !important;
     flex-direction:column !important;
     min-height: calc(100vh - 4.5rem) !important;  /* viewport minus fixed header */
   }
 
-  /* let the footer sit at the bottom when content is short */
-  .block-container .vgu-footer{
+  /* footer sits at the bottom when content is short */
+  .block-container .vgu-footer,
+  [data-testid="block-container"] .vgu-footer{
     margin-top:auto !important;
   }
 </style>
 """, unsafe_allow_html=True)
+
 
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
@@ -468,32 +471,20 @@ elif page == "About":
 # === FOOTER (sticky, full-bleed) ===
 st.markdown("""
 <style>
-  /* Full-bleed wrapper */
   .vgu-footer{
     position: relative;
     left: 50%; right: 50%;
     margin-left: -50vw; margin-right: -50vw;
-    width: 100vw;
-    box-sizing: border-box;
+    width: 100vw; box-sizing: border-box;
   }
-  /* Top placeholder band */
   .vgu-footer .vgu-hero{
-    width:100%;
-    min-height:160px;           /* placeholder space for future content */
-    background:#f8fafc;
+    width:100%; min-height:160px; background:#f8fafc;
   }
-  /* Bottom bar (full width background) */
   .vgu-footer .vgu-meta{
-    width:100%;
-    background:#ffffff;
-    border-top:1px solid #e5e7eb;
+    width:100%; background:#ffffff; border-top:1px solid #e5e7eb;
   }
-  /* Constrained inner content while background stays full-bleed */
   .vgu-footer .inner{
-    max-width:1200px;
-    margin:0 auto;
-    padding:1rem 16px;
-    box-sizing:border-box;
+    max-width:1200px; margin:0 auto; padding:1rem 16px; box-sizing:border-box;
   }
   .vgu-footer .meta-row{
     display:flex; align-items:center; justify-content:space-between; gap:1rem;
