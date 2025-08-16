@@ -160,37 +160,67 @@ active_overview = "active" if page == "Overview" else ""
 # --- GLOBAL LAYOUT (flex page; footer pushed down, not fixed) ---
 st.markdown("""
 <style>
-  /* below your fixed custom header (4.5rem) */
-  [data-testid="stAppViewContainer"] > .main{ margin-top:4.5rem !important; }
-
-  /* make the main streamlit column a flex column */
-  .block-container, [data-testid="block-container"]{
-    display:flex !important;
-    flex-direction:column !important;
-    min-height: calc(100vh - 4.5rem) !important;
-  }
-
-  /* full-bleed footer in normal flow; auto-push to bottom */
+  /* Full-bleed normal-flow footer (not fixed) */
   .vgu-footer{
-    margin-top:auto;               /* key: pushes footer to the bottom when page is short */
+    margin-top:auto;                 /* pushes to bottom when page is short */
     position:relative;
     left:50%; right:50%;
     margin-left:-50vw; margin-right:-50vw;
-    width:100vw;                   /* edge-to-edge */
+    width:100vw;                     /* edge-to-edge */
+    box-sizing:border-box;
+    color:#d1d5db;                   /* default text color (gray-300) */
+  }
+
+  /* Top placeholder band */
+  .vgu-footer .vgu-hero{
+    width:100%;
+    min-height:160px;                /* adjust as needed */
+    background:#000;                 /* black */
+  }
+
+  /* Bottom bar */
+  .vgu-footer .vgu-meta{
+    width:100%;
+    background:#000;                 /* black */
+    border-top:1px solid #1f2937;    /* gray-800 divider */
+  }
+
+  /* Constrain inner row while background stays full-bleed */
+  .vgu-footer .inner{
+    max-width:1200px;
+    margin:0 auto;
+    padding:1rem 16px;
     box-sizing:border-box;
   }
-  .vgu-footer .vgu-hero{ width:100%; min-height:160px; background:#f8fafc; }
-  .vgu-footer .vgu-meta{ width:100%; background:#fff; border-top:1px solid #e5e7eb; }
-  .vgu-footer .inner{ max-width:1200px; margin:0 auto; padding:1rem 16px; box-sizing:border-box; }
-  .vgu-footer .meta-row{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+
+  .vgu-footer .meta-row{
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  }
+
   .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
+
+  /* Links & icons inherit gray; lighten on hover */
+  .vgu-footer a{ color:#d1d5db; text-decoration:none; }
+  .vgu-footer a:hover{ color:#ffffff; }
+
   .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
+
   .vgu-footer .icon-btn{
     display:inline-flex; width:36px; height:36px; border-radius:999px;
-    border:1px solid #e5e7eb; align-items:center; justify-content:center; text-decoration:none;
+    border:1px solid #374151;        /* gray-700 */
+    align-items:center; justify-content:center;
+    color:#d1d5db; background:transparent;
   }
-  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
-  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
+  .vgu-footer .icon-btn:hover{
+    background:#111827;              /* gray-900 */
+    border-color:#4b5563;            /* gray-600 */
+  }
+
+  /* Ensure SVG uses current text color */
+  .vgu-footer .icon-btn svg{ width:18px; height:18px; display:block; }
+  .vgu-footer .icon-btn svg path{ fill: currentColor; }
+
+  /* Stack nicely on small screens */
   @media (max-width:640px){
     .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
   }
