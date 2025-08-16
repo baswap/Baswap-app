@@ -372,7 +372,7 @@ if page == "Overview":
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
         if st.button(
-            texts["clear_cache"].replace(" ", "\u00A0"),
+            texts["clear_cache"],
             key="clear_cache_btn",
             help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
             type="primary",
