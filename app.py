@@ -395,31 +395,35 @@ if page == "Overview":
     if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
-    # --- Overall Statistics header + REFRESH button on the same row ---
+    # --- Overall Statistics header (title only) ---
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
-        st.markdown('<div class="refresh-holder">', unsafe_allow_html=True)
-    if st.button(
-        texts["clear_cache"],
-        key="clear_cache_btn",
-        help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-        type="primary",
-        use_container_width=True,
-    ):
-        st.cache_data.clear()
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.empty()  # refresh button moved next to scope label
 
-    # ---- Scope label (language-aware): "Trạm: <name>" or "Station: <name>" ----
+    # ---- Scope label + REFRESH button on the same row ----
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
     overall_text = texts.get("scope_overall") or ("Overall" if lang == "en" else "Chung")
     station_name = st.session_state.get("selected_station") or overall_text
-    st.markdown(
-        f'<div class="stats-scope"><span class="k">{scope_label}:</span> <span class="v">{station_name}</span></div>',
-        unsafe_allow_html=True,
-    )
+
+    c_label, c_btn = st.columns([8, 1], gap="small")
+    with c_label:
+        st.markdown(
+            f'<div class="stats-scope"><span class="k">{scope_label}:</span> '
+            f'<span class="v">{station_name}</span></div>',
+            unsafe_allow_html=True,
+        )
+    with c_btn:
+        if st.button(
+            texts["clear_cache"],
+            key="clear_cache_btn",
+            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+            type="primary",
+            use_container_width=True,
+        ):
+            st.cache_data.clear()
+            st.rerun()
 
     # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
@@ -469,6 +473,7 @@ if page == "Overview":
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 if page == "About":
     st.title(texts["app_title"])
