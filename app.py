@@ -72,7 +72,7 @@ for k, v in {
 
 
 # ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 720            # tall map
+MAP_HEIGHT = 600            # tall map
 TABLE_HEIGHT = MAP_HEIGHT - 80  # adjust to align visually with map
 
 st.markdown(f"""
