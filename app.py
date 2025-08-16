@@ -158,6 +158,27 @@ st.markdown(f"""
 
 active_overview = "active" if page == "Overview" else ""
 
+st.markdown("""
+<style>
+  /* push content below your fixed header (4.5rem) */
+  [data-testid="stAppViewContainer"] > .main{
+    margin-top:4.5rem !important;
+  }
+
+  /* make the central block a flex column that can push the footer down */
+  .block-container{
+    display:flex !important;
+    flex-direction:column !important;
+    min-height: calc(100vh - 4.5rem) !important;  /* viewport minus fixed header */
+  }
+
+  /* let the footer sit at the bottom when content is short */
+  .block-container .vgu-footer{
+    margin-top:auto !important;
+  }
+</style>
+""", unsafe_allow_html=True)
+
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
 <div class="custom-header">
