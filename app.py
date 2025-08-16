@@ -123,7 +123,7 @@ st.markdown(f"""
 
   /* Map title */
   .map-title{{
-    margin:.75rem 0 .35rem; font-size:1.7rem; font-weight:600; line-height:1.2;
+    margin:.45rem 0 .35rem; font-size:1.7rem; font-weight:600; line-height:1.2;
     display:flex; align-items:center; gap:.5rem;
   }}
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
