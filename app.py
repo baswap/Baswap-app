@@ -185,39 +185,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-components.html("""
-<script>
-(function(){
-  function bind(){
-    const doc = parent.document;
-    const win = parent;
-    const header = doc.querySelector('.custom-header');
-    if(!header){ setTimeout(bind, 120); return; }   // wait until header exists
-
-    if(header.dataset.scrollbound === "1") return;  // prevent double-binding
-    header.dataset.scrollbound = "1";
-
-    let lastY = win.pageYOffset || doc.documentElement.scrollTop || 0;
-    const THRESH = 8; // ignore tiny scroll jitters
-
-    win.addEventListener('scroll', function(){
-      const y = win.pageYOffset || doc.documentElement.scrollTop || 0;
-      const dy = y - lastY;
-      if (Math.abs(dy) > THRESH){
-        if (dy > 0){
-          header.classList.add('hide');   // scrolling down -> hide
-        } else {
-          header.classList.remove('hide'); // scrolling up -> show
-        }
-        lastY = y;
-      }
-    }, {passive:true});
-  }
-  bind();
-})();
-</script>
-""", height=0)
-
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
 <div class="custom-header">
