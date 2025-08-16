@@ -157,16 +157,45 @@ st.markdown(f"""
 
 
 active_overview = "active" if page == "Overview" else ""
+# --- GLOBAL LAYOUT (flex page; footer pushed down, not fixed) ---
 st.markdown("""
 <style>
-  :root{ --footer-hero-h:120px; --footer-meta-h:64px; --footer-total-h:calc(var(--footer-hero-h) + var(--footer-meta-h)); }
-  /* keep content below your fixed header */
+  /* below your fixed custom header (4.5rem) */
   [data-testid="stAppViewContainer"] > .main{ margin-top:4.5rem !important; }
-  /* reserve space so the fixed footer never overlaps content (all pages) */
-  .block-container, [data-testid="block-container"]{ padding-bottom: var(--footer-total-h) !important; }
+
+  /* make the main streamlit column a flex column */
+  .block-container, [data-testid="block-container"]{
+    display:flex !important;
+    flex-direction:column !important;
+    min-height: calc(100vh - 4.5rem) !important;
+  }
+
+  /* full-bleed footer in normal flow; auto-push to bottom */
+  .vgu-footer{
+    margin-top:auto;               /* key: pushes footer to the bottom when page is short */
+    position:relative;
+    left:50%; right:50%;
+    margin-left:-50vw; margin-right:-50vw;
+    width:100vw;                   /* edge-to-edge */
+    box-sizing:border-box;
+  }
+  .vgu-footer .vgu-hero{ width:100%; min-height:160px; background:#f8fafc; }
+  .vgu-footer .vgu-meta{ width:100%; background:#fff; border-top:1px solid #e5e7eb; }
+  .vgu-footer .inner{ max-width:1200px; margin:0 auto; padding:1rem 16px; box-sizing:border-box; }
+  .vgu-footer .meta-row{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
+  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
+  .vgu-footer .icon-btn{
+    display:inline-flex; width:36px; height:36px; border-radius:999px;
+    border:1px solid #e5e7eb; align-items:center; justify-content:center; text-decoration:none;
+  }
+  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
+  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
+  @media (max-width:640px){
+    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
+  }
 </style>
 """, unsafe_allow_html=True)
-
 
 
 active_about = "active" if page == "About" else ""
@@ -455,39 +484,8 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
-# === FIXED FOOTER (always at bottom; page padded to avoid overlap) ===
+# === NON-FIXED FOOTER (render once, OUTSIDE the page branches) ===
 st.markdown("""
-<style>
-  .vgu-footer{
-    position:fixed; left:0; bottom:0; width:100%; box-sizing:border-box; z-index:10;
-    background:transparent;
-  }
-  .vgu-footer .vgu-hero{
-    height:var(--footer-hero-h); background:#f8fafc; width:100%;
-  }
-  .vgu-footer .vgu-meta{
-    height:var(--footer-meta-h); background:#fff; border-top:1px solid #e5e7eb; width:100%;
-  }
-  .vgu-footer .inner{
-    max-width:1200px; margin:0 auto; padding:0 16px; height:100%;
-    display:flex; align-items:center; box-sizing:border-box;
-  }
-  .vgu-footer .meta-row{
-    width:100%; display:flex; align-items:center; justify-content:space-between; gap:1rem;
-  }
-  .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
-  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
-  .vgu-footer .icon-btn{
-    display:inline-flex; width:36px; height:36px; border-radius:999px; border:1px solid #e5e7eb;
-    align-items:center; justify-content:center; text-decoration:none;
-  }
-  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
-  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
-  @media (max-width:640px){
-    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
-  }
-</style>
-
 <footer class="vgu-footer" role="contentinfo" aria-label="App footer">
   <div class="vgu-hero"><!-- placeholder --></div>
   <div class="vgu-meta">
