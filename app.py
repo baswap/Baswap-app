@@ -157,6 +157,22 @@ st.markdown(f"""
 
 
 active_overview = "active" if page == "Overview" else ""
+
+st.markdown("""
+<style>
+  /* Make Streamlit's main column fill the viewport height minus your fixed header (4.5rem) */
+  [data-testid="stAppViewContainer"] > .main{
+    display:flex;
+    flex-direction:column;
+    min-height: calc(100vh - 4.5rem);
+  }
+  /* Let the footer push itself to the bottom when content is short */
+  .vgu-footer{ margin-top:auto !important; }
+</style>
+""", unsafe_allow_html=True)
+
+
+
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
 <div class="custom-header">
