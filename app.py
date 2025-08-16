@@ -412,26 +412,14 @@ if page == "Overview":
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-   # ---- Scope label (language-aware): "Trạm: <name>" or "Station: <name)" ----
-scope_col, refresh_col = st.columns([1, 0.18], gap="small")
-with scope_col:
+    # ---- Scope label (language-aware): "Trạm: <name>" or "Station: <name>" ----
+    scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
+    overall_text = texts.get("scope_overall") or ("Overall" if lang == "en" else "Chung")
+    station_name = st.session_state.get("selected_station") or overall_text
     st.markdown(
         f'<div class="stats-scope"><span class="k">{scope_label}:</span> <span class="v">{station_name}</span></div>',
         unsafe_allow_html=True,
     )
-with refresh_col:
-    st.markdown('<div class="refresh-holder">', unsafe_allow_html=True)
-    if st.button(
-        texts["clear_cache"],
-        key="clear_cache_btn_inline",   # new key to avoid collisions
-        help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
-        type="primary",
-        use_container_width=True,
-    ):
-        st.cache_data.clear()
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
 
     # Show the metrics
     stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
@@ -566,7 +554,6 @@ st.markdown("""
   </div>
 </footer>
 """, unsafe_allow_html=True)
-
 
 
 
