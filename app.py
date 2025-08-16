@@ -157,26 +157,45 @@ st.markdown(f"""
 
 
 active_overview = "active" if page == "Overview" else ""
-
 st.markdown("""
 <style>
-  /* push content below your fixed header (4.5rem) */
+  html, body, [data-testid="stApp"]{ height:100%; }
+  [data-testid="stApp"]{ display:flex; flex-direction:column; }
+  [data-testid="stAppViewContainer"]{
+    flex:1 0 auto; display:flex; flex-direction:column;
+  }
   [data-testid="stAppViewContainer"] > .main{
-    margin-top:4.5rem !important;
+    flex:1 0 auto; display:flex; flex-direction:column;
+    margin-top:4.5rem !important;  /* below your fixed header */
   }
-
-  /* make the central block a flex column (handle both old/new selectors) */
-  .block-container,
-  [data-testid="block-container"]{
-    display:flex !important;
-    flex-direction:column !important;
-    min-height: calc(100vh - 4.5rem) !important;  /* viewport minus fixed header */
+  /* central content column should stretch */
+  .block-container, [data-testid="block-container"]{
+    display:flex !important; flex-direction:column !important;
+    flex:1 0 auto !important;
   }
-
-  /* footer sits at the bottom when content is short */
-  .block-container .vgu-footer,
-  [data-testid="block-container"] .vgu-footer{
-    margin-top:auto !important;
+  /* spacer we’ll render before the footer */
+  .vgu-flex-spacer{ flex:1 0 auto; }
+  /* footer full-bleed background */
+  .vgu-footer{
+    position: relative;
+    left: 50%; right: 50%;
+    margin-left: -50vw; margin-right: -50vw;
+    width: 100vw; box-sizing: border-box;
+  }
+  .vgu-footer .vgu-hero{ width:100%; min-height:160px; background:#f8fafc; }
+  .vgu-footer .vgu-meta{ width:100%; background:#fff; border-top:1px solid #e5e7eb; }
+  .vgu-footer .inner{ max-width:1200px; margin:0 auto; padding:1rem 16px; box-sizing:border-box; }
+  .vgu-footer .meta-row{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
+  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
+  .vgu-footer .icon-btn{
+    display:inline-flex; width:36px; height:36px; border-radius:999px;
+    border:1px solid #e5e7eb; align-items:center; justify-content:center; text-decoration:none;
+  }
+  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
+  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
+  @media (max-width:640px){
+    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
   }
 </style>
 """, unsafe_allow_html=True)
@@ -468,40 +487,11 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
+# fills remaining vertical space so footer sits at the bottom even on short pages
+st.markdown('<div class="vgu-flex-spacer"></div>', unsafe_allow_html=True)
+
 # === FOOTER (sticky, full-bleed) ===
 st.markdown("""
-<style>
-  .vgu-footer{
-    position: relative;
-    left: 50%; right: 50%;
-    margin-left: -50vw; margin-right: -50vw;
-    width: 100vw; box-sizing: border-box;
-  }
-  .vgu-footer .vgu-hero{
-    width:100%; min-height:160px; background:#f8fafc;
-  }
-  .vgu-footer .vgu-meta{
-    width:100%; background:#ffffff; border-top:1px solid #e5e7eb;
-  }
-  .vgu-footer .inner{
-    max-width:1200px; margin:0 auto; padding:1rem 16px; box-sizing:border-box;
-  }
-  .vgu-footer .meta-row{
-    display:flex; align-items:center; justify-content:space-between; gap:1rem;
-  }
-  .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
-  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
-  .vgu-footer .icon-btn{
-    display:inline-flex; width:36px; height:36px; border-radius:999px;
-    border:1px solid #e5e7eb; align-items:center; justify-content:center; text-decoration:none;
-  }
-  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
-  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
-  @media (max-width:640px){
-    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
-  }
-</style>
-
 <footer class="vgu-footer" role="contentinfo" aria-label="App footer">
   <div class="vgu-hero"><!-- Empty placeholder for future content --></div>
   <div class="vgu-meta">
@@ -520,6 +510,7 @@ st.markdown("""
   </div>
 </footer>
 """, unsafe_allow_html=True)
+
 
 
 
