@@ -82,7 +82,7 @@ st.markdown(f"""
 
   /* Fixed custom header */
   .custom-header{{
-    position:fixed; top:0; left:0; right:0; height:2.5rem;
+    position:fixed; top:0; left:0; right:0; height:4.5rem;
     display:flex; align-items:center; gap:2rem; padding:0 1rem;
     background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
   }}
@@ -174,6 +174,7 @@ st.markdown("""
   .block-container, [data-testid="block-container"]{
     display:flex !important; flex-direction:column !important;
     min-height: calc(100vh - 4.5rem) !important;
+    padding-top: 0.6rem;
     overflow: visible !important;   /* so full-bleed footer isn't clipped */
   }
 </style>
