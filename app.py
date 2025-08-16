@@ -157,64 +157,28 @@ st.markdown(f"""
 
 
 active_overview = "active" if page == "Overview" else ""
-# === FOOTER THEME (black bg, thin gray text, near divider) ===
+# --- GLOBAL LAYOUT (flex page; prevents vertical floating) ---
 st.markdown("""
 <style>
-  /* Full-bleed footer in normal flow (not fixed) */
-  .vgu-footer{
-    margin-top:auto;                           /* pushes footer to page bottom when content is short */
-    position:relative; left:50%; right:50%;
-    margin-left:-50vw; margin-right:-50vw;     /* edge-to-edge */
-    width:100vw; box-sizing:border-box;
-    background:#000;                           /* unify background across sections */
+  html, body, [data-testid="stApp"]{ height:100%; }
+  [data-testid="stApp"]{ display:flex; flex-direction:column; }
+
+  /* keep content below your fixed header (4.5rem) */
+  [data-testid="stAppViewContainer"] > .main{
+    margin-top:4.5rem !important;
+    display:flex; flex-direction:column;
+    flex:1 0 auto;
   }
 
-  /* Top placeholder band: keep small but present for future content */
-  .vgu-footer .vgu-hero{
-    width:100%;
-    min-height:64px;                           /* was 160px — reduced so footer content isn’t “mid-bottom” */
-    background:#000;
-  }
-
-  /* Bottom bar (divider + copy/social) */
-  .vgu-footer .vgu-meta{
-    width:100%;
-    background:#000;
-    border-top:1px solid rgba(255,255,255,.08);/* subtle divider on black */
-  }
-
-  /* Constrain inner content while background stays full-bleed */
-  .vgu-footer .inner{
-    max-width:1200px; margin:0 auto;
-    padding:6px 16px 10px;                     /* place content close to the divider line */
-    box-sizing:border-box;
-  }
-
-  .vgu-footer .meta-row{
-    display:flex; align-items:center; justify-content:space-between; gap:1rem;
-  }
-
-  /* Thin gray text on black */
-  .vgu-footer .brand{ color:#9ca3af; font-weight:300; letter-spacing:.2px; }
-  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
-  .vgu-footer .social a{ color:#9ca3af; }
-
-  /* Icon button tuned for dark theme */
-  .vgu-footer .icon-btn{
-    display:inline-flex; width:36px; height:36px; border-radius:999px;
-    border:1px solid #2a2a2a; background:#0a0a0a;
-    align-items:center; justify-content:center; text-decoration:none;
-  }
-  .vgu-footer .icon-btn:hover{ background:#111; border-color:#333; }
-  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
-  .vgu-footer .icon-btn svg path{ fill: currentColor; }
-
-  /* Mobile stacking */
-  @media (max-width:640px){
-    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
+  /* main content column fills height, allows footer to push down */
+  .block-container, [data-testid="block-container"]{
+    display:flex !important; flex-direction:column !important;
+    min-height: calc(100vh - 4.5rem) !important;
+    overflow: visible !important;   /* so full-bleed footer isn't clipped */
   }
 </style>
 """, unsafe_allow_html=True)
+
 
 active_about = "active" if page == "About" else ""
 st.markdown(f"""
@@ -502,10 +466,62 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
-# === NON-FIXED FOOTER (render once, OUTSIDE the page branches) ===
+# === FOOTER (normal flow, full-bleed, black theme) ===
 st.markdown("""
+<style>
+  /* wrapper: full-bleed without being fixed */
+  .vgu-footer{
+    margin-top:auto;                 /* push to bottom when page is short */
+    position:relative;
+    left:50%; right:50%;
+    margin-left:-50vw; margin-right:-50vw;
+    width:100vw; box-sizing:border-box;
+    background:#000;
+  }
+
+  /* small top placeholder so content sits near the divider */
+  .vgu-footer .vgu-hero{
+    width:100%; min-height:20px; background:#000;
+  }
+
+  /* thin divider + meta row */
+  .vgu-footer .vgu-meta{
+    width:100%; background:#000;
+    border-top:1px solid rgba(255,255,255,.08);
+  }
+
+  /* constrained inner width; keep text near the divider */
+  .vgu-footer .inner{
+    max-width:1200px; margin:0 auto;
+    padding:6px 16px 10px; box-sizing:border-box;
+  }
+
+  .vgu-footer .meta-row{
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  }
+
+  /* thin gray typography on black */
+  .vgu-footer .brand{ color:#9ca3af; font-weight:300; letter-spacing:.2px; }
+  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
+  .vgu-footer .social a{ color:#9ca3af; }
+
+  /* dark theme icon button */
+  .vgu-footer .icon-btn{
+    display:inline-flex; width:36px; height:36px; border-radius:999px;
+    border:1px solid #2a2a2a; background:#0a0a0a;
+    align-items:center; justify-content:center; text-decoration:none;
+  }
+  .vgu-footer .icon-btn:hover{ background:#111; border-color:#333; }
+  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
+  .vgu-footer .icon-btn svg path{ fill: currentColor; }
+
+  @media (max-width:640px){
+    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
+  }
+</style>
+
 <footer class="vgu-footer" role="contentinfo" aria-label="App footer">
-  <div class="vgu-hero"><!-- placeholder --></div>
+  <div class="vgu-hero"></div>
   <div class="vgu-meta">
     <div class="inner">
       <div class="meta-row">
