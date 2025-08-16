@@ -467,16 +467,16 @@ if page == "Overview":
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
 
-elif page == "About":
+if page == "About":
     st.title(texts["app_title"])
     st.divider()
-st.divider()
-st.divider()
-st.divider()
-st.divider()
-st.divider()
-st.divider()
-st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
     st.markdown(texts["description"])
 
 # === FOOTER (normal flow, full-bleed, black theme) ===
