@@ -159,44 +159,40 @@ st.markdown(f"""
 active_overview = "active" if page == "Overview" else ""
 st.markdown("""
 <style>
-  html, body, [data-testid="stApp"]{ height:100%; }
-  [data-testid="stApp"]{ display:flex; flex-direction:column; }
-  [data-testid="stAppViewContainer"]{
-    flex:1 0 auto; display:flex; flex-direction:column;
-  }
-  [data-testid="stAppViewContainer"] > .main{
-    flex:1 0 auto; display:flex; flex-direction:column;
-    margin-top:4.5rem !important;  /* below your fixed header */
-  }
-  /* central content column should stretch */
+  :root{ --vgu-footer-bar-h:72px; } /* footer bar height */
+
+  /* keep content below your fixed header */
+  [data-testid="stAppViewContainer"] > .main{ margin-top:4.5rem !important; }
+
+  /* reserve space so the fixed footer never covers content (all pages) */
   .block-container, [data-testid="block-container"]{
-    display:flex !important; flex-direction:column !important;
-    flex:1 0 auto !important;
+    padding-bottom: var(--vgu-footer-bar-h) !important;
   }
-  /* spacer we’ll render before the footer */
-  .vgu-flex-spacer{ flex:1 0 auto; }
-  /* footer full-bleed background */
-  .vgu-footer{
-    position: relative;
-    left: 50%; right: 50%;
-    margin-left: -50vw; margin-right: -50vw;
-    width: 100vw; box-sizing: border-box;
+
+  /* full-bleed placeholder band (normal flow; leave empty for now) */
+  .vgu-hero-band{
+    position:relative; left:50%; right:50%;
+    margin-left:-50vw; margin-right:-50vw;
+    width:100vw; min-height:160px; background:#f8fafc;
   }
-  .vgu-footer .vgu-hero{ width:100%; min-height:160px; background:#f8fafc; }
-  .vgu-footer .vgu-meta{ width:100%; background:#fff; border-top:1px solid #e5e7eb; }
-  .vgu-footer .inner{ max-width:1200px; margin:0 auto; padding:1rem 16px; box-sizing:border-box; }
-  .vgu-footer .meta-row{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-  .vgu-footer .brand{ font-weight:700; letter-spacing:.3px; }
-  .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
-  .vgu-footer .icon-btn{
+
+  /* fixed bottom bar (always sticks to viewport bottom) */
+  .vgu-fixed-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:9999;
+    height:var(--vgu-footer-bar-h); background:#fff; border-top:1px solid #e5e7eb;
+  }
+  .vgu-fixed-bar .inner{
+    max-width:1200px; margin:0 auto; height:100%;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; box-sizing:border-box;
+  }
+  .vgu-fixed-bar .brand{ font-weight:700; letter-spacing:.3px; }
+  .vgu-fixed-bar .icon-btn{
     display:inline-flex; width:36px; height:36px; border-radius:999px;
     border:1px solid #e5e7eb; align-items:center; justify-content:center; text-decoration:none;
   }
-  .vgu-footer .icon-btn:hover{ background:#f3f4f6; }
-  .vgu-footer .icon-btn svg{ width:18px; height:18px; }
-  @media (max-width:640px){
-    .vgu-footer .meta-row{ flex-direction:column; align-items:flex-start; gap:.5rem; }
-  }
+  .vgu-fixed-bar .icon-btn:hover{ background:#f3f4f6; }
+  .vgu-fixed-bar .icon-btn svg{ width:18px; height:18px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -487,29 +483,25 @@ elif page == "About":
     st.title(texts["app_title"])
     st.markdown(texts["description"])
 
-# fills remaining vertical space so footer sits at the bottom even on short pages
-st.markdown('<div class="vgu-flex-spacer"></div>', unsafe_allow_html=True)
+# footer placeholder band (blank for now)
+st.markdown('<div class="vgu-hero-band"></div>', unsafe_allow_html=True)
 
-# === FOOTER (sticky, full-bleed) ===
+# fixed bottom bar
 st.markdown("""
-<footer class="vgu-footer" role="contentinfo" aria-label="App footer">
-  <div class="vgu-hero"><!-- Empty placeholder for future content --></div>
-  <div class="vgu-meta">
-    <div class="inner">
-      <div class="meta-row">
-        <div class="brand">VGU RANGERS</div>
-        <div class="social">
-          <a href="#" class="icon-btn" title="Facebook (coming soon)" aria-label="Facebook">
-            <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-              <path d="M22 12.07C22 6.48 17.52 2 11.93 2 6.35 2 1.87 6.48 1.87 12.07c0 4.99 3.65 9.13 8.43 9.93v-7.02H7.9v-2.91h2.41V9.41c0-2.38 1.42-3.69 3.6-3.69 1.04 0 2.13.19 2.13.19v2.35h-1.2c-1.18 0-1.55.73-1.55 1.48v1.78h2.64l-.42 2.91h-2.22V22c4.78-.8 8.43-4.94 8.43-9.93z"></path>
-            </svg>
-          </a>
-        </div>
-      </div>
+<div class="vgu-fixed-bar" role="contentinfo" aria-label="App footer">
+  <div class="inner">
+    <div class="brand">VGU RANGERS</div>
+    <div class="social">
+      <a href="#" class="icon-btn" title="Facebook (coming soon)" aria-label="Facebook">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+          <path d="M22 12.07C22 6.48 17.52 2 11.93 2 6.35 2 1.87 6.48 1.87 12.07c0 4.99 3.65 9.13 8.43 9.93v-7.02H7.9v-2.91h2.41V9.41c0-2.38 1.42-3.69 3.6-3.69 1.04 0 2.13.19 2.13.19v2.35h-1.2c-1.18 0-1.55.73-1.55 1.48v1.78h2.64l-.42 2.91h-2.22V22c4.78-.8 8.43-4.94 8.43-9.93z"></path>
+        </svg>
+      </a>
     </div>
   </div>
-</footer>
+</div>
 """, unsafe_allow_html=True)
+
 
 
 
