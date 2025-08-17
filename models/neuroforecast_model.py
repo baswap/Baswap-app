@@ -6,13 +6,10 @@ from streamlit import cache_data, cache_resource
 from pathlib import Path
 import os
 
-nbeats_path = Path(__file__).resolve().parent.parent / "models" / "weights" / "nbeats_24"
-model_path = Path(os.getenv("MODEL_PATH", nbeats_path)).expanduser().resolve()
-
 @cache_resource
 def load_models(freq):
     if freq == "1h":
-        nf = NeuralForecast.load(path=model_path)
+        nf = NeuralForecast.load(path="models/weights/nbeats_24")
     print("model loaded")
     return nf
 
