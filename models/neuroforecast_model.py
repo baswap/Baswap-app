@@ -3,8 +3,6 @@ import pandas as pd
 import time
 from neuralforecast import NeuralForecast
 from streamlit import cache_data, cache_resource
-from pathlib import Path
-import os
 
 @cache_resource
 def load_models(freq):
@@ -33,4 +31,4 @@ def create_dummy_data(n=48):
 if __name__ == "__main__":
     dummy_df = create_dummy_data()
     for _ in range(5):
-        make_predictions(dummy_df, freq="1H")
+        make_predictions(dummy_df, freq="1h")
