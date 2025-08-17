@@ -6,7 +6,8 @@ import pandas as pd
 import numpy as np
 from typing import Optional
 
-from model import make_predictions
+# from models.lstm_model import make_predictions
+from models.neuroforecast_model import make_predictions
 
 
 def _t(key: str, default: str) -> str:
@@ -109,6 +110,104 @@ def _inject_nans_for_gaps(
     out = out.sort_values(by=[time_col], kind="mergesort").reset_index(drop=True)
     return out
 
+def render_predictions_old(data, col):
+    # Optional predictions overlay (hourly EC)
+    max_data = data[data["Aggregation"] == "Max"].copy()
+    if not max_data.empty and len(max_data) >= 2:
+        # max_values_numeric = max_data[[col]].iloc[-7:].copy()
+        max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
+        max_values_numeric.rename("Timestamp (Rounded)", "ds")
+        last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
+        last_value = float(max_values_numeric.iloc[-1][col])
+
+        if col == "EC Value (g/l)":
+            max_values_numeric = max_values_numeric * 2000
+
+        # preds = make_predictions(max_values_numeric, mode="Max")
+        preds = make_predictions(max_values_numeric)
+
+        if col == "EC Value (g/l)":
+            preds = [x / 2000 for x in preds]
+
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds))]
+        combined_timestamps = [last_timestamp] + pred_times
+        combined_values = [last_value] + preds
+
+        predictions_line_df = pd.DataFrame(
+            {"Timestamp": combined_timestamps, col: combined_values}
+        )
+
+        return predictions_line_df
+    
+def render_predictions(data, col):
+    max_data = data[data["Aggregation"] == "Max"].copy()
+    if not max_data.empty and len(max_data) >= 2:
+        # select timestamp + numeric column
+        max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
+
+        # keep original last timestamp & last value (in original units) for output
+        last_timestamp = pd.to_datetime(max_data["Timestamp (Rounded)"].iloc[-1])
+        last_value_orig = float(max_data[col].iloc[-1])
+
+        # rename the columns to the NeuralForecast expected names
+        max_values_numeric.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
+
+        # ensure ds is datetime
+        max_values_numeric["ds"] = pd.to_datetime(max_values_numeric["ds"])
+
+        # If you need to convert units for the model (example from your code)
+        # convert only the numeric y column (not the timestamps)
+        if col == "EC Value (g/l)":
+            # convert y to the units the model expects (e.g. multiply by 2000)
+            max_values_numeric["y"] = max_values_numeric["y"] * 2000
+
+        # add unique_id column required by NeuralForecast
+        max_values_numeric["unique_id"] = "Baswap station"
+
+        # reorder to [unique_id, ds, y] (NeuralForecast usually expects this)
+        max_values_numeric = max_values_numeric[["unique_id", "ds", "y"]]
+
+        # call your prediction function (expects columns unique_id, ds, y)
+        preds = make_predictions(max_values_numeric)
+        result_columns = [
+            # "unique_id", "ds",
+            "AutoNBEATS-median",
+            # "AutoNBEATS-lo-50",
+            # "AutoNBEATS-hi-50",
+            # "AutoNBEATS-lo-90",
+            # "AutoNBEATS-hi-90",
+        ]
+        preds = preds[result_columns[0]]
+        
+        # Dòng này là cho riêng trường hợp này chỉ lấy 1 cột ạ
+        # Có gì sau này anh chỉnh lại giúp em để xài hết các cột ở trên ạ. 
+        preds_series = preds.astype(float).reset_index(drop=True)
+
+        # convert back to original units if needed
+        if col == "EC Value (g/l)":
+            preds_series = preds_series / 2000.0
+
+        # now get a plain python list (1-D)
+        preds_list = preds_series.tolist()
+
+        # build timestamps for predictions (hourly ahead)
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_list))]
+        combined_timestamps = [last_timestamp] + pred_times
+        combined_values = [last_value_orig] + preds_list
+
+        # sanity check lengths
+        if len(combined_timestamps) != len(combined_values):
+            raise ValueError("Timestamp/value length mismatch: "
+                             f"{len(combined_timestamps)} vs {len(combined_values)}")
+
+        # build final 1-D dataframe
+        predictions_line_df = pd.DataFrame({
+            "Timestamp": combined_timestamps,
+            col: combined_values
+        })
+
+        return predictions_line_df
+
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     """
@@ -194,46 +293,23 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
 
-    # Optional predictions overlay (hourly EC)
-    if show_pred and "Aggregation" in df_filtered.columns:
-        max_data = df_filtered[df_filtered["Aggregation"] == "Max"].copy()
-        if not max_data.empty and len(max_data) >= 2:
-            max_values_numeric = max_data[[col]].iloc[-7:].copy()
-            last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
-            last_value = float(max_values_numeric.iloc[-1][col])
-
-            if col == "EC Value (g/l)":
-                max_values_numeric = max_values_numeric * 2000
-
-            preds = make_predictions(max_values_numeric, mode="Max")
-
-            if col == "EC Value (g/l)":
-                preds = [x / 2000 for x in preds]
-
-            pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds))]
-            combined_timestamps = [last_timestamp] + pred_times
-            combined_values = [last_value] + preds
-
-            predictions_line_df = pd.DataFrame(
-                {"Timestamp": combined_timestamps, col: combined_values}
+    if show_pred:
+        predictions_line_df = render_predictions(df_filtered, col)
+        predictions_chart = (
+            alt.Chart(predictions_line_df)
+            .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
+            .encode(
+                x=alt.X("Timestamp:T", title=axis_x),
+                y=alt.Y(f"{col}:Q", title=axis_y),
+                tooltip=[
+                    alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                    alt.Tooltip(f"{col}:Q", title=t_pred_value),
+                ],
             )
-
-            predictions_chart = (
-                alt.Chart(predictions_line_df)
-                .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
-                .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y(f"{col}:Q", title=axis_y),
-                    tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip(f"{col}:Q", title=t_pred_value),
-                    ],
-                )
-            )
-
-            chart = alt.layer(predictions_chart, main_chart)
-            st.altair_chart(chart, use_container_width=True)
-            return
+        )
+        chart = alt.layer(predictions_chart, main_chart)
+        st.altair_chart(chart, use_container_width=True)
+        return
 
     st.altair_chart(main_chart, use_container_width=True)
 
