@@ -4,7 +4,7 @@ import time
 from neuralforecast import NeuralForecast
 from streamlit import cache_data, cache_resource
 
-# @cache_resource
+@cache_resource
 def load_models(freq):
     if freq == "1h":
         nf = NeuralForecast.load(path="models/weights/nbeats_24")
