@@ -12,7 +12,7 @@ def load_models(freq):
     if freq == "1h":
         st.write("File exists: ", Path("models/weights/nbeats_24").exists())
         st.write("model size:", os.path.getsize("models/weights/nbeats_24"))
-        nf = NeuralForecast.load(path="models/weights/nbeats_24")
+        # nf = NeuralForecast.load(path="models/weights/nbeats_24")
     print("model loaded")
     return nf
 
