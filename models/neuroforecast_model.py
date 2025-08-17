@@ -3,10 +3,14 @@ import pandas as pd
 import time
 from neuralforecast import NeuralForecast
 from streamlit import cache_data, cache_resource
+from pathlib import Path
+import os
 
 @cache_resource
 def load_models(freq):
     if freq == "1h":
+        print(Path("models/weights/nbeats_24").exists())
+        print("model size:", os.path.getsize("models/weights/nbeats_24"))
         nf = NeuralForecast.load(path="models/weights/nbeats_24")
     print("model loaded")
     return nf
