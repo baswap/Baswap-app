@@ -116,7 +116,7 @@ class DriveManager:
 
     def read_csv_file(self, file_id):
         """Read a CSV file from Google Drive given its file ID."""
-        print(f"[INFO] Reading CSV file with ID: {file_id}...")
+        print(f"[INFO] Reading CSV file")
         try:
             request = self.drive_service.files().get_media(fileId=file_id)
             file_content = io.BytesIO()
