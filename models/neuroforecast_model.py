@@ -7,11 +7,47 @@ from pathlib import Path
 import os
 import streamlit as st
 
+#!/usr/bin/env python3
+import os
+import sys
+import csv
+from pathlib import Path
+
+def human(bytesize):
+    # both MiB (binary) and MB (decimal) if you need one; here show MiB
+    return f"{bytesize / 1024**2:.6f} MiB"
+
+def list_files(root):
+    root = Path(root)
+    rows = []
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for f in filenames:
+            fp = Path(dirpath) / f
+            try:
+                size = fp.stat().st_size
+            except (OSError, PermissionError):
+                continue
+            rows.append((size, str(fp)))
+            total += size
+    # sort descending by size
+    rows.sort(reverse=True, key=lambda x: x[0])
+    return rows, total
+
+def print_table(rows, total, top=None):
+    print(f"{'Size (MiB)':>12}  {'Bytes':>12}  Path")
+    print("-"*80)
+    shown = rows if top is None else rows[:top]
+    for size, path in shown:
+        print(f"{size/1024**2:12.6f}  {size:12d}  {path}")
+    print("-"*80)
+    print(f"TOTAL: {total/1024**2:.6f} MiB   ({total} bytes)")
+
 @cache_resource
 def load_models(freq):
     if freq == "1h":
-        st.write("File exists: ", Path("models/weights/nbeats_24").exists())
-        st.write("model size:", os.path.getsize("models/weights/nbeats_24"))
+        rows, total = list_files("models/weights/nbeats_24")
+        print_table(rows, total, top=200)   # change top=None to show everything
         # nf = NeuralForecast.load(path="models/weights/nbeats_24")
     print("model loaded")
     return nf
