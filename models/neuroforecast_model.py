@@ -3,17 +3,21 @@ import pandas as pd
 import time
 from neuralforecast import NeuralForecast
 from streamlit import cache_data, cache_resource
+from pathlib import Path
+import os
+
+nbeats_path = Path(__file__).resolve().parent.parent / "models" / "weights" / "nbeats_24"
+model_path = Path(os.getenv("MODEL_PATH", nbeats_path)).expanduser().resolve()
 
 @cache_resource
 def load_models(freq):
     if freq == "1h":
-        nf = NeuralForecast.load(path='/workspaces/Baswap-app/models/weights/nbeats_24')
+        nf = NeuralForecast.load(path=model_path)
     print("model loaded")
     return nf
 
 @cache_data
 def make_predictions(df, freq="1h"):
-    print(df.head())
     time_start = time.time()
     model = load_models(freq)
     preds = model.predict(df)
