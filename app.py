@@ -483,58 +483,16 @@ if page == "Overview":
 
 if page == "About":
     st.title(texts["app_title"])
-    st.markdown(texts["description"])
     st.divider()
-
-    st.subheader("🔎 Quick data log (first 10 rows)")
-    st.caption("Paste a Google Drive *file* link or file ID (folder links won't work).")
-
-    link_or_id = st.text_input(
-        "Google Drive file link or ID",
-        value="https://drive.google.com/file/d/1nJyXxu3OfnQfQO4TfqcV-bm17uDkEfnW/view?usp=sharing",
-        help="Folder URL (…/folders/<id>) is not a file; use the file link or the file ID."
-    )
-
-    # Extract a Drive FILE_ID from many formats; ignore folder links.
-    def _extract_drive_file_id(s: str) -> str | None:
-        if not s:
-            return None
-        s = s.strip()
-        # Folder link? Not supported for reading a CSV directly.
-        if "drive.google.com/drive/" in s and "/folders/" in s:
-            return None
-        # /file/d/<ID>/...
-        m = re.search(r"/file/d/([A-Za-z0-9_-]{10,})", s)
-        if m:
-            return m.group(1)
-        # ...id=<ID>...
-        m = re.search(r"[?&]id=([A-Za-z0-9_-]{10,})", s)
-        if m:
-            return m.group(1)
-        # Raw ID?
-        if re.fullmatch(r"[A-Za-z0-9_-]{10,}", s):
-            return s
-        return None
-
-    file_id = _extract_drive_file_id(link_or_id)
-
-    if file_id is None:
-        st.warning("Please paste a **file** link (…/file/d/<ID>/…) or a raw file ID. Folder links (…/folders/…) won't work.")
-    else:
-        try:
-            # Use your existing DriveManager instance from earlier in app.py
-            df_preview = dm.read_csv_file(file_id).head(10)
-
-            # Show as a small table
-            st.dataframe(df_preview, use_container_width=True, hide_index=True)
-
-            # Also print a lightweight text log (CSV snippet) for copy-paste
-            st.text("Log (CSV snippet of first 10 rows):")
-            st.code(df_preview.to_csv(index=False), language="text")
-        except Exception as e:
-            st.error(f"Could not read the file (ID: {file_id}). Details: {e}")
-
-
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.divider()
+    st.markdown(texts["description"])
+    
 # === FOOTER (normal flow, full-bleed, black theme) ===
 st.markdown("""
 <style>
