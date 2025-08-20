@@ -16,11 +16,14 @@ def _t(key: str, default: str) -> str:
 
 
 def _render_obs_pred_legend(show_predicted: bool = False) -> None:
-    """Custom legend: Observed (dot) + optional Predicted (dashed)."""
+    """Custom legend: only Observed (dot) and optional Predicted (dashed)."""
     observed_label = _t("legend_observed", "Observed")
     predicted_label = _t("legend_predicted", "Predicted")
-    pred_html = (f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>"
-                 if show_predicted else "")
+
+    pred_html = (
+        f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>"
+        if show_predicted else ""
+    )
 
     st.markdown(
         f"""
@@ -32,12 +35,14 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
           .agg-item {{ display:inline-flex; align-items:center; gap:.45rem; }}
           .agg-item .dot {{
             width:12px; height:12px; border-radius:999px; display:inline-block;
-            background: steelblue; /* observed color */
+            background: steelblue;    /* observed color */
           }}
           .agg-item .dash {{
             width:18px; height:0; border-top:2px dashed red; display:inline-block;
           }}
-          @media (max-width: 640px) {{ .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }} }}
+          @media (max-width: 640px) {{
+            .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }}
+          }}
         </style>
         <div class="agg-legend">
           <div class="agg-item"><span class="dot"></span>{observed_label}</div>
@@ -106,28 +111,21 @@ def _inject_nans_for_gaps(
     return out
 
 
-def _last_finite(x: pd.Series) -> float:
-    """Return last finite value or NaN (for concise one-line logs)."""
-    x = pd.to_numeric(x, errors="coerce")
-    finite = x[np.isfinite(x)]
-    return float(finite.iloc[-1]) if not finite.empty else float("nan")
-
-
-def render_predictions(data: pd.DataFrame, col: str) -> Optional[pd.DataFrame]:
+def render_predictions(data: pd.DataFrame, col: str):
     """
-    Build a 1-D series with quantile bands based on the 'Max' track.
-    Returns columns: ['Timestamp','median','lo50','hi50','lo90','hi90'].
-    Includes a one-line caption log with counts + last values.
+    Build two frames:
+      - line_df  : ['Timestamp','median'] includes last observed + future median.
+      - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
+    Returns (line_df, bands_df) or (None, None) if unavailable.
     """
     max_data = data[data["Aggregation"] == "Max"].copy()
     if max_data.empty or len(max_data) < 2:
-        st.caption("⚠️ No 'Max' data available for predictions.")
-        return None
+        return None, None
 
     # select timestamp + numeric column
     max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
 
-    # last observed (rounded) time & value in original units
+    # last observed time & value in original units
     last_timestamp = pd.to_datetime(max_data["Timestamp (Rounded)"].iloc[-1])
     last_value_orig = float(max_data[col].iloc[-1])
 
@@ -135,80 +133,68 @@ def render_predictions(data: pd.DataFrame, col: str) -> Optional[pd.DataFrame]:
     max_values_numeric.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
     max_values_numeric["ds"] = pd.to_datetime(max_values_numeric["ds"])
 
-    # model-scale for g/l if needed
+    # if the model expects a scaled unit for g/l, convert y only
     if col == "EC Value (g/l)":
         max_values_numeric["y"] = max_values_numeric["y"] * 2000
 
-    # NF expects [unique_id, ds, y]
+    # required by NeuralForecast
     max_values_numeric["unique_id"] = "Baswap station"
     nf_input = max_values_numeric[["unique_id", "ds", "y"]]
 
     preds = make_predictions(nf_input)
 
-    # Required columns from the saved model
-    cols = [
+    needed = [
         "AutoNBEATS-median",
         "AutoNBEATS-lo-50",
         "AutoNBEATS-hi-50",
         "AutoNBEATS-lo-90",
         "AutoNBEATS-hi-90",
     ]
-    missing = [c for c in cols if c not in preds.columns]
+    missing = [c for c in needed if c not in preds.columns]
     if missing:
         st.caption(f"⚠️ Missing prediction columns: {', '.join(missing)}")
-        return None
+        return None, None
 
-    preds_df = preds[cols].astype(float).reset_index(drop=True)
+    preds_df = preds[needed].astype(float).reset_index(drop=True)
 
-    # enforce band ordering to survive quantile crossing or label swaps
-    lo50 = np.minimum(preds_df["AutoNBEATS-lo-50"], preds_df["AutoNBEATS-hi-50"])
-    hi50 = np.maximum(preds_df["AutoNBEATS-lo-50"], preds_df["AutoNBEATS-hi-50"])
-    lo90 = np.minimum(preds_df["AutoNBEATS-lo-90"], preds_df["AutoNBEATS-hi-90"])
-    hi90 = np.maximum(preds_df["AutoNBEATS-lo-90"], preds_df["AutoNBEATS-hi-90"])
-
-    # back to original units for g/l if scaled
-    median = preds_df["AutoNBEATS-median"].copy()
+    # convert back to original units if needed
     if col == "EC Value (g/l)":
-        factor = 2000.0
-        median = median / factor
-        lo50, hi50 = lo50 / factor, hi50 / factor
-        lo90, hi90 = lo90 / factor, hi90 / factor
+        preds_df = preds_df / 2000.0
 
-    # timestamps for future points (hourly ahead)
+    # timestamps for future (hourly ahead)
     pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
 
-    out = pd.DataFrame({
-        "Timestamp": [last_timestamp] + pred_times,   # include last obs time
-        "median":    [last_value_orig] + median.tolist(),
-        # Start bands at the first future step (avoid shading onto history)
-        "lo50":      [np.nan] + lo50.tolist(),
-        "hi50":      [np.nan] + hi50.tolist(),
-        "lo90":      [np.nan] + lo90.tolist(),
-        "hi90":      [np.nan] + hi90.tolist(),
+    # line df includes last observed + future median
+    line_df = pd.DataFrame({
+        "Timestamp": [last_timestamp] + pred_times,
+        "median":    [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
     })
 
-    # --- one-line debug log (counts + last values) ---
-    c_m = int(np.isfinite(out["median"].iloc[1:]).sum())
-    c_50 = int(np.isfinite(out["lo50"].iloc[1:]).sum())
-    c_90 = int(np.isfinite(out["lo90"].iloc[1:]).sum())
-    last_m  = _last_finite(out["median"].iloc[1:])
-    last_50 = (_last_finite(out["lo50"].iloc[1:]), _last_finite(out["hi50"].iloc[1:]))
-    last_90 = (_last_finite(out["lo90"].iloc[1:]), _last_finite(out["hi90"].iloc[1:]))
+    # bands df includes ONLY future steps (no NaNs)
+    bands_df = pd.DataFrame({
+        "Timestamp": pred_times,
+        "lo50": preds_df["AutoNBEATS-lo-50"].values,
+        "hi50": preds_df["AutoNBEATS-hi-50"].values,
+        "lo90": preds_df["AutoNBEATS-lo-90"].values,
+        "hi90": preds_df["AutoNBEATS-hi-90"].values,
+    })
+
+    # quick counts so you know data was received
     st.caption(
-        f"Pred bands → n(median)={c_m} n(50%)={c_50} n(90%)={c_90} | "
-        f"last median={last_m:.4g}  50%=[{last_50[0]:.4g}, {last_50[1]:.4g}]  "
-        f"90%=[{last_90[0]:.4g}, {last_90[1]:.4g}]"
+        f"Pred points → median:{len(preds_df)} lo50:{len(bands_df.dropna(subset=['lo50']))} "
+        f"hi50:{len(bands_df.dropna(subset=['hi50']))} lo90:{len(bands_df.dropna(subset=['lo90']))} "
+        f"hi90:{len(bands_df.dropna(subset=['hi90']))}"
     )
 
-    return out
+    return line_df, bands_df
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     """
     Draw a line chart with:
-      - line breaks across missing intervals,
-      - custom legend (Observed / Predicted),
-      - optional hourly EC predictions with shaded 50%/90% bands.
+      - line breaks across missing intervals (NaN injection),
+      - custom legend outside the chart (Observed / Predicted only),
+      - optional predictions overlay (median dashed + 50% & 90% shaded bands).
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -267,12 +253,12 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     t_pred_time = _t("tooltip_predicted_time", axis_x)
     t_pred_value = _t("tooltip_predicted_value", axis_y)
 
-    # Only overlay predictions for Hourly EC series (same rule as before)
+    # Show only Observed / Predicted in legend UI
     show_pred = (resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
     _render_obs_pred_legend(show_predicted=show_pred)
 
     # Observed chart
-    enc = dict(
+    encodings = dict(
         x=alt.X("Timestamp (Rounded):T", title=axis_x),
         y=alt.Y(f"{col}:Q", title=axis_y),
         color=alt.value("steelblue"),
@@ -283,38 +269,46 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         ],
     )
     if cat_col:
-        enc["detail"] = alt.Detail("Aggregation:N")
+        encodings["detail"] = alt.Detail("Aggregation:N")
 
-    main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**enc).interactive()
+    main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
 
     if show_pred:
-        predictions_line_df = render_predictions(df_filtered, col)
-        if predictions_line_df is not None and not predictions_line_df.empty:
-            # 90% band
+        line_df, bands_df = render_predictions(df_filtered, col)
+        if line_df is not None and bands_df is not None and not bands_df.empty:
+            # 90% band (P5..P95)
             band90 = (
-                alt.Chart(predictions_line_df)
-                .transform_filter("isValid(datum.lo90) && isValid(datum.hi90)")
+                alt.Chart(bands_df)
                 .mark_area(opacity=0.15, color="red")
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo90:Q", title=axis_y),
-                    y2="hi90:Q",
+                    y2=alt.Y2("hi90:Q"),
+                    tooltip=[
+                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip("lo90:Q", title="P5"),
+                        alt.Tooltip("hi90:Q", title="P95"),
+                    ],
                 )
             )
-            # 50% band
+            # 50% band (P25..P75)
             band50 = (
-                alt.Chart(predictions_line_df)
-                .transform_filter("isValid(datum.lo50) && isValid(datum.hi50)")
+                alt.Chart(bands_df)
                 .mark_area(opacity=0.30, color="red")
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo50:Q", title=axis_y),
-                    y2="hi50:Q",
+                    y2=alt.Y2("hi50:Q"),
+                    tooltip=[
+                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip("lo50:Q", title="P25"),
+                        alt.Tooltip("hi50:Q", title="P75"),
+                    ],
                 )
             )
-            # Predicted median (dashed) with points
+            # Median dashed line (history contact + future)
             pred_line = (
-                alt.Chart(predictions_line_df)
+                alt.Chart(line_df)
                 .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
@@ -334,6 +328,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
+    # translate via session (uses your existing _t helper)
     t_max = _t("stats_max", "Maximum")
     t_min = _t("stats_min", "Minimum")
     t_avg = _t("stats_avg", "Average")
