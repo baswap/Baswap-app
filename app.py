@@ -489,55 +489,104 @@ if page == "Overview":
             st.cache_data.clear()
             st.rerun()
 
-    # --- Show the metrics (per your new rule) ---
+    # --- Overall Statistics logic (last 1000 rows, EC(g/l) × 2000) ---
     t_max = texts.get("stats_max", "Maximum")
     t_min = texts.get("stats_min", "Minimum")
     t_avg = texts.get("stats_avg", "Average")
     t_std = texts.get("stats_std", "Std Dev")
 
-    if selected_station:
-        # compute from latest 1000 rows for the selected station (CSV), EC(g/l) x 2000
-        try:
-            file_id = st.secrets.get("STATIONS_FILE_ID")
-            if file_id:
-                df_all = dm.read_csv_file(file_id)
-                stn_col, time_col, ec_col = _resolve_cols(df_all.columns)
-
-                d = df_all[[stn_col, time_col, ec_col]].copy()
-                d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
-                d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
-                d = d.dropna(subset=[time_col, ec_col])
-
-                # filter by selected station using normalized name match
-                sel_key = _norm_name(selected_station)
-                mask = d[stn_col].map(_norm_name) == sel_key
-                sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
-
-                if sd.empty:
-                    # no data -> show dashes
-                    c1, c2, c3, c4 = st.columns(4)
-                    for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                        c.metric(label=lab, value="-")
-                else:
-                    vals = sd[ec_col] * 2000.0
-                    c1, c2, c3, c4 = st.columns(4)
-                    c1.metric(label=t_max, value=f"{vals.max():.2f}")
-                    c2.metric(label=t_min, value=f"{vals.min():.2f}")
-                    c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
-                    c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
-            else:
-                c1, c2, c3, c4 = st.columns(4)
-                for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                    c.metric(label=lab, value="-")
-        except Exception:
-            c1, c2, c3, c4 = st.columns(4)
-            for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                c.metric(label=lab, value="-")
-    else:
-        # no station selected -> show dashes and "None / Chưa chọn trạm" in the badge above
+    def _show_dash_metrics():
         c1, c2, c3, c4 = st.columns(4)
         for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
             c.metric(label=lab, value="-")
+
+    def _norm_name_local(name: str) -> str:
+        import unicodedata, re
+        s = unicodedata.normalize("NFKD", str(name or ""))
+        s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+        s = re.sub(r"[\W_]+", "", s)
+        return s.lower()
+
+    def _pick_ec_col(cols) -> str | None:
+        # Flexible EC(g/l) resolver for both datasets
+        import re
+        def norm(s): return re.sub(r"[^a-z0-9]", "", s.lower())
+        norm_map = {norm(c): c for c in cols}
+        for key in ["ecgl", "ecvaluegl", "ecgperl", "ecg_l", "ecglvalue", "ecg"]:
+            if key in norm_map:
+                return norm_map[key]
+        # Known BASWAP column
+        if "EC Value (g/l)" in cols:  # exact match
+            return "EC Value (g/l)"
+        return None
+
+    if not selected_station:
+        _show_dash_metrics()
+    elif selected_station == BASWAP_NAME:
+        # Use original BASWAP dataset (df already loaded)
+        try:
+            ec_col = _pick_ec_col(df.columns)
+            if ec_col is None or "Timestamp (GMT+7)" not in df.columns:
+                _show_dash_metrics()
+            else:
+                sd = df[["Timestamp (GMT+7)", ec_col]].dropna().copy()
+                sd = sd.sort_values("Timestamp (GMT+7)", ascending=False).head(1000)
+                if sd.empty:
+                    _show_dash_metrics()
+                else:
+                    vals = pd.to_numeric(sd[ec_col], errors="coerce").dropna() * 2000.0
+                    if vals.empty:
+                        _show_dash_metrics()
+                    else:
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric(label=t_max, value=f"{vals.max():.2f}")
+                        c2.metric(label=t_min, value=f"{vals.min():.2f}")
+                        c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
+                        c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
+        except Exception:
+            _show_dash_metrics()
+    else:
+        # Use multi-station CSV, filtered to selected station
+        try:
+            file_id = st.secrets.get("STATIONS_FILE_ID")
+            if not file_id:
+                _show_dash_metrics()
+            else:
+                df_all = dm.read_csv_file(file_id)
+
+                # Resolve cols
+                def _norm_col2(col: str) -> str:
+                    import re
+                    return re.sub(r"[^a-z0-9]", "", str(col).lower())
+
+                norm_map = {_norm_col2(c): c for c in df_all.columns}
+                stn_col = next((norm_map[k] for k in ["stationname", "station", "stationid", "name"] if k in norm_map), None)
+                time_col = next((norm_map[k] for k in ["measdate", "datetime", "timestamp", "time", "date"] if k in norm_map), None)
+                ec_col = _pick_ec_col(df_all.columns)
+
+                if not (stn_col and time_col and ec_col):
+                    _show_dash_metrics()
+                else:
+                    d = df_all[[stn_col, time_col, ec_col]].copy()
+                    d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
+                    d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
+                    d = d.dropna(subset=[time_col, ec_col])
+
+                    sel_key = _norm_name_local(selected_station)
+                    mask = d[stn_col].map(_norm_name_local) == sel_key
+                    sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
+
+                    if sd.empty:
+                        _show_dash_metrics()
+                    else:
+                        vals = sd[ec_col] * 2000.0
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric(label=t_max, value=f"{vals.max():.2f}")
+                        c2.metric(label=t_min, value=f"{vals.min():.2f}")
+                        c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
+                        c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
+        except Exception:
+            _show_dash_metrics()
 
     st.divider()
 
@@ -583,6 +632,7 @@ if page == "Overview":
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 
 if page == "About":
