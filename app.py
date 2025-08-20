@@ -382,43 +382,21 @@ if page == "Overview":
                 color="#0077ff", tooltip=sel,
             ).add_to(m)
 
-    out = st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
+    # render map and capture clicks
+map_out = st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
-# --- Sync map click -> station selection ---
-try:
-    if out:
-        # 1) Prefer tooltip text from the clicked marker (fast path)
-        clicked_label = out.get("last_object_clicked_tooltip")
-        if clicked_label:
-            # strip basic HTML if you switched to folium.Tooltip("<b>Name</b>", ...)
-            clicked_label = re.sub(r"<[^>]+>", "", str(clicked_label)).strip()
-            if clicked_label in STATION_LOOKUP:
-                st.session_state.selected_station = clicked_label
-                st.rerun()
+# sync marker click -> global selection (selectbox + stats badge)
+clicked_label = None
+if isinstance(map_out, dict):
+    # folium.Marker click: streamlit-folium exposes the marker's tooltip here
+    clicked_label = map_out.get("last_object_clicked_tooltip")
 
-        # 2) Fallback: map by coordinates if tooltip not available
-        obj = out.get("last_object_clicked") or {}
-        lat = None; lng = None
-        if isinstance(obj, dict):
-            if "lat" in obj and "lng" in obj:
-                lat, lng = float(obj["lat"]), float(obj["lng"])
-            elif "_latlng" in obj and isinstance(obj["_latlng"], dict):
-                lat = float(obj["_latlng"].get("lat")) if obj["_latlng"].get("lat") is not None else None
-                lng = float(obj["_latlng"].get("lng")) if obj["_latlng"].get("lng") is not None else None
+# only update when the click maps to a known station and differs from current
+if clicked_label and clicked_label in STATION_LOOKUP:
+    if st.session_state.get("selected_station") != clicked_label:
+        st.session_state.selected_station = clicked_label
+        st.rerun()
 
-        if lat is not None and lng is not None:
-            # find nearest known station to the click
-            name, (slat, slng) = min(
-                STATION_LOOKUP.items(),
-                key=lambda kv: (kv[1][0] - lat) ** 2 + (kv[1][1] - lng) ** 2,
-            )
-            # accept if within ~0.02° (~2 km) of a known marker
-            if (slat - lat) ** 2 + (slng - lng) ** 2 < 0.0004:
-                st.session_state.selected_station = name
-                st.rerun()
-except Exception:
-    # Be silent—no debug prints per your preference
-    pass
 
 
     # ---------- BELOW COLUMNS (full page width) ----------
