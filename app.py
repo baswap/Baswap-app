@@ -334,8 +334,10 @@ def settings_panel(first_date, last_date, default_from, default_to):
 
 # ================== PAGES ==================
 if page == "Overview":
+    # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
+    # ---------- RIGHT: Picker + table (scrollable) ----------
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
@@ -350,6 +352,40 @@ if page == "Overview":
         )
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
+        # ------------------- ACCESS CHECK (debug tools) -------------------
+        file_id = st.secrets.get("STATIONS_FILE_ID")
+        svc_email = None
+        try:
+            svc_email = st.secrets.get("SERVICE_ACCOUNT", {}).get("client_email")
+        except Exception:
+            pass
+
+        with st.expander("🛠 Data access check (CSV for 42 stations)", expanded=False):
+            st.write("• **File ID**:", file_id or "— not set —")
+            if svc_email:
+                st.write("• **Service account**:", svc_email)
+                st.caption("Share the CSV file with this email (Viewer) so the app can read it.")
+            else:
+                st.caption("No service account email in secrets; ensure SERVICE_ACCOUNT.client_email exists.")
+
+            if st.button("Test read (show first 10 rows)", key="btn_test_read", use_container_width=True):
+                if not file_id:
+                    st.error("STATIONS_FILE_ID is not set in secrets.")
+                else:
+                    try:
+                        # Try a light read; if DriveManager doesn't accept nrows, fall back to full read + head
+                        try:
+                            preview_df = dm.read_csv_file(file_id, nrows=10)  # type: ignore[arg-type]
+                        except TypeError:
+                            preview_df = dm.read_csv_file(file_id).head(10)
+                        st.success(f"✅ Read OK. Previewing {len(preview_df)} rows.")
+                        st.dataframe(preview_df, use_container_width=True, hide_index=True)
+                    except Exception as e:
+                        st.error(f"❌ Read failed: {e}")
+                        st.info("If you see a 'not found' or 'insufficient permissions' message, share the file with the service account email above.")
+
+        # ------------------- CURRENT MEASUREMENT TABLE -------------------
+        # Expect CSV columns exactly: ["unique_id","station_name","Measdate","EC(g/l)"]
         def _norm_name(name: str) -> str:
             import unicodedata, re
             s = unicodedata.normalize("NFKD", str(name or ""))
@@ -358,7 +394,6 @@ if page == "Overview":
             return s.lower()
 
         latest_values = {}  # normalized station_name -> EC*2000
-        file_id = st.secrets.get("STATIONS_FILE_ID")
         try:
             if file_id:
                 df_all = dm.read_csv_file(file_id)
@@ -367,16 +402,16 @@ if page == "Overview":
                     d = df_all.copy()
                     d["Measdate"] = pd.to_datetime(d["Measdate"], errors="coerce")
                     d = d.dropna(subset=["Measdate"])
-                    # latest row per station
-                    idx = d.groupby("station_name")["Measdate"].idxmax()
+                    idx = d.groupby("station_name")["Measdate"].idxmax()  # latest row per station
                     latest = d.loc[idx, ["station_name", "EC(g/l)"]].copy()
                     latest["key"] = latest["station_name"].map(_norm_name)
                     latest["val"] = pd.to_numeric(latest["EC(g/l)"], errors="coerce") * 2000.0
                     latest_values = dict(zip(latest["key"], latest["val"]))
+                    st.caption(f"✅ Loaded latest measurements for {len(latest_values)} station(s).")
                 else:
                     st.caption("⚠️ CSV must include columns: station_name, Measdate, EC(g/l).")
             else:
-                st.caption("ℹ️ Add STATIONS_FILE_ID to secrets to populate current measurements.")
+                st.caption("ℹ️ Add **STATIONS_FILE_ID** to secrets to populate current measurements.")
         except Exception as e:
             st.caption(f"⚠️ Could not load station CSV: {e}")
             latest_values = {}
