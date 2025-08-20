@@ -382,7 +382,21 @@ if page == "Overview":
                 color="#0077ff", tooltip=sel,
             ).add_to(m)
 
-st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
+# render map and capture clicks
+map_out = st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
+
+# sync marker click -> global selection (selectbox + stats badge)
+clicked_label = None
+if isinstance(map_out, dict):
+    # folium.Marker click: streamlit-folium exposes the marker's tooltip here
+    clicked_label = map_out.get("last_object_clicked_tooltip")
+
+# only update when the click maps to a known station and differs from current
+if clicked_label and clicked_label in STATION_LOOKUP:
+    if st.session_state.get("selected_station") != clicked_label:
+        st.session_state.selected_station = clicked_label
+        st.rerun()
+
 
     # ---------- BELOW COLUMNS (full page width) ----------
     df = thingspeak_retrieve(combined_data_retrieve())
