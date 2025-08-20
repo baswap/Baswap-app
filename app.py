@@ -489,7 +489,7 @@ if page == "Overview":
             st.cache_data.clear()
             st.rerun()
 
-    # --- Overall Statistics logic (last 1000 rows, EC(g/l) × 2000) ---
+    # --- Overall Statistics logic ---
     t_max = texts.get("stats_max", "Maximum")
     t_min = texts.get("stats_min", "Minimum")
     t_avg = texts.get("stats_avg", "Average")
@@ -515,38 +515,22 @@ if page == "Overview":
         for key in ["ecgl", "ecvaluegl", "ecgperl", "ecg_l", "ecglvalue", "ecg"]:
             if key in norm_map:
                 return norm_map[key]
-        # Known BASWAP column
-        if "EC Value (g/l)" in cols:  # exact match
+        if "EC Value (g/l)" in cols:  # exact known BASWAP column
             return "EC Value (g/l)"
         return None
 
+    # Branch:
+    # - None -> dashes
+    # - BASWAP -> original behavior (date range + target col on df)
+    # - Other station -> last 1000 rows from multi-station CSV, EC(g/l)*2000
     if not selected_station:
         _show_dash_metrics()
     elif selected_station == BASWAP_NAME:
-        # Use original BASWAP dataset (df already loaded)
-        try:
-            ec_col = _pick_ec_col(df.columns)
-            if ec_col is None or "Timestamp (GMT+7)" not in df.columns:
-                _show_dash_metrics()
-            else:
-                sd = df[["Timestamp (GMT+7)", ec_col]].dropna().copy()
-                sd = sd.sort_values("Timestamp (GMT+7)", ascending=False).head(1000)
-                if sd.empty:
-                    _show_dash_metrics()
-                else:
-                    vals = pd.to_numeric(sd[ec_col], errors="coerce").dropna() * 2000.0
-                    if vals.empty:
-                        _show_dash_metrics()
-                    else:
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric(label=t_max, value=f"{vals.max():.2f}")
-                        c2.metric(label=t_min, value=f"{vals.min():.2f}")
-                        c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
-                        c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
-        except Exception:
-            _show_dash_metrics()
+        # ORIGINAL behavior
+        stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+        display_statistics(stats_df, st.session_state.target_col)
     else:
-        # Use multi-station CSV, filtered to selected station
+        # Other station: compute from multi-station CSV, last 1000 rows of EC(g/l) × 2000
         try:
             file_id = st.secrets.get("STATIONS_FILE_ID")
             if not file_id:
@@ -554,7 +538,7 @@ if page == "Overview":
             else:
                 df_all = dm.read_csv_file(file_id)
 
-                # Resolve cols
+                # Resolve columns
                 def _norm_col2(col: str) -> str:
                     import re
                     return re.sub(r"[^a-z0-9]", "", str(col).lower())
