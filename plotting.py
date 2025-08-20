@@ -110,103 +110,75 @@ def _inject_nans_for_gaps(
     out = out.sort_values(by=[time_col], kind="mergesort").reset_index(drop=True)
     return out
 
-def render_predictions_old(data, col):
-    # Optional predictions overlay (hourly EC)
+
+def render_predictions(data: pd.DataFrame, col: str) -> Optional[pd.DataFrame]:
+    """
+    Build a 1-D time series of predictions plus quantile bands based on the
+    'Max' aggregation track. Returns columns:
+      ['Timestamp', 'median', 'lo50', 'hi50', 'lo90', 'hi90'].
+    """
     max_data = data[data["Aggregation"] == "Max"].copy()
-    if not max_data.empty and len(max_data) >= 2:
-        # max_values_numeric = max_data[[col]].iloc[-7:].copy()
-        max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
-        max_values_numeric.rename("Timestamp (Rounded)", "ds")
-        last_timestamp = max_data["Timestamp (Rounded)"].iloc[-1]
-        last_value = float(max_values_numeric.iloc[-1][col])
+    if max_data.empty or len(max_data) < 2:
+        return None
 
-        if col == "EC Value (g/l)":
-            max_values_numeric = max_values_numeric * 2000
+    # select timestamp + numeric column
+    max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
 
-        # preds = make_predictions(max_values_numeric, mode="Max")
-        preds = make_predictions(max_values_numeric)
+    # keep original last timestamp & last value (in original units) for output
+    last_timestamp = pd.to_datetime(max_data["Timestamp (Rounded)"].iloc[-1])
+    last_value_orig = float(max_data[col].iloc[-1])
 
-        if col == "EC Value (g/l)":
-            preds = [x / 2000 for x in preds]
+    # rename the columns to the NeuralForecast expected names
+    max_values_numeric.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
 
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds))]
-        combined_timestamps = [last_timestamp] + pred_times
-        combined_values = [last_value] + preds
+    # ensure ds is datetime
+    max_values_numeric["ds"] = pd.to_datetime(max_values_numeric["ds"])
 
-        predictions_line_df = pd.DataFrame(
-            {"Timestamp": combined_timestamps, col: combined_values}
-        )
+    # If you need to convert units for the model (example from your code)
+    # convert only the numeric y column (not the timestamps)
+    if col == "EC Value (g/l)":
+        # convert y to the units the model expects (e.g. multiply by 2000)
+        max_values_numeric["y"] = max_values_numeric["y"] * 2000
 
-        return predictions_line_df
-    
-def render_predictions(data, col):
-    max_data = data[data["Aggregation"] == "Max"].copy()
-    if not max_data.empty and len(max_data) >= 2:
-        # select timestamp + numeric column
-        max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
+    # add unique_id column required by NeuralForecast
+    max_values_numeric["unique_id"] = "Baswap station"
 
-        # keep original last timestamp & last value (in original units) for output
-        last_timestamp = pd.to_datetime(max_data["Timestamp (Rounded)"].iloc[-1])
-        last_value_orig = float(max_data[col].iloc[-1])
+    # reorder to [unique_id, ds, y] (NeuralForecast usually expects this)
+    nf_input = max_values_numeric[["unique_id", "ds", "y"]]
 
-        # rename the columns to the NeuralForecast expected names
-        max_values_numeric.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
+    # call your prediction function (expects columns unique_id, ds, y)
+    preds = make_predictions(nf_input)
 
-        # ensure ds is datetime
-        max_values_numeric["ds"] = pd.to_datetime(max_values_numeric["ds"])
+    # Expect these output columns from your saved model
+    result_columns = [
+        "AutoNBEATS-median",
+        "AutoNBEATS-lo-50",
+        "AutoNBEATS-hi-50",
+        "AutoNBEATS-lo-90",
+        "AutoNBEATS-hi-90",
+    ]
+    # Keep only required columns (as floats) in a clean index
+    preds_df = preds[result_columns].astype(float).reset_index(drop=True)
 
-        # If you need to convert units for the model (example from your code)
-        # convert only the numeric y column (not the timestamps)
-        if col == "EC Value (g/l)":
-            # convert y to the units the model expects (e.g. multiply by 2000)
-            max_values_numeric["y"] = max_values_numeric["y"] * 2000
+    # convert back to original units if needed
+    if col == "EC Value (g/l)":
+        preds_df = preds_df / 2000.0
 
-        # add unique_id column required by NeuralForecast
-        max_values_numeric["unique_id"] = "Baswap station"
+    # build timestamps for predictions (hourly ahead)
+    pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
 
-        # reorder to [unique_id, ds, y] (NeuralForecast usually expects this)
-        max_values_numeric = max_values_numeric[["unique_id", "ds", "y"]]
+    # final dataframe (include last observed point so the dashed line touches history)
+    predictions_line_df = pd.DataFrame({
+        "Timestamp": [last_timestamp] + pred_times,
+        "median":    [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
+        # Start bands at the first *future* step (avoid shading back onto history)
+        "lo50":      [np.nan] + preds_df["AutoNBEATS-lo-50"].tolist(),
+        "hi50":      [np.nan] + preds_df["AutoNBEATS-hi-50"].tolist(),
+        "lo90":      [np.nan] + preds_df["AutoNBEATS-lo-90"].tolist(),
+        "hi90":      [np.nan] + preds_df["AutoNBEATS-hi-90"].tolist(),
+    })
 
-        # call your prediction function (expects columns unique_id, ds, y)
-        preds = make_predictions(max_values_numeric)
-        result_columns = [
-            # "unique_id", "ds",
-            "AutoNBEATS-median",
-            # "AutoNBEATS-lo-50",
-            # "AutoNBEATS-hi-50",
-            # "AutoNBEATS-lo-90",
-            # "AutoNBEATS-hi-90",
-        ]
-        preds = preds[result_columns[0]]
-        
-        # Dòng này là cho riêng trường hợp này chỉ lấy 1 cột ạ
-        # Có gì sau này anh chỉnh lại giúp em để xài hết các cột ở trên ạ. 
-        preds_series = preds.astype(float).reset_index(drop=True)
-
-        # convert back to original units if needed
-        if col == "EC Value (g/l)":
-            preds_series = preds_series / 2000.0
-
-        # now get a plain python list (1-D)
-        preds_list = preds_series.tolist()
-
-        # build timestamps for predictions (hourly ahead)
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_list))]
-        combined_timestamps = [last_timestamp] + pred_times
-        combined_values = [last_value_orig] + preds_list
-
-        # sanity check lengths
-        if len(combined_timestamps) != len(combined_values):
-            raise ValueError("Timestamp/value length mismatch: "
-                             f"{len(combined_timestamps)} vs {len(combined_values)}")
-
-        # build final 1-D dataframe
-        predictions_line_df = pd.DataFrame({
-            "Timestamp": combined_timestamps,
-            col: combined_values
-        })
-
-        return predictions_line_df
+    return predictions_line_df
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
@@ -214,7 +186,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     Draw a line chart with:
       - line breaks across missing intervals (NaN injection),
       - custom legend outside the chart (Observed / Predicted only),
-      - optional predictions overlay for Hour + EC series.
+      - optional predictions overlay for Hour + EC series with shaded quantiles.
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -295,21 +267,53 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     if show_pred:
         predictions_line_df = render_predictions(df_filtered, col)
-        predictions_chart = (
-            alt.Chart(predictions_line_df)
-            .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
-            .encode(
-                x=alt.X("Timestamp:T", title=axis_x),
-                y=alt.Y(f"{col}:Q", title=axis_y),
-                tooltip=[
-                    alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                    alt.Tooltip(f"{col}:Q", title=t_pred_value),
-                ],
+        if predictions_line_df is not None and not predictions_line_df.empty:
+            band90 = (
+                alt.Chart(predictions_line_df)
+                .mark_area(opacity=0.15, color="red")
+                .encode(
+                    x=alt.X("Timestamp:T", title=axis_x),
+                    y=alt.Y("lo90:Q", title=axis_y),
+                    y2="hi90:Q",
+                    tooltip=[
+                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip("lo90:Q", title="P5"),
+                        alt.Tooltip("hi90:Q", title="P95"),
+                    ],
+                )
             )
-        )
-        chart = alt.layer(predictions_chart, main_chart)
-        st.altair_chart(chart, use_container_width=True)
-        return
+
+            band50 = (
+                alt.Chart(predictions_line_df)
+                .mark_area(opacity=0.30, color="red")
+                .encode(
+                    x=alt.X("Timestamp:T", title=axis_x),
+                    y=alt.Y("lo50:Q", title=axis_y),
+                    y2="hi50:Q",
+                    tooltip=[
+                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip("lo50:Q", title="P25"),
+                        alt.Tooltip("hi50:Q", title="P75"),
+                    ],
+                )
+            )
+
+            pred_line = (
+                alt.Chart(predictions_line_df)
+                .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
+                .encode(
+                    x=alt.X("Timestamp:T", title=axis_x),
+                    y=alt.Y("median:Q", title=axis_y),
+                    tooltip=[
+                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip("median:Q", title=t_pred_value),
+                    ],
+                )
+            )
+
+            chart = alt.layer(band90, band50, pred_line, main_chart)
+            st.altair_chart(chart, use_container_width=True)
+            return
 
     st.altair_chart(main_chart, use_container_width=True)
 
@@ -326,4 +330,3 @@ def display_statistics(df: pd.DataFrame, target_col: str) -> None:
     col2.metric(label=t_min, value=f"{df[target_col].min():.2f}")
     col3.metric(label=t_avg, value=f"{df[target_col].mean():.2f}")
     col4.metric(label=t_std, value=f"{df[target_col].std():.2f}")
-
