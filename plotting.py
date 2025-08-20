@@ -16,7 +16,7 @@ def _t(key: str, default: str) -> str:
 
 
 def _render_obs_pred_legend(show_predicted: bool = False) -> None:
-    """Custom legend: only Observed (dot) and optional Predicted (dashed)."""
+    """Custom legend: only Observed (dot) and optional Predicted (dashed median)."""
     observed_label = _t("legend_observed", "Observed")
     predicted_label = _t("legend_predicted", "Predicted")
 
@@ -113,9 +113,9 @@ def _inject_nans_for_gaps(
 
 def render_predictions(data: pd.DataFrame, col: str) -> Optional[pd.DataFrame]:
     """
-    Build a 1-D time series of predictions plus quantile bands based on the
-    'Max' aggregation track. Returns columns:
-      ['Timestamp', 'median', 'lo50', 'hi50', 'lo90', 'hi90'].
+    Return a tidy frame with columns:
+      ['Timestamp', 'median', 'lo50', 'hi50', 'lo90', 'hi90']
+    where Timestamp includes the last observed point + future steps.
     """
     max_data = data[data["Aggregation"] == "Max"].copy()
     if max_data.empty or len(max_data) < 2:
@@ -124,69 +124,70 @@ def render_predictions(data: pd.DataFrame, col: str) -> Optional[pd.DataFrame]:
     # select timestamp + numeric column
     max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
 
-    # keep original last timestamp & last value (in original units) for output
+    # last observed time & value in original units
     last_timestamp = pd.to_datetime(max_data["Timestamp (Rounded)"].iloc[-1])
     last_value_orig = float(max_data[col].iloc[-1])
 
-    # rename the columns to the NeuralForecast expected names
+    # rename to NeuralForecast expected names
     max_values_numeric.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
-
-    # ensure ds is datetime
     max_values_numeric["ds"] = pd.to_datetime(max_values_numeric["ds"])
 
-    # If you need to convert units for the model (example from your code)
-    # convert only the numeric y column (not the timestamps)
+    # if your model expects a scaled unit for g/l, convert just y
     if col == "EC Value (g/l)":
-        # convert y to the units the model expects (e.g. multiply by 2000)
         max_values_numeric["y"] = max_values_numeric["y"] * 2000
 
-    # add unique_id column required by NeuralForecast
+    # required by NeuralForecast
     max_values_numeric["unique_id"] = "Baswap station"
-
-    # reorder to [unique_id, ds, y] (NeuralForecast usually expects this)
     nf_input = max_values_numeric[["unique_id", "ds", "y"]]
 
-    # call your prediction function (expects columns unique_id, ds, y)
     preds = make_predictions(nf_input)
 
-    # Expect these output columns from your saved model
-    result_columns = [
+    needed = [
         "AutoNBEATS-median",
         "AutoNBEATS-lo-50",
         "AutoNBEATS-hi-50",
         "AutoNBEATS-lo-90",
         "AutoNBEATS-hi-90",
     ]
-    # Keep only required columns (as floats) in a clean index
-    preds_df = preds[result_columns].astype(float).reset_index(drop=True)
+    missing = [c for c in needed if c not in preds.columns]
+    if missing:
+        # Show a tiny hint so you know why lines don't appear
+        st.caption(f"⚠️ Missing prediction columns: {', '.join(missing)}")
+        return None
+
+    preds_df = preds[needed].astype(float).reset_index(drop=True)
 
     # convert back to original units if needed
     if col == "EC Value (g/l)":
         preds_df = preds_df / 2000.0
 
-    # build timestamps for predictions (hourly ahead)
+    # timestamps for future points (hourly ahead)
     pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
 
-    # final dataframe (include last observed point so the dashed line touches history)
-    predictions_line_df = pd.DataFrame({
+    out = pd.DataFrame({
         "Timestamp": [last_timestamp] + pred_times,
         "median":    [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
-        # Start bands at the first *future* step (avoid shading back onto history)
         "lo50":      [np.nan] + preds_df["AutoNBEATS-lo-50"].tolist(),
         "hi50":      [np.nan] + preds_df["AutoNBEATS-hi-50"].tolist(),
         "lo90":      [np.nan] + preds_df["AutoNBEATS-lo-90"].tolist(),
         "hi90":      [np.nan] + preds_df["AutoNBEATS-hi-90"].tolist(),
     })
 
-    return predictions_line_df
+    # quick visibility for data collection/debug
+    counts = {k: int(np.isfinite(out[k].iloc[1:]).sum()) for k in ["median", "lo50", "hi50", "lo90", "hi90"]}
+    st.caption(
+        f"Pred points → median:{counts['median']} lo50:{counts['lo50']} "
+        f"hi50:{counts['hi50']} lo90:{counts['lo90']} hi90:{counts['hi90']}"
+    )
+    return out
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     """
-    Draw a line chart with:
-      - line breaks across missing intervals (NaN injection),
-      - custom legend outside the chart (Observed / Predicted only),
-      - optional predictions overlay for Hour + EC series with shaded quantiles.
+    Line chart with:
+      - NaN-based line breaks,
+      - Custom legend (Observed/Predicted),
+      - Prediction lines for Hour + EC (median, lo50, hi50, lo90, hi90).
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -245,12 +246,12 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     t_pred_time = _t("tooltip_predicted_time", axis_x)
     t_pred_value = _t("tooltip_predicted_value", axis_y)
 
-    # Show only Observed / Predicted in legend UI
+    # Only show predictions for Hourly EC series (same rule as before)
     show_pred = (resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
     _render_obs_pred_legend(show_predicted=show_pred)
 
-    # Main observed chart (constant color), but keep separate lines per category to avoid cross-connecting
-    encodings = dict(
+    # Observed lines
+    enc = dict(
         x=alt.X("Timestamp (Rounded):T", title=axis_x),
         y=alt.Y(f"{col}:Q", title=axis_y),
         color=alt.value("steelblue"),
@@ -261,57 +262,40 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         ],
     )
     if cat_col:
-        encodings["detail"] = alt.Detail("Aggregation:N")
+        enc["detail"] = alt.Detail("Aggregation:N")
 
-    main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
+    main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**enc).interactive()
 
     if show_pred:
-        predictions_line_df = render_predictions(df_filtered, col)
-        if predictions_line_df is not None and not predictions_line_df.empty:
-            band90 = (
-                alt.Chart(predictions_line_df)
-                .mark_area(opacity=0.15, color="red")
+        preds = render_predictions(df_filtered, col)
+        if preds is not None and not preds.empty:
+            # Melt to long form for a single multi-series line layer with legend
+            pred_lines = (
+                alt.Chart(preds)
+                .transform_fold(
+                    ["median", "lo50", "hi50", "lo90", "hi90"],
+                    as_=["series", "value"],
+                )
+                .mark_line(point=True)
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y("lo90:Q", title=axis_y),
-                    y2="hi90:Q",
+                    y=alt.Y("value:Q", title=axis_y),
+                    color=alt.Color("series:N", title="Predictions"),
+                    strokeDash=alt.StrokeDash(
+                        "series:N",
+                        scale=alt.Scale(
+                            domain=["median", "lo50", "hi50", "lo90", "hi90"],
+                            range=[[5, 5], [2, 2], [2, 2], [8, 4], [8, 4]],
+                        ),
+                    ),
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("lo90:Q", title="P5"),
-                        alt.Tooltip("hi90:Q", title="P95"),
+                        alt.Tooltip("series:N", title="Series"),
+                        alt.Tooltip("value:Q", title=t_pred_value),
                     ],
                 )
             )
-
-            band50 = (
-                alt.Chart(predictions_line_df)
-                .mark_area(opacity=0.30, color="red")
-                .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y("lo50:Q", title=axis_y),
-                    y2="hi50:Q",
-                    tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("lo50:Q", title="P25"),
-                        alt.Tooltip("hi50:Q", title="P75"),
-                    ],
-                )
-            )
-
-            pred_line = (
-                alt.Chart(predictions_line_df)
-                .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
-                .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y("median:Q", title=axis_y),
-                    tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("median:Q", title=t_pred_value),
-                    ],
-                )
-            )
-
-            chart = alt.layer(band90, band50, pred_line, main_chart)
+            chart = alt.layer(pred_lines, main_chart)
             st.altair_chart(chart, use_container_width=True)
             return
 
