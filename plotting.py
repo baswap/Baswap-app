@@ -179,13 +179,6 @@ def render_predictions(data: pd.DataFrame, col: str):
         "hi90": preds_df["AutoNBEATS-hi-90"].values,
     })
 
-    # quick counts so you know data was received
-    st.caption(
-        f"Pred points → median:{len(preds_df)} lo50:{len(bands_df.dropna(subset=['lo50']))} "
-        f"hi50:{len(bands_df.dropna(subset=['hi50']))} lo90:{len(bands_df.dropna(subset=['lo90']))} "
-        f"hi90:{len(bands_df.dropna(subset=['hi90']))}"
-    )
-
     return line_df, bands_df
 
 
