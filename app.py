@@ -373,7 +373,6 @@ if page == "Overview":
                     st.error("STATIONS_FILE_ID is not set in secrets.")
                 else:
                     try:
-                        # Try a light read; if DriveManager doesn't accept nrows, fall back to full read + head
                         try:
                             preview_df = dm.read_csv_file(file_id, nrows=10)  # type: ignore[arg-type]
                         except TypeError:
@@ -382,10 +381,10 @@ if page == "Overview":
                         st.dataframe(preview_df, use_container_width=True, hide_index=True)
                     except Exception as e:
                         st.error(f"❌ Read failed: {e}")
-                        st.info("If you see a 'not found' or 'insufficient permissions' message, share the file with the service account email above.")
+                        st.info("If you see 'not found' or 'insufficient permissions', share the file with the service account above.")
 
         # ------------------- CURRENT MEASUREMENT TABLE -------------------
-        # Expect CSV columns exactly: ["unique_id","station_name","Measdate","EC(g/l)"]
+        # Helpers
         def _norm_name(name: str) -> str:
             import unicodedata, re
             s = unicodedata.normalize("NFKD", str(name or ""))
@@ -393,23 +392,55 @@ if page == "Overview":
             s = re.sub(r"[\W_]+", "", s)  # remove spaces/punct
             return s.lower()
 
+        def _norm_col(col: str) -> str:
+            # Lowercase and drop all non [a-z0-9] so 'EC(g/l)' and 'EC[g/l]' -> 'ecgl'
+            import re
+            return re.sub(r"[^a-z0-9]", "", str(col).lower())
+
+        def _resolve_cols(df_cols) -> tuple[str, str, str]:
+            # Return (station_col, time_col, ec_col) by normalized matching
+            norm_map = {_norm_col(c): c for c in df_cols}
+            # candidates in priority order
+            stn_candidates = ["stationname", "station", "stationid", "name"]
+            time_candidates = ["measdate", "datetime", "timestamp", "time", "date"]
+            ec_candidates = ["ecgl", "ec", "ecvalue"]  # handles EC(g/l), EC[g/l], etc.
+
+            def pick(cands):
+                for k in cands:
+                    if k in norm_map:
+                        return norm_map[k]
+                return None
+
+            stn = pick(stn_candidates)
+            tcol = pick(time_candidates)
+            ecol = pick(ec_candidates)
+
+            if not stn or not tcol or not ecol:
+                missing = []
+                if not stn: missing.append("station_name")
+                if not tcol: missing.append("Measdate")
+                if not ecol: missing.append("EC(g/l)")
+                raise ValueError(f"Missing required columns (flex match): {', '.join(missing)}. Got: {list(df_cols)}")
+            return stn, tcol, ecol
+
         latest_values = {}  # normalized station_name -> EC*2000
         try:
             if file_id:
                 df_all = dm.read_csv_file(file_id)
-                need_cols = {"station_name", "Measdate", "EC(g/l)"}
-                if need_cols.issubset(df_all.columns):
-                    d = df_all.copy()
-                    d["Measdate"] = pd.to_datetime(d["Measdate"], errors="coerce")
-                    d = d.dropna(subset=["Measdate"])
-                    idx = d.groupby("station_name")["Measdate"].idxmax()  # latest row per station
-                    latest = d.loc[idx, ["station_name", "EC(g/l)"]].copy()
-                    latest["key"] = latest["station_name"].map(_norm_name)
-                    latest["val"] = pd.to_numeric(latest["EC(g/l)"], errors="coerce") * 2000.0
-                    latest_values = dict(zip(latest["key"], latest["val"]))
-                    st.caption(f"✅ Loaded latest measurements for {len(latest_values)} station(s).")
-                else:
-                    st.caption("⚠️ CSV must include columns: station_name, Measdate, EC(g/l).")
+                # Resolve columns flexibly
+                stn_col, time_col, ec_col = _resolve_cols(df_all.columns)
+                st.caption(f"📄 Resolved columns → station: **{stn_col}**, time: **{time_col}**, EC: **{ec_col}**")
+
+                d = df_all.copy()
+                d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
+                d = d.dropna(subset=[time_col])
+                # latest row per station
+                idx = d.groupby(stn_col)[time_col].idxmax()
+                latest = d.loc[idx, [stn_col, ec_col]].copy()
+                latest["key"] = latest[stn_col].map(_norm_name)
+                latest["val"] = pd.to_numeric(latest[ec_col], errors="coerce") * 2000.0
+                latest_values = dict(zip(latest["key"], latest["val"]))
+                st.caption(f"✅ Loaded latest measurements for {len(latest_values)} station(s).")
             else:
                 st.caption("ℹ️ Add **STATIONS_FILE_ID** to secrets to populate current measurements.")
         except Exception as e:
@@ -418,15 +449,21 @@ if page == "Overview":
 
         station_names = [s["name"] for s in OTHER_STATIONS]
         rows = []
+        matched = 0
         for name in station_names:
             key = _norm_name(name)
             val = latest_values.get(key)
-            display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
+            if val is not None and not pd.isna(val):
+                matched += 1
+                display_val = f"{val:.1f}"
+            else:
+                display_val = "-"
             rows.append({
                 texts["table_station"]: name,
                 texts["current_measurement"]: display_val,
                 texts["table_warning"]: "-",
             })
+        st.caption(f"🔎 Matched {matched}/{len(station_names)} station names from the CSV.")
         table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
@@ -549,7 +586,6 @@ if page == "Overview":
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
-
 
 if page == "About":
     st.title(texts["app_title"])
