@@ -337,7 +337,7 @@ if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Picker + 3×42 table (scrollable) ----------
+    # ---------- RIGHT: Picker + table (scrollable) ----------
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
@@ -353,20 +353,17 @@ if page == "Overview":
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
         # --- Build "Current Measurement" from latest station rows in Drive CSV ---
-        # Expect CSV columns: ["unique_id","station_name","Measdate","EC(g/l)"]
+        # Expect CSV columns exactly: ["unique_id","station_name","Measdate","EC(g/l)"]
         def _norm_name(name: str) -> str:
             import unicodedata, re
-            s = unicodedata.normalize("NFD", str(name or ""))
-            s = "".join(c for c in s if unicodedata.category(c) == "Mn")  # accent chars
-            # keep only base chars by removing accents above
             s = unicodedata.normalize("NFKD", str(name or ""))
-            s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+            s = "".join(c for c in s if unicodedata.category(c) != "Mn")  # strip accents
             s = re.sub(r"[\W_]+", "", s)  # remove spaces/punct
             return s.lower()
 
         latest_values = {}  # normalized station_name -> EC*2000
+        file_id = st.secrets.get("STATIONS_FILE_ID")
         try:
-            file_id = st.secrets.get("STATIONS_FILE_ID")  # set this in secrets
             if file_id:
                 df_all = dm.read_csv_file(file_id)
                 need_cols = {"station_name", "Measdate", "EC(g/l)"}
@@ -381,9 +378,9 @@ if page == "Overview":
                     latest["val"] = pd.to_numeric(latest["EC(g/l)"], errors="coerce") * 2000.0
                     latest_values = dict(zip(latest["key"], latest["val"]))
                 else:
-                    st.caption("⚠️ CSV missing required columns: station_name, Measdate, EC(g/l).")
+                    st.caption("⚠️ CSV must include columns: station_name, Measdate, EC(g/l).")
             else:
-                st.caption("ℹ️ Set STATIONS_FILE_ID in secrets to populate current measurements.")
+                st.caption("ℹ️ Add STATIONS_FILE_ID to secrets to populate current measurements.")
         except Exception as e:
             st.caption(f"⚠️ Could not load station CSV: {e}")
             latest_values = {}
@@ -401,9 +398,6 @@ if page == "Overview":
             })
         table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
-
-    # ---------- LEFT: Map (tall) with zoom-to-station ----------
-
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
@@ -426,7 +420,7 @@ if page == "Overview":
                 color="#0077ff", tooltip=sel,
             ).add_to(m)
 
-        # render map and capture clicks (KEEP inside col_left so the map stays 7/3)
+        # render map and capture clicks (keep inside col_left so layout stays 7/3)
         map_out = st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # --- Sync marker click -> global selection (selectbox + stats badge) ---
@@ -524,6 +518,7 @@ if page == "Overview":
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 if page == "About":
     st.title(texts["app_title"])
