@@ -467,14 +467,15 @@ if page == "Overview":
 
     # ---- Scope label + REFRESH button on the same row ----
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
-    overall_text = texts.get("scope_overall") or ("Overall" if lang == "en" else "Chung")
-    station_name = st.session_state.get("selected_station") or overall_text
+    none_label = "None" if lang == "en" else "Chưa chọn trạm"
+    selected_station = st.session_state.get("selected_station")
+    station_name_label = selected_station if selected_station else none_label
 
     c_label, c_btn = st.columns([8, 1], gap="small")
     with c_label:
         st.markdown(
             f'<div class="stats-scope"><span class="k">{scope_label}:</span> '
-            f'<span class="v">{station_name}</span></div>',
+            f'<span class="v">{station_name_label}</span></div>',
             unsafe_allow_html=True,
         )
     with c_btn:
@@ -488,9 +489,55 @@ if page == "Overview":
             st.cache_data.clear()
             st.rerun()
 
-    # Show the metrics
-    stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
-    display_statistics(stats_df, st.session_state.target_col)
+    # --- Show the metrics (per your new rule) ---
+    t_max = texts.get("stats_max", "Maximum")
+    t_min = texts.get("stats_min", "Minimum")
+    t_avg = texts.get("stats_avg", "Average")
+    t_std = texts.get("stats_std", "Std Dev")
+
+    if selected_station:
+        # compute from latest 1000 rows for the selected station (CSV), EC(g/l) x 2000
+        try:
+            file_id = st.secrets.get("STATIONS_FILE_ID")
+            if file_id:
+                df_all = dm.read_csv_file(file_id)
+                stn_col, time_col, ec_col = _resolve_cols(df_all.columns)
+
+                d = df_all[[stn_col, time_col, ec_col]].copy()
+                d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
+                d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
+                d = d.dropna(subset=[time_col, ec_col])
+
+                # filter by selected station using normalized name match
+                sel_key = _norm_name(selected_station)
+                mask = d[stn_col].map(_norm_name) == sel_key
+                sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
+
+                if sd.empty:
+                    # no data -> show dashes
+                    c1, c2, c3, c4 = st.columns(4)
+                    for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+                        c.metric(label=lab, value="-")
+                else:
+                    vals = sd[ec_col] * 2000.0
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric(label=t_max, value=f"{vals.max():.2f}")
+                    c2.metric(label=t_min, value=f"{vals.min():.2f}")
+                    c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
+                    c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
+            else:
+                c1, c2, c3, c4 = st.columns(4)
+                for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+                    c.metric(label=lab, value="-")
+        except Exception:
+            c1, c2, c3, c4 = st.columns(4)
+            for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+                c.metric(label=lab, value="-")
+    else:
+        # no station selected -> show dashes and "None / Chưa chọn trạm" in the badge above
+        c1, c2, c3, c4 = st.columns(4)
+        for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+            c.metric(label=lab, value="-")
 
     st.divider()
 
