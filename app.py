@@ -31,7 +31,7 @@ lang = _as_scalar(params.get("lang"), "vi")
 # --- refresh via query param ---
 if _as_scalar(params.get("refresh"), "0") == "1":
     st.cache_data.clear()
-    # remove the flag from the URL, then rerun
+
     try:
         if hasattr(st, "query_params"):
             qp = dict(st.query_params)
@@ -73,8 +73,8 @@ for k, v in {
 
 
 # ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 600            # tall map
-TABLE_HEIGHT = MAP_HEIGHT - 90  # adjust to align visually with map
+MAP_HEIGHT = 600         
+TABLE_HEIGHT = MAP_HEIGHT - 90  
 
 st.markdown(f"""
 <style>
@@ -334,10 +334,8 @@ def settings_panel(first_date, last_date, default_from, default_to):
 
 # ================== PAGES ==================
 if page == "Overview":
-    # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Picker + table (scrollable) ----------
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
@@ -352,8 +350,6 @@ if page == "Overview":
         )
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # --- Build "Current Measurement" from latest station rows in Drive CSV ---
-        # Expect CSV columns exactly: ["unique_id","station_name","Measdate","EC(g/l)"]
         def _norm_name(name: str) -> str:
             import unicodedata, re
             s = unicodedata.normalize("NFKD", str(name or ""))
