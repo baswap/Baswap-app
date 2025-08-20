@@ -352,14 +352,58 @@ if page == "Overview":
         )
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
+        # --- Build "Current Measurement" from latest station rows in Drive CSV ---
+        # Expect CSV columns: ["unique_id","station_name","Measdate","EC(g/l)"]
+        def _norm_name(name: str) -> str:
+            import unicodedata, re
+            s = unicodedata.normalize("NFD", str(name or ""))
+            s = "".join(c for c in s if unicodedata.category(c) == "Mn")  # accent chars
+            # keep only base chars by removing accents above
+            s = unicodedata.normalize("NFKD", str(name or ""))
+            s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+            s = re.sub(r"[\W_]+", "", s)  # remove spaces/punct
+            return s.lower()
+
+        latest_values = {}  # normalized station_name -> EC*2000
+        try:
+            file_id = st.secrets.get("STATIONS_FILE_ID")  # set this in secrets
+            if file_id:
+                df_all = dm.read_csv_file(file_id)
+                need_cols = {"station_name", "Measdate", "EC(g/l)"}
+                if need_cols.issubset(df_all.columns):
+                    d = df_all.copy()
+                    d["Measdate"] = pd.to_datetime(d["Measdate"], errors="coerce")
+                    d = d.dropna(subset=["Measdate"])
+                    # latest row per station
+                    idx = d.groupby("station_name")["Measdate"].idxmax()
+                    latest = d.loc[idx, ["station_name", "EC(g/l)"]].copy()
+                    latest["key"] = latest["station_name"].map(_norm_name)
+                    latest["val"] = pd.to_numeric(latest["EC(g/l)"], errors="coerce") * 2000.0
+                    latest_values = dict(zip(latest["key"], latest["val"]))
+                else:
+                    st.caption("⚠️ CSV missing required columns: station_name, Measdate, EC(g/l).")
+            else:
+                st.caption("ℹ️ Set STATIONS_FILE_ID in secrets to populate current measurements.")
+        except Exception as e:
+            st.caption(f"⚠️ Could not load station CSV: {e}")
+            latest_values = {}
+
         station_names = [s["name"] for s in OTHER_STATIONS]
-        n = len(station_names)
-        table_df = pd.DataFrame({
-            texts["table_station"]: station_names,
-            texts["current_measurement"]: ["-"] * n,
-            texts["table_warning"]: ["-"] * n,
-        })
+        rows = []
+        for name in station_names:
+            key = _norm_name(name)
+            val = latest_values.get(key)
+            display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
+            rows.append({
+                texts["table_station"]: name,
+                texts["current_measurement"]: display_val,
+                texts["table_warning"]: "-",
+            })
+        table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
+
+    # ---------- LEFT: Map (tall) with zoom-to-station ----------
+
 
     # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
