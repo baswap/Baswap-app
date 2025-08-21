@@ -651,7 +651,6 @@ if page == "About":
     html = get_about_html(lang)
     html = html.replace("__IMG1__", _img_src("img/1.jpg")).replace("__IMG2__", _img_src("img/2.jpg"))
 
-    st.title(texts.get("app_title", "VGU Rangers"))
     st.markdown(html, unsafe_allow_html=True)
 
 # === FOOTER (normal flow, full-bleed, black theme) ===
