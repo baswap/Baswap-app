@@ -198,7 +198,7 @@ st.markdown("""
 # --- Top bar with brand icon ---
 active_overview = "active" if page == "Overview" else ""
 active_about = "active" if page == "About" else ""
-logo_src = data_uri("img/VGU RANGERS.png")  # <- your repo icon path
+logo_src = data_uri("img/VGU RANGERS.png")  
 
 st.markdown(f"""
 <div class="custom-header">
@@ -475,14 +475,14 @@ if page == "Overview":
     if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
-    # --- Overall Statistics header (title only) ---
+    # --- Overall Statistics header  ---
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
         st.empty()
 
-    # ---- Scope label + REFRESH button on the same row ----
+    # ---- Scope label + REFRESH button ----
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
     none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
@@ -536,7 +536,6 @@ if page == "Overview":
             return "EC Value (g/l)"
         return None
 
-    # Branch:
     # - None -> dashes
     # - BASWAP -> original behavior (date range + target col on df)
     # - Other station -> last 1000 rows from multi-station CSV, EC(g/l)*2000
@@ -638,8 +637,6 @@ if page == "Overview":
 
 # --- About page ---
 if page == "About":
-    
-
     def _img_src(path: str) -> str:
         p = Path(path)
         if not p.exists():
@@ -659,7 +656,7 @@ st.markdown("""
 <style>
   /* wrapper: full-bleed without being fixed */
   .vgu-footer{
-    margin-top:auto;                 /* push to bottom when page is short */
+    margin-top:auto;              
     position:relative;
     left:50%; right:50%;
     margin-left:-50vw; margin-right:-50vw;
