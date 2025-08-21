@@ -154,8 +154,9 @@ ABOUT_HTML_VI = r"""
 
   <!-- HERO IMAGES: placed right above 'Mục tiêu' -->
   <div class="hero">
-    <img src="img/1.jpg" alt="VGU Rangers image 1">
-    <img src="img/2.jpg" alt="VGU Rangers image 2">
+    <img src="__IMG1__" alt="VGU Rangers image 1">
+    <img src="__IMG2__" alt="VGU Rangers image 2">
+
   </div>
 
   <div class="section">
@@ -203,8 +204,8 @@ ABOUT_HTML_EN = r"""
 
   <!-- HERO IMAGES: placed right above 'Objectives' -->
   <div class="hero">
-    <img src="img/1.jpg" alt="VGU Rangers image 1">
-    <img src="img/2.jpg" alt="VGU Rangers image 2">
+    <img src="__IMG1__" alt="VGU Rangers image 1">
+    <img src="__IMG2__" alt="VGU Rangers image 2">
   </div>
 
   <div class="section">
