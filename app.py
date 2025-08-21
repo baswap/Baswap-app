@@ -621,10 +621,23 @@ if page == "Overview":
 
 # --- About page ---
 if page == "About":
-    st.title(texts.get("app_title", "VGU Rangers"))
-    # Render localized HTML from config
+    from pathlib import Path
+    import base64, mimetypes
     from config import get_about_html
-    st.markdown(get_about_html(lang), unsafe_allow_html=True)
+
+    def _img_src(path: str) -> str:
+        p = Path(path)
+        if not p.exists():
+            return ""  # no image; the alt text will show nothing
+        mime = mimetypes.guess_type(p.name)[0] or "image/png"
+        b64 = base64.b64encode(p.read_bytes()).decode()
+        return f"data:{mime};base64,{b64}"
+
+    html = get_about_html(lang)
+    html = html.replace("__IMG1__", _img_src("img/1.jpg")).replace("__IMG2__", _img_src("img/2.jpg"))
+
+    st.title(texts.get("app_title", "VGU Rangers"))
+    st.markdown(html, unsafe_allow_html=True)
 
 # === FOOTER (normal flow, full-bleed, black theme) ===
 
