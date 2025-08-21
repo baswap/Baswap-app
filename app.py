@@ -96,8 +96,8 @@ st.markdown(f"""
     background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
   }}
   .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
-  .custom-header .logo img{{ height:39px; width:auto; border-radius:4px; }}
-    .custom-header .logo .text{{ font-size:2.94rem; font-weight:600; }}
+  .custom-header .logo img{{ height:42px; width:auto; border-radius:4px; }}
+    .custom-header .logo .text{{ font-size:2.1rem; font-weight:600; }}
 
 
   .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
