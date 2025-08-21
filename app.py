@@ -622,10 +622,16 @@ if page == "Overview":
 # --- About page ---
 if page == "About":
 
-    # --- Hero images (below page header, above Overview content) ---
-    st.image("img/1.jpg", use_container_width=True)
-    st.image("img/2.jpg", use_container_width=True)
+    c1, c2 = st.columns([1, 1], gap="small")
+    with c1:
+        st.image("img/1.jpg", use_container_width=True)
+    with c2:
+        st.image("img/2.jpg", use_container_width=True)
     st.divider()
+
+
+
+
 
     st.title(texts.get("app_title", "VGU Rangers"))
     # Render localized HTML from config
