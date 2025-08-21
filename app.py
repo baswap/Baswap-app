@@ -619,19 +619,16 @@ if page == "Overview":
 
 
 
+# --- About page ---
 if page == "About":
-    st.title(texts["app_title"])
-    st.divider()
-    st.divider()
-    st.divider()
-    st.divider()
-    st.divider()
-    st.divider()
-    st.divider()
-    st.divider()
-    st.markdown(texts["description"])
-    
+    # Optional: keep your app title at the top
+    st.title(texts.get("app_title", "VGU Rangers"))
+    # Render localized HTML from config
+    from config import get_about_html
+    st.markdown(get_about_html(lang), unsafe_allow_html=True)
+
 # === FOOTER (normal flow, full-bleed, black theme) ===
+
 st.markdown("""
 <style>
   /* wrapper: full-bleed without being fixed */
