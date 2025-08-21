@@ -202,11 +202,6 @@ ABOUT_HTML_EN = r"""
     <h2 class="big">Vision</h2>
     <p>VGU Rangers aims to become an intelligent water quality monitoring and forecasting system for the entire Mekong Delta, with the potential to be expanded to other river basins. Built on an AIoT foundation, the system goes beyond simple data collection and visualization, offering predictive insights, proactive management, and optimized water resource utilization. This serves as a tool to strengthen human resilience against environmental challenges, climate change, and water-related risks in the future.</p>
   </div>
-
-  <div class="section">
-    <h2>Contact us</h2>
-    <p class="email">Email: <a href="mailto:baswapvgu2025@gmail.com">baswapvgu2025@gmail.com</a></p>
-  </div>
 </div>
 """
 
