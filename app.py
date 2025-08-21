@@ -98,7 +98,7 @@ st.markdown(f"""
 
 /* Brand with icon + text — vertically centered */
 .custom-header .logo{{ display:flex; align-items:center; gap:.6rem; color:#fff; }}
-.custom-header .logo img{{ height:80px; width:auto; border-radius:4px; display:block; object-fit:contain; }}
+.custom-header .logo img{{ height:80px; width:auto; border-radius:4px; display:block; object-fit:contain; transform: translateY(1px);}}
 .custom-header .logo .text{{ font-size:2.94rem; font-weight:700; line-height:1; }}  /* ~40% bigger */
 
 /* Nav links also align to center line */
