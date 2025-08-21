@@ -127,3 +127,85 @@ SIDE_TEXTS = {
         "sidebar_summary_stats": "Chọn các thống kê tóm tắt để tính (áp dụng cho chế độ theo giờ và ngày):"
     }
 }
+
+# ======================
+# About page HTML blocks
+# ======================
+
+ABOUT_HTML_VI = r"""
+<style>
+.about { line-height: 1.6; }
+.about h2 { font-size: 1.15rem; margin: 1rem 0 .25rem; }
+.about ul { margin: .25rem 0 .75rem 1.1rem; }
+.about li { margin: .2rem 0; }
+.about .section { margin-bottom: .9rem; }
+.about .email { margin-top: .5rem; }
+</style>
+
+<div class="about">
+  <div class="section">
+    <h2>Giới thiệu chung</h2>
+    <p>VGU Rangers được thành lập nhằm đáp ứng nhu cầu giám sát và quản lý chất lượng nước trong tự nhiên cũng như công nghiệp, đặc biệt tại Đồng bằng sông Cửu Long (ĐBSCL) – vùng trọng điểm sản xuất nông nghiệp, thủy sản và đồng thời là khu vực nhạy cảm trước biến đổi khí hậu và xâm nhập mặn. Hệ thống khai thác sức mạnh của IoT (Internet of Things) trong thu thập dữ liệu thời gian thực từ mạng lưới các trạm cảm biến thủy văn (sensor nodes), kết hợp với trí tuệ nhân tạo (AI) để xử lý, phân tích, và dự báo sớm các nguy cơ tiềm ẩn. Đây là bước tiến quan trọng trong việc chuyển đổi số quản lý tài nguyên nước, giúp nâng cao hiệu quả cảnh báo, giảm thiểu rủi ro và tối ưu hóa chi phí đầu tư cho hệ thống quan trắc.</p>
+  </div>
+
+  <div class="section">
+    <h2>Mục tiêu</h2>
+    <ul>
+      <li><b>Giám sát thông minh và liên tục:</b> Thu thập dữ liệu chất lượng nước (pH, độ đục, DO, nhiệt độ, amoni, nitrat…) theo thời gian thực, phục vụ đánh giá trạng thái môi trường nước.</li>
+      <li><b>Dự báo và cảnh báo sớm:</b> Ứng dụng AI để dự báo chất lượng nước trong tương lai gần, từ đó phát tín hiệu cảnh báo kịp thời.</li>
+      <li><b>Liên kết và mở rộng không gian:</b> Xây dựng mạng lưới trạm quan và liên kết dữ liệu để cung cấp bản đồ chất lượng nước theo vùng.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Tầm nhìn</h2>
+    <p>VGU Rangers hướng tới trở thành hệ thống giám sát – dự báo chất lượng nước thông minh cho toàn ĐBSCL, có khả năng nhân rộng ra các lưu vực khác. Với nền tảng AIoT, hệ thống không chỉ dừng ở thu thập và hiển thị dữ liệu, mà còn cung cấp giải pháp dự báo sớm, quản lý chủ động và tối ưu hóa tài nguyên nước. Đây là công cụ góp phần nâng cao khả năng chống chịu của con người trước các thách thức môi trường, biến đổi khí hậu và rủi ro nguồn nước trong tương lai.</p>
+  </div>
+
+  <div class="section">
+    <h2>Kết nối với chúng tôi</h2>
+    <p class="email">Địa chỉ email: <a href="mailto:baswapvgu2025@gmail.com">baswapvgu2025@gmail.com</a></p>
+  </div>
+</div>
+"""
+
+ABOUT_HTML_EN = r"""
+<style>
+.about { line-height: 1.6; }
+.about h2 { font-size: 1.15rem; margin: 1rem 0 .25rem; }
+.about ul { margin: .25rem 0 .75rem 1.1rem; }
+.about li { margin: .2rem 0; }
+.about .section { margin-bottom: .9rem; }
+.about .email { margin-top: .5rem; }
+</style>
+
+<div class="about">
+  <div class="section">
+    <h2>Overview</h2>
+    <p>VGU Rangers was established to address the need for monitoring and managing water quality in both natural and industrial contexts, particularly in the Mekong Delta (VMD) – Vietnam’s key hub for agriculture and aquaculture, yet also a highly vulnerable region to climate change and salinity intrusion. The system leverages the power of a network of the Internet of Things (IoT) to collect real-time data from hydrological sensor stations, combined with Artificial Intelligence (AI) to process, analyze, and forecast potential risks at an early stage. This marks an important step in the digital transformation of water resource management, helping to improve early warning efficiency, reduce risks, and optimize investment costs for monitoring systems.</p>
+  </div>
+
+  <div class="section">
+    <h2>Objectives</h2>
+    <ul>
+      <li><b>Intelligent and continuous monitoring:</b> Collect real-time water quality data (pH, turbidity, dissolved oxygen, temperature, ammonium, nitrate, etc.) to assess the state of aquatic environments.</li>
+      <li><b>Forecasting and early warning:</b> Apply AI to predict near-future water quality measurements, and generate timely alerts.</li>
+      <li><b>Data integration and spatial expansion:</b> Develop a network of monitoring stations and link data to provide regional water quality maps.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Vision</h2>
+    <p>VGU Rangers aims to become an intelligent water quality monitoring and forecasting system for the entire Mekong Delta, with the potential to be expanded to other river basins. Built on an AIoT foundation, the system goes beyond simple data collection and visualization, offering predictive insights, proactive management, and optimized water resource utilization. This serves as a tool to strengthen human resilience against environmental challenges, climate change, and water-related risks in the future.</p>
+  </div>
+
+  <div class="section">
+    <h2>Contact us</h2>
+    <p class="email">Email: <a href="mailto:baswapvgu2025@gmail.com">baswapvgu2025@gmail.com</a></p>
+  </div>
+</div>
+"""
+
+def get_about_html(lang: str) -> str:
+    """Return localized About page HTML."""
+    return ABOUT_HTML_EN if (lang or "").lower().startswith("en") else ABOUT_HTML_VI
