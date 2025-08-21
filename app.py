@@ -6,20 +6,22 @@ from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster, FeatureGroupSubGroup
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
-
 from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
-
+from pathlib import Path
+import base64, mimetypes
+from config import get_about_html
 # ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
+# --- read query params + optional refresh ---
 try:
-    params = st.query_params  
+    params = st.query_params
 except Exception:
-    params = st.experimental_get_query_params()  
+    params = st.experimental_get_query_params()
 
 def _as_scalar(v, default):
     if isinstance(v, (list, tuple)):
@@ -28,10 +30,9 @@ def _as_scalar(v, default):
 
 page = _as_scalar(params.get("page"), "Overview")
 lang = _as_scalar(params.get("lang"), "vi")
-# --- refresh via query param ---
+
 if _as_scalar(params.get("refresh"), "0") == "1":
     st.cache_data.clear()
-
     try:
         if hasattr(st, "query_params"):
             qp = dict(st.query_params)
@@ -46,13 +47,21 @@ if _as_scalar(params.get("refresh"), "0") == "1":
         pass
     st.rerun()
 
-
 if page not in ("Overview", "About"):
     page = "Overview"
 if lang not in ("en", "vi"):
     lang = "vi"
 
+# --- helper to embed repo images inside HTML safely ---
+def data_uri(path: str) -> str:
+    p = Path(path)
+    if not p.exists():
+        return ""
+    mime = mimetypes.guess_type(p.name)[0] or "image/png"
+    b64 = base64.b64encode(p.read_bytes()).decode()
+    return f"data:{mime};base64,{b64}"
 
+# ================== TEXTS / LANG ==================
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
 st.session_state["texts"] = texts
@@ -66,15 +75,14 @@ for k, v in {
     "date_from": None,
     "date_to": None,
     "agg_stats": ["Min", "Max", "Median"],
-    "table_cols": [COL_NAMES[0]],  
+    "table_cols": [COL_NAMES[0]],
     "selected_station": None,
 }.items():
     st.session_state.setdefault(k, v)
 
-
 # ================== STYLES / HEIGHTS ==================
-MAP_HEIGHT = 600         
-TABLE_HEIGHT = MAP_HEIGHT - 90  
+MAP_HEIGHT = 600
+TABLE_HEIGHT = MAP_HEIGHT - 90
 
 st.markdown(f"""
 <style>
@@ -87,7 +95,11 @@ st.markdown(f"""
     display:flex; align-items:center; gap:2rem; padding:0 1rem;
     background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
   }}
-  .custom-header .logo{{font-size:2.1rem; font-weight:600; color:#fff;}}
+  /* UPDATED: brand with icon + text */
+  .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
+  .custom-header .logo img{{ height:28px; width:auto; border-radius:4px; }}
+  .custom-header .logo .text{{ font-size:2.1rem; font-weight:600; }}
+
   .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
   .custom-header .nav a{{
     text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
@@ -133,63 +145,63 @@ st.markdown(f"""
 
   .stats-title {{ font-weight: 600; }}
 
+  .stats-scope{{
+    display:inline-block;
+    margin:.25rem 0 .8rem;
+    padding:.4rem .6rem;
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:4px;
+    background:#fff;
+  }}
+  .stats-scope .k{{ color:#111; font-weight:600; }}
+  .stats-scope .v{{ color:#111; font-weight:500; }}
 
-.stats-scope{{
-  display:inline-block;
-  margin:.25rem 0 .8rem;
-  padding:.4rem .6rem;
-  border:1px solid rgba(0,0,0,.12);
-  border-radius:4px;         /* small, not a rounded pill */
-  background:#fff;           /* looks non-clickable */
-}}
-.stats-scope .k{{ color:#111; font-weight:600; }}   /* label: Station/Trạm */
-.stats-scope .v{{ color:#111; font-weight:500; }}   /* value: name/Overall */
-
-
-.info-title{{
-  font-size: 1.7rem;   /* tweak size here */
-  font-weight: 600;
-  line-height: 1.2;
-  margin: .25rem 0 .6rem;
-}}
-
+  .info-title{{
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: .25rem 0 .6rem;
+  }}
 </style>
 """, unsafe_allow_html=True)
 
-
-active_overview = "active" if page == "Overview" else ""
-# --- GLOBAL LAYOUT (flex page; prevents vertical floating) ---
+# --- app layout glue / margins ---
 st.markdown("""
 <style>
   html, body, [data-testid="stApp"]{ height:100%; }
   [data-testid="stApp"]{ display:flex; flex-direction:column; }
 
-  /* keep content below your fixed header (4.5rem) */
   [data-testid="stAppViewContainer"] > .main{
     margin-top:4.5rem !important;
     display:flex; flex-direction:column;
     flex:1 0 auto;
   }
 
-  /* main content column fills height, allows footer to push down */
   .block-container, [data-testid="block-container"]{
     display:flex !important; flex-direction:column !important;
     min-height: calc(100vh - 4.5rem) !important;
     padding-top: 2.5rem;
-    overflow: visible !important;   /* so full-bleed footer isn't clipped */
+    overflow: visible !important;
   }
 
   .custom-header{ transition: transform .25s ease; will-change: transform; }
   .custom-header.hide{ transform: translateY(-100%); }
-  
+
   .refresh-holder .stButton > button{ transform: translateY(2px); }
 </style>
 """, unsafe_allow_html=True)
 
+# --- Top bar with brand icon ---
+active_overview = "active" if page == "Overview" else ""
 active_about = "active" if page == "About" else ""
+logo_src = data_uri("img/VGU RANGERS.png")  # <- your repo icon path
+
 st.markdown(f"""
 <div class="custom-header">
-  <div class="logo">BASWAP</div>
+  <div class="logo">
+    <img src="{logo_src}" alt="BASWAP logo" />
+    <span class="text">BASWAP</span>
+  </div>
   <div class="nav">
     <a href="?page=Overview&lang={lang}" target="_self" class="{active_overview}">{texts['nav_overview']}</a>
     <a href="?page=About&lang={lang}" target="_self" class="{active_about}">{texts['nav_about']}</a>
@@ -257,6 +269,7 @@ OTHER_STATIONS = [
     {"name":"Măng Thít","lon":106.1562281,"lat":10.16149561},
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
+
 
 # BASWAP buoy name comes from translations
 BASWAP_NAME = texts["baswap_name"]
@@ -621,9 +634,7 @@ if page == "Overview":
 
 # --- About page ---
 if page == "About":
-    from pathlib import Path
-    import base64, mimetypes
-    from config import get_about_html
+    
 
     def _img_src(path: str) -> str:
         p = Path(path)
