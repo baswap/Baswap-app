@@ -63,8 +63,8 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
 
           /* 50% chip — make it BRIGHTER/REDder than before */
           .agg-item .swatch.pi50::before {{ background: rgba(255,0,0,0.15); }}   /* base */
-          .agg-item .swatch.pi50::after  {{ background: rgba(255,60,60,0.55); }}  /* brighter overlay */
-          /* tweak 0.55 ↑ or the 60 value to adjust brightness/saturation */
+          .agg-item .swatch.pi50::after  {{ background: rgba(255,60,60,0.75); }}  /* brighter overlay */
+
           
           @media (max-width: 640px) {{
             .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }}
