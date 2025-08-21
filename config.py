@@ -58,6 +58,9 @@ APP_TEXTS = {
         "stats_min": "Minimum",
         "stats_avg": "Average",
         "stats_std": "Std Dev",
+        "legend_pi90": "90% prediction interval",
+        "legend_pi50": "50% prediction interval",
+        "legend_median": "Prediction median",
     },
     "vi": {
         "app_title": " ",
@@ -96,6 +99,9 @@ APP_TEXTS = {
         "stats_min": "Giá trị nhỏ nhất",
         "stats_avg": "Giá trị trung bình",
         "stats_std": "Độ lệch chuẩn",
+        "legend_pi90": "Khoảng dự báo 90%",
+        "legend_pi50": "Khoảng dự báo 50%",
+        "legend_median": "Dự báo",
     }
 }
 
