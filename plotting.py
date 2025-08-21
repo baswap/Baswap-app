@@ -9,6 +9,8 @@ from typing import Optional
 # from models.lstm_model import make_predictions
 from models.neuroforecast_model import make_predictions
 
+COLOR_PI90 = "#fecaca"  # light red
+COLOR_PI50 = "#fca5a5"
 
 def _t(key: str, default: str) -> str:
     """Translate via st.session_state['texts'] with fallback to `default`."""
@@ -187,7 +189,8 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     Draw a line chart with:
       - line breaks across missing intervals (NaN injection),
       - custom legend outside the chart (Observed / Predicted only),
-      - optional predictions overlay (median dashed + 50% & 90% shaded bands).
+      - predictions overlay (median dashed + 50% & 90% shaded bands),
+      - bilingual legend entries for the two prediction intervals (from config).
     """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
@@ -215,18 +218,16 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
-    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(
-        df_filtered["Timestamp (GMT+7)"]
-    )
-    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-        df_filtered["Timestamp (Rounded)"]
-    )
+    # Normalize timestamps
+    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
+    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (Rounded)"])
     df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
         df_filtered["Timestamp (Rounded)"]
     ).dt.strftime(disp_fmt)
 
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
 
+    # Break the line across long gaps
     df_broken = _inject_nans_for_gaps(
         df_filtered,
         time_col="Timestamp (Rounded)",
@@ -246,7 +247,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     t_pred_time = _t("tooltip_predicted_time", axis_x)
     t_pred_value = _t("tooltip_predicted_value", axis_y)
 
-    # Show only Observed / Predicted in legend UI
+    # Observed/Predicted legend (your custom HTML legend)
     show_pred = (resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
     _render_obs_pred_legend(show_predicted=show_pred)
 
@@ -266,17 +267,19 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
 
+    # Prediction overlays (only for Hourly EC)
     if show_pred:
         line_df, bands_df = render_predictions(df_filtered, col)
         if line_df is not None and bands_df is not None and not bands_df.empty:
-            # 90% band (P5..P95)
+            # 90% band (light red)
             band90 = (
                 alt.Chart(bands_df)
-                .mark_area(opacity=0.15, color="red")
+                .mark_area(opacity=0.15)
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo90:Q", title=axis_y),
                     y2=alt.Y2("hi90:Q"),
+                    color=alt.value(COLOR_PI90),
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                         alt.Tooltip("lo90:Q", title="P5"),
@@ -284,14 +287,16 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-            # 50% band (P25..P75)
+
+            # 50% band (darker red)
             band50 = (
                 alt.Chart(bands_df)
-                .mark_area(opacity=0.30, color="red")
+                .mark_area(opacity=0.30)
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo50:Q", title=axis_y),
                     y2=alt.Y2("hi50:Q"),
+                    color=alt.value(COLOR_PI50),
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                         alt.Tooltip("lo50:Q", title="P25"),
@@ -299,7 +304,8 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-            # Median dashed line (history contact + future)
+
+            # Median dashed line (connects to last observed)
             pred_line = (
                 alt.Chart(line_df)
                 .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
@@ -313,10 +319,40 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                 )
             )
 
-            chart = alt.layer(band90, band50, pred_line, main_chart)
+            # --- Config-driven bilingual legend for the two bands ---
+            pi90_label = _t("legend_pi90", "90% prediction interval")
+            pi50_label = _t("legend_pi50", "50% prediction interval")
+
+            legend_df = pd.DataFrame({
+                "label": [pi90_label, pi50_label],
+                # any valid timestamp/value; the layer is invisible but drives the legend
+                "x": [bands_df["Timestamp"].iloc[0]] * 2,
+                "y": [0, 0],
+            })
+
+            legend_layer = (
+                alt.Chart(legend_df)
+                  .mark_square(size=120)
+                  .encode(
+                      x=alt.X("x:T", axis=None),
+                      y=alt.Y("y:Q", axis=None),
+                      color=alt.Color(
+                          "label:N",
+                          scale=alt.Scale(
+                              domain=[pi90_label, pi50_label],
+                              range=[COLOR_PI90, COLOR_PI50],
+                          ),
+                          legend=alt.Legend(title="", orient="top"),
+                      ),
+                  )
+                  .properties(width=0, height=0)
+            )
+
+            chart = alt.layer(band90, band50, pred_line, main_chart, legend_layer)
             st.altair_chart(chart, use_container_width=True)
             return
 
+    # Fallback: observed only
     st.altair_chart(main_chart, use_container_width=True)
 
 
