@@ -9,7 +9,7 @@ from typing import Optional
 # from models.lstm_model import make_predictions
 from models.neuroforecast_model import make_predictions
 
-COLOR_PI90 = "#fecaca"  # light red
+COLOR_PI90 = "#fecaca" 
 COLOR_PI50 = "#fca5a5"
 
 def _t(key: str, default: str) -> str:
@@ -342,13 +342,11 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             st.altair_chart(chart, use_container_width=True)
             return
 
-    # Fallback: observed only
     st.altair_chart(main_chart, use_container_width=True)
 
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
-    # translate via session (uses your existing _t helper)
     t_max = _t("stats_max", "Maximum")
     t_min = _t("stats_min", "Minimum")
     t_avg = _t("stats_avg", "Average")
