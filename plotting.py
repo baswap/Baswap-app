@@ -24,8 +24,11 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
     pi90_label      = _t("legend_pi90",      "90% prediction interval")
     pi50_label      = _t("legend_pi50",      "50% prediction interval")
 
+    # keep these in sync with mark_area(opacity=...) used in the chart
+    ALPHA_90 = 0.15
+    ALPHA_50 = 0.30
+
     pred_html = f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>" if show_predicted else ""
-    # Only show the shaded-interval legend when predictions are visible
     pi_html = (
         f"<div class='agg-item'><span class='swatch pi90'></span>{pi90_label}</div>"
         f"<div class='agg-item'><span class='swatch pi50'></span>{pi50_label}</div>"
@@ -40,19 +43,32 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
             margin:.25rem 0 .5rem 0; font-weight:600;
           }}
           .agg-item {{ display:inline-flex; align-items:center; gap:.45rem; }}
+
+          /* Observed / Predicted styles */
           .agg-item .dot {{
             width:12px; height:12px; border-radius:999px; display:inline-block;
-            background: steelblue;             /* observed color */
+            background: steelblue;
           }}
           .agg-item .dash {{
             width:20px; height:0; border-top:2px dashed red; display:inline-block;
           }}
+
+          /* Swatches that mimic the band stacking in the chart */
           .agg-item .swatch {{
-            width:18px; height:12px; border-radius:2px; display:inline-block;
-            border:1px solid rgba(0,0,0,.15);
+            position:relative; width:18px; height:12px; border-radius:2px;
+            display:inline-block; border:1px solid rgba(0,0,0,.15); overflow:hidden;
           }}
-          .agg-item .swatch.pi90 {{ background: rgba(255,0,0,0.15); }}  /* light red (90%)  */
-          .agg-item .swatch.pi50 {{ background: rgba(255,0,0,0.30); }}  /* darker red (50%) */
+          .agg-item .swatch::before,
+          .agg-item .swatch::after {{
+            content:""; position:absolute; inset:0; border-radius:2px;
+          }}
+          /* 90% band = just the 0.15 red */
+          .agg-item .swatch.pi90::before {{ background: rgba(255,0,0,{ALPHA_90}); }}
+          .agg-item .swatch.pi90::after  {{ background: transparent; }}
+          /* 50% band area sits on top of the 90% band in the plot -> stack 0.15 + 0.30 */
+          .agg-item .swatch.pi50::before {{ background: rgba(255,0,0,{ALPHA_90}); }}
+          .agg-item .swatch.pi50::after  {{ background: rgba(255,0,0,{ALPHA_50}); }}
+
           @media (max-width: 640px) {{
             .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }}
           }}
@@ -65,6 +81,7 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 
 
 
