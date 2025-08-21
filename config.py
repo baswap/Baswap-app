@@ -22,7 +22,7 @@ COL_NAMES = [
 
 APP_TEXTS = {
     "en": {
-        "app_title": "BASWAP APP",
+        "app_title": " ",
         "description": """
             This app retrieves water quality data from a buoy-based monitoring system in Vinh Long, Vietnam.
             * **Data source:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
@@ -60,7 +60,7 @@ APP_TEXTS = {
         "stats_std": "Std Dev",
     },
     "vi": {
-        "app_title": "ỨNG DỤNG BASWAP",
+        "app_title": " ",
         "description": """
             Ứng dụng này truy xuất dữ liệu chất lượng nước từ hệ thống theo dõi trên phao ở Vĩnh Long, Việt Nam.
             * **Nguồn dữ liệu:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
