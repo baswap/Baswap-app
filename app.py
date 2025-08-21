@@ -89,23 +89,27 @@ st.markdown(f"""
   /* Hide Streamlit default header */
   header{{visibility:hidden;}}
 
-  /* Fixed custom header */
-  .custom-header{{
-    position:fixed; top:0; left:0; right:0; height:4.5rem;
-    display:flex; align-items:center; gap:2rem; padding:0 1rem;
-    background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
-  }}
-  .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
-  .custom-header .logo img{{ height:80px; width:auto; border-radius:4px; }}
-    .custom-header .logo .text{{ font-size:2.1rem; font-weight:600; }}
+  /* Fixed custom header (80px tall) */
+.custom-header{{
+  position:fixed; top:0; left:0; right:0; height:5rem;           /* was 4.5rem */
+  display:flex; align-items:center; gap:2rem; padding:0 1rem;
+  background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
+}}
 
+/* Brand with icon + text — vertically centered */
+.custom-header .logo{{ display:flex; align-items:center; gap:.6rem; color:#fff; }}
+.custom-header .logo img{{ height:80px; width:auto; border-radius:4px; display:block; object-fit:contain; }}
+.custom-header .logo .text{{ font-size:2.94rem; font-weight:700; line-height:1; }}  /* ~40% bigger */
 
-  .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
-  .custom-header .nav a{{
-    text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
-    border-bottom:2px solid transparent;
-  }}
-  .custom-header .nav a.active{{border-bottom-color:#fff; font-weight:600;}}
+/* Nav links also align to center line */
+.custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
+.custom-header .nav a{{
+  display:inline-flex; align-items:center; line-height:1;
+  text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
+  border-bottom:2px solid transparent;
+}}
+.custom-header .nav a.active{{ border-bottom-color:#fff; font-weight:600; }}
+
 
   /* Language dropdown */
   .lang-dd {{ position: relative; }}
