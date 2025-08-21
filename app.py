@@ -331,20 +331,7 @@ def settings_panel(first_date, last_date, default_from, default_to):
     # --- LOCK the stats selector to Max and disable the widget ---
     # Ensure session value is Max
     st.session_state.agg_stats = ["Max"]
-st.markdown(
-    """
-    <style>
-      .app-header{display:flex;align-items:center;gap:.6rem;margin:6px 0 12px;}
-      .app-header img{height:40px;width:auto;object-fit:contain;} /* keep logo small */
-      .app-header .brand{font-weight:800;font-size:1.6rem;line-height:1;}
-    </style>
-    <div class="app-header">
-      <img src="img/VGU RANGERS.png" alt="VGU logo">
-      <div class="brand">BASWAP</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+
 # ================== PAGES ==================
 if page == "Overview":
     # --- Layout: Map (70%) + Right box (30%) ---
