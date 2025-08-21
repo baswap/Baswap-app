@@ -18,12 +18,17 @@ def _t(key: str, default: str) -> str:
 
 
 def _render_obs_pred_legend(show_predicted: bool = False) -> None:
-    """Custom legend: only Observed (dot) and optional Predicted (dashed)."""
-    observed_label = _t("legend_observed", "Observed")
+    """Custom legend shown above the chart."""
+    observed_label  = _t("legend_observed",  "Observed")
     predicted_label = _t("legend_predicted", "Predicted")
+    pi90_label      = _t("legend_pi90",      "90% prediction interval")
+    pi50_label      = _t("legend_pi50",      "50% prediction interval")
 
-    pred_html = (
-        f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>"
+    pred_html = f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>" if show_predicted else ""
+    # Only show the shaded-interval legend when predictions are visible
+    pi_html = (
+        f"<div class='agg-item'><span class='swatch pi90'></span>{pi90_label}</div>"
+        f"<div class='agg-item'><span class='swatch pi50'></span>{pi50_label}</div>"
         if show_predicted else ""
     )
 
@@ -37,11 +42,17 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
           .agg-item {{ display:inline-flex; align-items:center; gap:.45rem; }}
           .agg-item .dot {{
             width:12px; height:12px; border-radius:999px; display:inline-block;
-            background: steelblue;    /* observed color */
+            background: steelblue;             /* observed color */
           }}
           .agg-item .dash {{
-            width:18px; height:0; border-top:2px dashed red; display:inline-block;
+            width:20px; height:0; border-top:2px dashed red; display:inline-block;
           }}
+          .agg-item .swatch {{
+            width:18px; height:12px; border-radius:2px; display:inline-block;
+            border:1px solid rgba(0,0,0,.15);
+          }}
+          .agg-item .swatch.pi90 {{ background: rgba(255,0,0,0.15); }}  /* light red (90%)  */
+          .agg-item .swatch.pi50 {{ background: rgba(255,0,0,0.30); }}  /* darker red (50%) */
           @media (max-width: 640px) {{
             .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }}
           }}
@@ -49,10 +60,12 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
         <div class="agg-legend">
           <div class="agg-item"><span class="dot"></span>{observed_label}</div>
           {pred_html}
+          {pi_html}
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
@@ -185,13 +198,6 @@ def render_predictions(data: pd.DataFrame, col: str):
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
-    """
-    Draw a line chart with:
-      - line breaks across missing intervals (NaN injection),
-      - custom legend outside the chart (Observed / Predicted only),
-      - predictions overlay (median dashed + 50% & 90% shaded bands),
-      - bilingual legend entries for the two prediction intervals (from config).
-    """
     if col not in df.columns:
         st.error(f"Column '{col}' not found in DataFrame.")
         return
@@ -247,7 +253,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     t_pred_time = _t("tooltip_predicted_time", axis_x)
     t_pred_value = _t("tooltip_predicted_value", axis_y)
 
-    # Observed/Predicted legend (your custom HTML legend)
+    # Observed/Predicted legend (HTML above chart)
     show_pred = (resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
     _render_obs_pred_legend(show_predicted=show_pred)
 
@@ -274,12 +280,11 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             # 90% band (light red)
             band90 = (
                 alt.Chart(bands_df)
-                .mark_area(opacity=0.15)
+                .mark_area(opacity=0.15, color="red")  # <-- original style
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo90:Q", title=axis_y),
                     y2=alt.Y2("hi90:Q"),
-                    color=alt.value(COLOR_PI90),
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                         alt.Tooltip("lo90:Q", title="P5"),
@@ -291,12 +296,11 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             # 50% band (darker red)
             band50 = (
                 alt.Chart(bands_df)
-                .mark_area(opacity=0.30)
+                .mark_area(opacity=0.30, color="red")  # <-- original style
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo50:Q", title=axis_y),
                     y2=alt.Y2("hi50:Q"),
-                    color=alt.value(COLOR_PI50),
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                         alt.Tooltip("lo50:Q", title="P25"),
@@ -319,41 +323,13 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                 )
             )
 
-            # --- Config-driven bilingual legend for the two bands ---
-            pi90_label = _t("legend_pi90", "90% prediction interval")
-            pi50_label = _t("legend_pi50", "50% prediction interval")
-
-            legend_df = pd.DataFrame({
-                "label": [pi90_label, pi50_label],
-                # any valid timestamp/value; the layer is invisible but drives the legend
-                "x": [bands_df["Timestamp"].iloc[0]] * 2,
-                "y": [0, 0],
-            })
-
-            legend_layer = (
-                alt.Chart(legend_df)
-                  .mark_square(size=120)
-                  .encode(
-                      x=alt.X("x:T", axis=None),
-                      y=alt.Y("y:Q", axis=None),
-                      color=alt.Color(
-                          "label:N",
-                          scale=alt.Scale(
-                              domain=[pi90_label, pi50_label],
-                              range=[COLOR_PI90, COLOR_PI50],
-                          ),
-                          legend=alt.Legend(title="", orient="top"),
-                      ),
-                  )
-                  .properties(width=0, height=0)
-            )
-
-            chart = alt.layer(band90, band50, pred_line, main_chart, legend_layer)
+            chart = alt.layer(band90, band50, pred_line, main_chart)  # <-- no legend layer
             st.altair_chart(chart, use_container_width=True)
             return
 
     # Fallback: observed only
     st.altair_chart(main_chart, use_container_width=True)
+
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
