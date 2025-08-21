@@ -95,9 +95,10 @@ st.markdown(f"""
     display:flex; align-items:center; gap:2rem; padding:0 1rem;
     background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
   }}
-  .custom-header .logo{ display:flex; align-items:center; gap:.5rem; color:#fff; font-size:2.1rem; }
-    .custom-header .logo img{ height:0.9em; width:auto; border-radius:4px; }  /* 90% of header */
-    .custom-header .logo .text{ font-size:1em; font-weight:600; }
+  .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; font-size:2.1rem; }}
+.custom-header .logo img{{ height:0.9em; width:auto; border-radius:4px; }}  /* 90% of header size */
+.custom-header .logo .text{{ font-size:1em; font-weight:600; }}
+
 
 
   .custom-header .nav{{display:flex; gap:1rem; align-items:center;}}
