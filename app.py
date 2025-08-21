@@ -621,6 +621,23 @@ if page == "Overview":
 
 # --- About page ---
 if page == "About":
+
+
+# Sidebar header (your existing title/branding)
+st.sidebar.markdown(f"### {texts.get('app_title', 'BASWAP')}")
+
+# NEW: images under the title, above the page selector
+st.sidebar.image("img/1.jpg", use_container_width=True)
+st.sidebar.image("img/2.jpg", use_container_width=True)
+
+# Your existing page selector stays the same
+page = st.sidebar.radio(
+    texts.get("menu_label", "Pages"),
+    [texts.get("menu_overview", "Overview"), texts.get("menu_about", "About")],
+    index=0,
+)
+
+
     # Optional: keep your app title at the top
     st.title(texts.get("app_title", "VGU Rangers"))
     # Render localized HTML from config
