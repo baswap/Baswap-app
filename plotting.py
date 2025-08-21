@@ -18,15 +18,11 @@ def _t(key: str, default: str) -> str:
 
 
 def _render_obs_pred_legend(show_predicted: bool = False) -> None:
-    """Custom legend shown above the chart."""
+    """Custom legend shown above the chart (no change to chart colors)."""
     observed_label  = _t("legend_observed",  "Observed")
     predicted_label = _t("legend_predicted", "Predicted")
     pi90_label      = _t("legend_pi90",      "90% prediction interval")
     pi50_label      = _t("legend_pi50",      "50% prediction interval")
-
-    # keep these in sync with mark_area(opacity=...) used in the chart
-    ALPHA_90 = 0.15
-    ALPHA_50 = 0.30
 
     pred_html = f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>" if show_predicted else ""
     pi_html = (
@@ -53,22 +49,23 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
             width:20px; height:0; border-top:2px dashed red; display:inline-block;
           }}
 
-          /* Swatches that mimic the band stacking in the chart */
+          /* Swatches */
           .agg-item .swatch {{
             position:relative; width:18px; height:12px; border-radius:2px;
             display:inline-block; border:1px solid rgba(0,0,0,.15); overflow:hidden;
           }}
           .agg-item .swatch::before,
-          .agg-item .swatch::after {{
-            content:""; position:absolute; inset:0; border-radius:2px;
-          }}
-          /* 90% band = just the 0.15 red */
-          .agg-item .swatch.pi90::before {{ background: rgba(255,0,0,{ALPHA_90}); }}
-          .agg-item .swatch.pi90::after  {{ background: transparent; }}
-          /* 50% band area sits on top of the 90% band in the plot -> stack 0.15 + 0.30 */
-          .agg-item .swatch.pi50::before {{ background: rgba(255,0,0,{ALPHA_90}); }}
-          .agg-item .swatch.pi50::after  {{ background: rgba(255,0,0,{ALPHA_50}); }}
+          .agg-item .swatch::after {{ content:""; position:absolute; inset:0; border-radius:2px; }}
 
+          /* 90% chip (same look as chart) */
+          .agg-item .swatch.pi90::before {{ background: rgba(255,0,0,0.15); }}
+          .agg-item .swatch.pi90::after  {{ background: transparent; }}
+
+          /* 50% chip — make it BRIGHTER/REDder than before */
+          .agg-item .swatch.pi50::before {{ background: rgba(255,0,0,0.15); }}   /* base */
+          .agg-item .swatch.pi50::after  {{ background: rgba(255,60,60,0.55); }}  /* brighter overlay */
+          /* tweak 0.55 ↑ or the 60 value to adjust brightness/saturation */
+          
           @media (max-width: 640px) {{
             .agg-legend {{ gap:.5rem .9rem; font-size:0.95rem; }}
           }}
@@ -81,6 +78,7 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 
 
 
