@@ -333,7 +333,23 @@ def settings_panel(first_date, last_date, default_from, default_to):
     st.session_state.agg_stats = ["Max"]
 
 # ================== PAGES ==================
+
 if page == "Overview":
+
+    # --- LIGHTWEIGHT CACHES (scoped to this block) ---
+    @st.cache_data(ttl=120, show_spinner=False)  # 2 minutes
+    def _get_baswap_df_cached():
+        base = combined_data_retrieve()          # already 24h-cached in data.py
+        return thingspeak_retrieve(base)         # live top-up -> short-cached here
+
+    @st.cache_data(ttl=120, show_spinner=False)  # 2 minutes
+    def _get_overview_frames(date_from, date_to, target_col, agg_funcs):
+        df0 = _get_baswap_df_cached()
+        filtered = filter_data(df0, date_from, date_to)
+        hourly   = apply_aggregation(filtered, COL_NAMES, target_col, "Hour", agg_funcs)
+        daily    = apply_aggregation(filtered, COL_NAMES, target_col, "Day",  agg_funcs)
+        return df0, filtered, hourly, daily
+
     # --- Layout: Map (70%) + Right box (30%) ---
     col_left, col_right = st.columns([7, 3], gap="small")
 
@@ -356,7 +372,7 @@ if page == "Overview":
         n = len(station_names)
         table_df = pd.DataFrame({
             texts["table_station"]: station_names,
-            texts["current_measurement"]: ["-"] * n,
+            texts["current_measurement"]: ["-"] * n,  # (kept as-is)
             texts["table_warning"]: ["-"] * n,
         })
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
@@ -385,7 +401,8 @@ if page == "Overview":
         st_folium(m, width="100%", height=MAP_HEIGHT, key="baswap_map")
 
     # ---------- BELOW COLUMNS (full page width) ----------
-    df = thingspeak_retrieve(combined_data_retrieve())
+    # Use cached BASWAP data
+    df = _get_baswap_df_cached()
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
@@ -425,9 +442,16 @@ if page == "Overview":
             st.cache_data.clear()
             st.rerun()
 
+    # --- Cached frames for stats + charts (cheap on map pan) ---
+    date_from = st.session_state.date_from
+    date_to   = st.session_state.date_to
+    target_col = st.session_state.target_col
+    agg_funcs  = st.session_state.agg_stats
+
+    df_full, filtered_df, hourly, daily = _get_overview_frames(date_from, date_to, target_col, agg_funcs)
+
     # Show the metrics
-    stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
-    display_statistics(stats_df, st.session_state.target_col)
+    display_statistics(filtered_df, target_col)
 
     st.divider()
 
@@ -437,22 +461,15 @@ if page == "Overview":
     with st.expander(settings_label, expanded=False):
         settings_panel(first_date, last_date, one_month_ago, last_date)
 
-    date_from = st.session_state.date_from
-    date_to = st.session_state.date_to
-    target_col = st.session_state.target_col
-    agg_funcs = st.session_state.agg_stats
-    filtered_df = filter_data(df, date_from, date_to)
-
+    # --- Charts ---
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
 
         with tabs[0]:
-            hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
             plot_line_chart(hourly, target_col, "Hour")
 
         with tabs[1]:
-            daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
             plot_line_chart(daily, target_col, "Day")
 
     st.divider()
