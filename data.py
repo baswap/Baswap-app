@@ -39,7 +39,7 @@ def _to_bangkok(series: pd.Series) -> pd.Series:
 # ──────────────────────────────────────────────────────────────
 # Cached combined-file loader
 # ──────────────────────────────────────────────────────────────
-@st.cache_data(ttl=86_400)
+@st.cache_data()
 def combined_data_retrieve() -> pd.DataFrame:
     drive_handler = DriveManager(SECRET_ACC)
     df = drive_handler.read_csv_file(COMBINED_ID)
@@ -61,7 +61,7 @@ def fetch_thingspeak_data(results: int) -> list[dict]:
     st.error("Failed to fetch data from ThingSpeak API")
     return []
 
-
+@st.cache_data()
 def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
     """Append any newer rows from ThingSpeak to *df*."""
     last_ts: datetime = df["Timestamp (GMT+7)"].iloc[-1]

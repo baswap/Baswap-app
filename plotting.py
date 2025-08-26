@@ -141,7 +141,7 @@ def _inject_nans_for_gaps(
     return out
 
 
-def render_predictions(data: pd.DataFrame, col: str):
+def render_predictions(data: pd.DataFrame, col: str, resample_freq:str):
     """
     Build two frames:
       - line_df  : ['Timestamp','median'] includes last observed + future median.
@@ -171,7 +171,7 @@ def render_predictions(data: pd.DataFrame, col: str):
     max_values_numeric["unique_id"] = "Baswap station"
     nf_input = max_values_numeric[["unique_id", "ds", "y"]]
 
-    preds = make_predictions(nf_input)
+    preds = make_predictions(nf_input, resample_freq)
 
     needed = [
         "AutoNBEATS-median",
@@ -192,7 +192,11 @@ def render_predictions(data: pd.DataFrame, col: str):
         preds_df = preds_df / 2000.0
 
     # timestamps for future (hourly ahead)
-    pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
+    if resample_freq == "Hour":
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
+    elif resample_freq == "Day":
+        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(len(preds_df))]
+
 
     # line df includes last observed + future median
     line_df = pd.DataFrame({
@@ -269,7 +273,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     t_pred_value = _t("tooltip_predicted_value", axis_y)
 
     # Observed/Predicted legend (HTML above chart)
-    show_pred = (resample_freq == "Hour" and col in ["EC Value (us/cm)", "EC Value (g/l)"])
+    show_pred = (col in ["EC Value (us/cm)", "EC Value (g/l)"])
     _render_obs_pred_legend(show_predicted=show_pred)
 
     # Observed chart
@@ -290,7 +294,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     # Prediction overlays (only for Hourly EC)
     if show_pred:
-        line_df, bands_df = render_predictions(df_filtered, col)
+        line_df, bands_df = render_predictions(df_filtered, col, resample_freq)
         if line_df is not None and bands_df is not None and not bands_df.empty:
             # 90% band (light red)
             band90 = (

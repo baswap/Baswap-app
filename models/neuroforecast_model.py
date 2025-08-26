@@ -45,15 +45,18 @@ def print_table(rows, total, top=None):
 
 @cache_resource
 def load_models(freq):
-    if freq == "1h":
+    print(freq)
+    if freq == "Hour":
         # rows, total = list_files("models/weights/nbeats_24")
         # print_table(rows, total, top=200)   # change top=None to show everything
-        nf = NeuralForecast.load(path="models/weights/nbeats_24")
+        nf = NeuralForecast.load(path="models/weights/nbeats_1h_24_7")
+    elif freq == "Day":
+        nf = NeuralForecast.load(path="models/weights/nhbeats_1d_30_7")
     print("model loaded")
     return nf
 
 @cache_data
-def make_predictions(df, freq="1h"):
+def make_predictions(df, freq="Hour"):
     time_start = time.time()
     model = load_models(freq)
     preds = model.predict(df)
