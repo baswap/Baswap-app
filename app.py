@@ -89,27 +89,30 @@ st.markdown(f"""
   /* Hide Streamlit default header */
   header{{visibility:hidden;}}
 
-  /* Fixed custom header (80px tall) */
-.custom-header{{
-  position:fixed; top:0; left:0; right:0; height:5rem;           /* was 4.5rem */
-  display:flex; align-items:center; gap:2rem; padding:0 1rem;
-  background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
-}}
+  /* One source of truth for header height */
+  :root {{ --header-h: 5rem; }} /* desktop/tablet */
+  @media (max-width: 640px) {{ :root {{ --header-h: 3.5rem; }} }} /* phones */
 
-/* Brand with icon + text — vertically centered */
-.custom-header .logo{{ display:flex; align-items:center; gap:.6rem; color:#fff; }}
-.custom-header .logo img{{ height:80px; width:auto; border-radius:4px; display:block; object-fit:contain; transform: translateY(5px);}}
-.custom-header .logo .text{{ font-size:2.94rem; font-weight:700; line-height:1; }}  /* ~40% bigger */
+  /* Fixed custom header */
+  .custom-header{{
+    position:fixed; top:0; left:0; right:0; height:var(--header-h);
+    display:flex; align-items:center; gap:1rem; padding:0 .75rem;
+    background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
+  }}
 
-/* Nav links also align to center line */
-.custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
-.custom-header .nav a{{
-  display:inline-flex; align-items:center; line-height:1;
-  text-decoration:none; font-size:1.2rem; color:#fff; padding-bottom:.25rem;
-  border-bottom:2px solid transparent;
-}}
-.custom-header .nav a.active{{ border-bottom-color:#fff; font-weight:600; }}
+  /* Brand with icon + text — responsive sizes */
+  .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
+  .custom-header .logo img{{ height:calc(var(--header-h) - 1rem); width:auto; border-radius:4px; display:block; object-fit:contain; }}
+  .custom-header .logo .text{{ font-size:clamp(1.25rem, 6vw, 2.94rem); font-weight:700; line-height:1; }}
 
+  /* Nav links */
+  .custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
+  .custom-header .nav a{{
+    display:inline-flex; align-items:center; line-height:1;
+    text-decoration:none; font-size:clamp(.9rem, 3.5vw, 1.2rem); color:#fff; padding-bottom:.25rem;
+    border-bottom:2px solid transparent;
+  }}
+  .custom-header .nav a.active{{ border-bottom-color:#fff; font-weight:600; }}
 
   /* Language dropdown */
   .lang-dd {{ position: relative; }}
@@ -133,7 +136,7 @@ st.markdown(f"""
   .lang-menu .item:hover {{ background:#f2f6ff; }}
 
   /* Push content below fixed header */
-  body>.main{{ margin-top:4.5rem; }}
+  body>.main{{ margin-top:var(--header-h); }}
 
   /* Ensure folium map height */
   iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
@@ -166,8 +169,16 @@ st.markdown(f"""
     line-height: 1.2;
     margin: .25rem 0 .6rem;
   }}
+
+  /* Mobile niceties */
+  @media (max-width: 640px){{
+    .custom-header{{ gap:.75rem; padding:0 .5rem; }}
+    .custom-header .nav{{ gap:.5rem; }}
+    .lang-dd summary{{ padding:.25rem .5rem; }}
+  }}
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- app layout glue / margins ---
 st.markdown("""
@@ -176,14 +187,14 @@ st.markdown("""
   [data-testid="stApp"]{ display:flex; flex-direction:column; }
 
   [data-testid="stAppViewContainer"] > .main{
-    margin-top:4.5rem !important;
+    margin-top:var(--header-h) !important;
     display:flex; flex-direction:column;
     flex:1 0 auto;
   }
 
   .block-container, [data-testid="block-container"]{
     display:flex !important; flex-direction:column !important;
-    min-height: calc(100vh - 4.5rem) !important;
+    min-height: calc(100vh - var(--header-h)) !important;
     padding-top: 2.5rem;
     overflow: visible !important;
   }
@@ -194,6 +205,7 @@ st.markdown("""
   .refresh-holder .stButton > button{ transform: translateY(2px); }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- Top bar with brand icon ---
 active_overview = "active" if page == "Overview" else ""
