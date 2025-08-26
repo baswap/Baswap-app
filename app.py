@@ -89,19 +89,9 @@ st.markdown(f"""
   /* Hide Streamlit default header */
   header{{visibility:hidden;}}
 
-  /* Variables: header + mobile scale factors */
-  :root {{
-    --header-h: 5rem;     /* desktop/tablet */
-    --logo-scale: 1;
-    --nav-scale: 1;
-    --lang-scale: 1;
-  }}
-  @media (max-width: 768px) {{
-    --header-h: 2.8rem;   /* phones */
-    --logo-scale: 1.1;    /* +10% logo & BASWAP on phones */
-    --nav-scale: 0.9;     /* -10% Overview/About on phones */
-    --lang-scale: 0.7;    /* -30% language dropdown on phones */
-  }}
+  /* Header height variable */
+  :root {{ --header-h: 5rem; }}                         /* desktop/tablet */
+  @media (max-width: 768px) {{ :root {{ --header-h: 2.8rem; }} }}  /* phones */
 
   /* Fixed custom header */
   .custom-header{{
@@ -110,15 +100,10 @@ st.markdown(f"""
     background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
   }}
 
-  /* Brand with icon + text */
+  /* Brand with icon + text — responsive sizes */
   .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
-  .custom-header .logo img{{
-    height:calc((var(--header-h) - 1.2rem) * var(--logo-scale));
-    width:auto; border-radius:4px; display:block; object-fit:contain;
-  }}
-  .custom-header .logo .text{{
-    font-size:clamp(1.25rem, 6vw, 2.2rem); font-weight:700; line-height:1;
-  }}
+  .custom-header .logo img{{ height:calc(var(--header-h) - 1.2rem); width:auto; border-radius:4px; display:block; object-fit:contain; }}
+  .custom-header .logo .text{{ font-size:clamp(1.25rem, 6vw, 2.2rem); font-weight:700; line-height:1; }}
 
   /* Nav links */
   .custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
@@ -188,23 +173,20 @@ st.markdown(f"""
   @media (max-width: 768px){{
     .custom-header{{ gap:.5rem; padding:0 .5rem; }}
 
-    /* Logo text bigger by +10% via logo-scale */
-    .custom-header .logo .text{{ font-size:calc(1.05rem * var(--logo-scale)); }}
+    /* BASWAP wordmark: +10% (from ~1.05rem → ~1.155rem) */
+    .custom-header .logo .text{{ font-size:1.155rem; }}
 
-    /* Overview/About smaller by -10% via nav-scale */
-    .custom-header .nav a{{ font-size:calc(.85rem * var(--nav-scale)); }}
+    /* Overview/About nav: −10% (from .85rem → .765rem) */
+    .custom-header .nav a{{ font-size:.765rem; }}
 
-    /* Language dropdown -30% via lang-scale */
-    .lang-dd summary{{
-      font-size:calc(1rem * var(--lang-scale));
-      padding:.2rem .45rem;
+    /* Language control: −30% size */
+    .lang-dd summary{{ 
+      font-size:0.7em;                 /* 70% of parent */
+      padding:.14rem .315rem;          /* 30% less than .2/.45 */
     }}
   }}
 </style>
 """, unsafe_allow_html=True)
-
-
-
 
 # --- app layout glue / margins ---
 st.markdown("""
