@@ -89,9 +89,9 @@ st.markdown(f"""
   /* Hide Streamlit default header */
   header{{visibility:hidden;}}
 
-  /* One source of truth for header height */
-  :root {{ --header-h: 5rem; }} /* desktop/tablet */
-  @media (max-width: 640px) {{ :root {{ --header-h: 3.5rem; }} }} /* phones */
+  /* Header height variable */
+  :root {{ --header-h: 5rem; }}                         /* desktop/tablet */
+  @media (max-width: 768px) {{ :root {{ --header-h: 2.8rem; }} }}  /* phones */
 
   /* Fixed custom header */
   .custom-header{{
@@ -102,14 +102,14 @@ st.markdown(f"""
 
   /* Brand with icon + text — responsive sizes */
   .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
-  .custom-header .logo img{{ height:calc(var(--header-h) - 1rem); width:auto; border-radius:4px; display:block; object-fit:contain; }}
-  .custom-header .logo .text{{ font-size:clamp(1.25rem, 6vw, 2.94rem); font-weight:700; line-height:1; }}
+  .custom-header .logo img{{ height:calc(var(--header-h) - 1.2rem); width:auto; border-radius:4px; display:block; object-fit:contain; }}
+  .custom-header .logo .text{{ font-size:clamp(1.25rem, 6vw, 2.2rem); font-weight:700; line-height:1; }}
 
   /* Nav links */
   .custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
   .custom-header .nav a{{
     display:inline-flex; align-items:center; line-height:1;
-    text-decoration:none; font-size:clamp(.9rem, 3.5vw, 1.2rem); color:#fff; padding-bottom:.25rem;
+    text-decoration:none; font-size:clamp(.9rem, 3.5vw, 1.1rem); color:#fff; padding-bottom:.25rem;
     border-bottom:2px solid transparent;
   }}
   .custom-header .nav a.active{{ border-bottom-color:#fff; font-weight:600; }}
@@ -149,7 +149,6 @@ st.markdown(f"""
   .map-title .sub{{ font-size:.95rem; font-weight:500; opacity:.8; }}
 
   .stButton > button{{ white-space: nowrap; }}
-
   .stats-title {{ font-weight: 600; }}
 
   .stats-scope{{
@@ -170,14 +169,17 @@ st.markdown(f"""
     margin: .25rem 0 .6rem;
   }}
 
-  /* Mobile niceties */
-  @media (max-width: 640px){{
-    .custom-header{{ gap:.75rem; padding:0 .5rem; }}
-    .custom-header .nav{{ gap:.5rem; }}
-    .lang-dd summary{{ padding:.25rem .5rem; }}
+  /* Mobile overrides (≤768px) */
+  @media (max-width: 768px){{
+    .custom-header{{ gap:.5rem; padding:0 .5rem; }}
+    .custom-header .logo img{{ height:calc(var(--header-h) - 1.2rem); }}
+    .custom-header .logo .text{{ font-size:1.05rem; }}  /* force smaller wordmark */
+    .custom-header .nav a{{ font-size:.85rem; }}        /* smaller nav */
+    .lang-dd summary{{ padding:.2rem .45rem; }}
   }}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # --- app layout glue / margins ---
