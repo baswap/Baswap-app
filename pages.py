@@ -9,7 +9,6 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
 def settings_panel(side_texts, first_date, last_date, default_from, default_to, COL_NAMES):
-    """Render the settings panel in the sidebar or expander"""
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
@@ -21,7 +20,6 @@ def settings_panel(side_texts, first_date, last_date, default_from, default_to, 
         st.session_state.date_from = default_to
         st.session_state.date_to = default_to
 
-    # Set defaults if not chosen yet
     if st.session_state.get("date_from") is None:
         st.session_state.date_from = default_from
     if st.session_state.get("date_to") is None:
@@ -36,12 +34,9 @@ def settings_panel(side_texts, first_date, last_date, default_from, default_to, 
         min_value=first_date, max_value=last_date, key="date_to"
     )
 
-    # --- LOCK the stats selector to Max and disable the widget ---
-    # Ensure session value is Max
     st.session_state.agg_stats = ["Max"]
 
 def show_dash_metrics(t_max, t_min, t_avg, t_std):
-    """Show the dashboard metrics with placeholder values"""
     c1, c2, c3, c4 = st.columns(4)
     for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
         c.metric(label=lab, value="-")
@@ -49,19 +44,15 @@ def show_dash_metrics(t_max, t_min, t_avg, t_std):
 def overview_page(
     texts, side_texts, COL_NAMES, df, dm, 
     BASWAP_NAME, STATION_LOOKUP, OTHER_STATIONS,
-    MAP_HEIGHT, TABLE_HEIGHT
+    MAP_HEIGHT, TABLE_HEIGHT,
+    lang     # <--- ADD THIS PARAMETER
 ):
-    """Render the overview page with map, stats, and charts"""
     from station_data import norm_name, resolve_cols, pick_ec_col
     from map_handler import add_layers, create_map, render_map
-    
-    # --- Layout: Map (70%) + Right box (30%) ---
-    col_left, col_right = st.columns([7, 3], gap="small")
 
-    # ---------- RIGHT: Picker + table (scrollable) ----------
+    col_left, col_right = st.columns([7, 3], gap="small")
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
-
         station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
@@ -73,18 +64,16 @@ def overview_page(
         )
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
-        # --- Build "Current Measurement" from latest station rows in Drive CSV ---
-        latest_values = {}  # normalized station_name -> EC*2000
+        latest_values = {}
         try:
             file_id = st.secrets.get("STATIONS_FILE_ID")
             if file_id:
                 df_all = dm.read_csv_file(file_id)
                 stn_col, time_col, ec_col = resolve_cols(df_all.columns)
-
                 d = df_all.copy()
                 d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
                 d = d.dropna(subset=[time_col])
-                idx = d.groupby(stn_col)[time_col].idxmax()   # latest row per station
+                idx = d.groupby(stn_col)[time_col].idxmax()
                 latest = d.loc[idx, [stn_col, ec_col]].copy()
                 latest["key"] = latest[stn_col].map(norm_name)
                 latest["val"] = pd.to_numeric(latest[ec_col], errors="coerce") * 2000.0
@@ -106,48 +95,37 @@ def overview_page(
         table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
-    # ---------- LEFT: Map (tall) with zoom-to-station ----------
     with col_left:
         map_title = texts.get("map_title", "🗺️ Station Map")
         st.markdown(f"""<div class="map-title">{map_title}</div>""", unsafe_allow_html=True)
-
         center = [10.2, 106.0]; zoom = 8; highlight_location = None
         sel = st.session_state.get("selected_station")
         if sel and sel in STATION_LOOKUP:
             lat, lon = STATION_LOOKUP[sel]
             center = [lat, lon]; zoom = 12; highlight_location = (lat, lon)
-
-        # Create map and add layers
         m = create_map(center, zoom, highlight_location, sel)
         add_layers(m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS)
-        
-        # render map and capture clicks
         map_out = render_map(m, MAP_HEIGHT)
-
-    # --- Sync marker click -> global selection (selectbox + stats badge) ---
     clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
     if clicked_label and clicked_label in STATION_LOOKUP and st.session_state.get("selected_station") != clicked_label:
         st.session_state.selected_station = clicked_label
         st.rerun()
 
-    # ---------- BELOW COLUMNS (full page width) ----------
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
-
     if st.session_state.get("date_from") is None:
         st.session_state.date_from = one_month_ago
     if st.session_state.get("date_to") is None:
         st.session_state.date_to = last_date
 
-    # --- Overall Statistics header  ---
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
         st.markdown(f"### 📊 {texts['overall_stats_title']}")
     with sh_right:
         st.empty()
 
-    # ---- Scope label + REFRESH button ----
+    # FIXED: Use lang argument here!
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
     none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
@@ -171,40 +149,30 @@ def overview_page(
             st.cache_data.clear()
             st.rerun()
 
-    # --- Overall Statistics logic ---
     t_max = texts.get("stats_max", "Maximum")
     t_min = texts.get("stats_min", "Minimum")
     t_avg = texts.get("stats_avg", "Average")
     t_std = texts.get("stats_std", "Std Dev")
 
-    # - None -> dashes
-    # - BASWAP -> original behavior (date range + target col on df)
-    # - Other station -> last 1000 rows from multi-station CSV, EC(g/l)*2000
     if not selected_station:
         show_dash_metrics(t_max, t_min, t_avg, t_std)
     elif selected_station == BASWAP_NAME:
-        # ORIGINAL behavior
         stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
         display_statistics(stats_df, st.session_state.target_col)
     else:
-        # Other station: compute from multi-station CSV, last 1000 rows of EC(g/l) × 2000
         try:
             file_id = st.secrets.get("STATIONS_FILE_ID")
             if not file_id:
                 show_dash_metrics(t_max, t_min, t_avg, t_std)
             else:
                 df_all = dm.read_csv_file(file_id)
-
-                # Resolve columns
                 def _norm_col2(col: str) -> str:
                     import re
                     return re.sub(r"[^a-z0-9]", "", str(col).lower())
-
                 norm_map = {_norm_col2(c): c for c in df_all.columns}
                 stn_col = next((norm_map[k] for k in ["stationname", "station", "stationid", "name"] if k in norm_map), None)
                 time_col = next((norm_map[k] for k in ["measdate", "datetime", "timestamp", "time", "date"] if k in norm_map), None)
                 ec_col = pick_ec_col(df_all.columns)
-
                 if not (stn_col and time_col and ec_col):
                     show_dash_metrics(t_max, t_min, t_avg, t_std)
                 else:
@@ -212,11 +180,9 @@ def overview_page(
                     d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
                     d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
                     d = d.dropna(subset=[time_col, ec_col])
-
                     sel_key = norm_name(selected_station)
                     mask = d[stn_col].map(norm_name) == sel_key
                     sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
-
                     if sd.empty:
                         show_dash_metrics(t_max, t_min, t_avg, t_std)
                     else:
@@ -230,37 +196,26 @@ def overview_page(
             show_dash_metrics(t_max, t_min, t_avg, t_std)
 
     st.divider()
-
-    # --- Settings (in expander) ---
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
         settings_panel(side_texts, first_date, last_date, one_month_ago, last_date, COL_NAMES)
-
     date_from = st.session_state.date_from
     date_to = st.session_state.date_to
     target_col = st.session_state.target_col
     agg_funcs = st.session_state.agg_stats
     filtered_df = filter_data(df, date_from, date_to)
-
     with chart_container:
         st.subheader(f"📈 {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
-
         with tabs[0]:
             hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", agg_funcs)
             plot_line_chart(hourly, target_col, "Hour")
-
         with tabs[1]:
             daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", agg_funcs)
             plot_line_chart(daily, target_col, "Day")
-
     st.divider()
-
-    # Data table header
     st.subheader(texts["data_table"])
-
-    # Column picker + table (separate widget key to avoid state conflicts)
     table_cols_sel = st.multiselect(
         texts["columns_select"],
         options=COL_NAMES,
@@ -268,14 +223,12 @@ def overview_page(
         key="table_cols_picker",
     )
     st.session_state.table_cols = list(table_cols_sel)
-
     show_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
 
 def about_page(lang):
-    """Render the about page"""
     def _img_src(path: str) -> str:
         p = Path(path)
         if not p.exists():
@@ -283,8 +236,6 @@ def about_page(lang):
         mime = mimetypes.guess_type(p.name)[0] or "image/png"
         b64 = base64.b64encode(p.read_bytes()).decode()
         return f"data:{mime};base64,{b64}"
-
     html = get_about_html(lang)
     html = html.replace("__IMG1__", _img_src("img/1.jpg")).replace("__IMG2__", _img_src("img/2.jpg"))
-
     st.markdown(html, unsafe_allow_html=True)
