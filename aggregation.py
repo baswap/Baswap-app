@@ -2,35 +2,57 @@ import streamlit as st
 import pandas as pd
 
 def filter_data(df, date_from, date_to):
-    filtered_df = df[(df["Timestamp (GMT+7)"].dt.date >= date_from) & 
-                     (df["Timestamp (GMT+7)"].dt.date <= date_to)].copy()
-    return filtered_df
+    if date_from is None or date_to is None:
+        return df.iloc[0:0].copy()
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    ts = pd.to_datetime(df["Timestamp (GMT+7)"], errors="coerce")
+    # normalize to tz-naive for stable comparisons/plotting
+    try:
+        if getattr(ts.dt, "tz", None) is not None:
+            ts = ts.dt.tz_localize(None)
+    except Exception:
+        pass
+
+    mask = (ts.dt.date >= date_from) & (ts.dt.date <= date_to)
+    out = df.loc[mask].copy()
+    out["Timestamp (GMT+7)"] = ts[mask]
+    out.sort_values("Timestamp (GMT+7)", inplace=True)
+    return out
 
 def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions):
     if resample_freq == "None":
-        return df
+        return df.copy()
 
     rule_map = {"Hour": "h", "Day": "d"}
-    agg_map = {"Min": "min", "Max": "max", "Median": "median"}
-
-    if not set(agg_functions).issubset(agg_map.keys()):
+    rule = rule_map[resample_freq]
+    valid = {"Min", "Max", "Median"}
+    if not set(agg_functions).issubset(valid):
         st.error("Invalid aggregation functions selected.")
         return df
 
-    df_resampled = df.set_index("Timestamp (GMT+7)")
+    dfi = df.copy()
+    ts = pd.to_datetime(dfi["Timestamp (GMT+7)"], errors="coerce")
+    try:
+        if getattr(ts.dt, "tz", None) is not None:
+            ts = ts.dt.tz_localize(None)
+    except Exception:
+        pass
+    dfi["Timestamp (GMT+7)"] = ts
+    dfi = dfi.set_index("Timestamp (GMT+7)").sort_index()
+
     agg_results = []
+    # anchor bins to day starts for deterministic edges
+    resampler = dfi[target_col].resample(rule, origin="start_day")
 
-    for agg_function in agg_functions:
-        if agg_function in ["Min", "Max"]:
-            idx_func = "idxmin" if agg_function == "Min" else "idxmax"
-            grouped = df_resampled.groupby(pd.Grouper(freq=rule_map[resample_freq]))[target_col]
-            idx = grouped.apply(lambda x: getattr(x, idx_func)() if not x.empty else None).dropna()
-            agg_df = df_resampled.loc[idx].reset_index()
-        elif agg_function == "Median":
-            agg_series = df_resampled[target_col].resample(rule_map[resample_freq]).median()
-            agg_df = agg_series.reset_index()
-
-        agg_df["Aggregation"] = agg_function
+    for f in agg_functions:
+        if f in ("Min", "Max"):
+            idx = getattr(resampler, "idxmin" if f == "Min" else "idxmax")().dropna()
+            agg_df = dfi.loc[idx].reset_index()
+        else:
+            agg_df = resampler.median().reset_index(name=target_col)
+        agg_df["Aggregation"] = f
         agg_results.append(agg_df)
 
     return pd.concat(agg_results, ignore_index=True)
