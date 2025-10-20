@@ -49,13 +49,17 @@ def overview_page(
     MAP_HEIGHT, TABLE_HEIGHT,
     lang
 ):
-    from station_data import norm_name, resolve_cols, pick_ec_col
+    from station_data import norm_name, resolve_cols, pick_ec_col, get_station_list
     from map_handler import add_layers, create_map, render_map
 
     col_left, col_right = st.columns([7, 3], gap="small")
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
-        station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
+
+        # Use unified list that includes BASWAP and all others
+        station_list = get_station_list(texts)
+
+        station_options_display = [texts["picker_none"]] + [s["name"] for s in station_list]
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
@@ -94,13 +98,12 @@ def overview_page(
 
         baswap_fallback_val = _baswap_current_from_df(df)
 
-        # Include BASWAP buoy + all OTHER_STATIONS in the table to keep map and table in sync
-        station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
+        # Build table rows from unified list so map/table stay in sync
         rows = []
-        for name in station_names:
+        for s in station_list:
+            name = s["name"]
             key = norm_name(name)
             val = latest_values.get(key)
-            # If the stations file has no BASWAP entry, use the local df fallback
             if name == BASWAP_NAME and (val is None or pd.isna(val)):
                 val = baswap_fallback_val
             display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
@@ -123,7 +126,6 @@ def overview_page(
         m = create_map(center, zoom, highlight_location, sel)
         add_layers(m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS)
         map_out = render_map(m, MAP_HEIGHT)
-
     clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
     if clicked_label and clicked_label in STATION_LOOKUP and st.session_state.get("selected_station") != clicked_label:
         st.session_state.selected_station = clicked_label
