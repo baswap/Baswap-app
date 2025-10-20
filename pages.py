@@ -34,7 +34,9 @@ def settings_panel(side_texts, first_date, last_date, default_from, default_to, 
         min_value=first_date, max_value=last_date, key="date_to"
     )
 
-    st.session_state.agg_stats = ["Max"]
+    # set default only once; do NOT reset every rerun
+    if "agg_stats" not in st.session_state:
+        st.session_state.agg_stats = ["Max"]
 
 def show_dash_metrics(t_max, t_min, t_avg, t_std):
     c1, c2, c3, c4 = st.columns(4)
