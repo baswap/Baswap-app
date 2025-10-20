@@ -264,7 +264,7 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
-    # explicit empty guards to avoid "disappearing" charts
+    # explicit empty guards
     if df is None or df.empty or col not in df.columns or df[col].dropna().empty:
         st.info("No data for this date range.")
         return
@@ -286,9 +286,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         gap = pd.Timedelta(days=3)
         disp_fmt = "%d/%m/%Y"
     else:
-        df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-            df_filtered["Timestamp (GMT+7)"]
-        )
+        df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
@@ -311,20 +309,16 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         display_fmt=disp_fmt,
     )
 
-    # Localized axis & tooltip labels
-    axis_x = _t("axis_timestamp", "Timestamp")
-    axis_y = _t("axis_value", "Value")
-    t_rounded = _t("tooltip_rounded_time", axis_x)
-    t_exact = _t("tooltip_exact_time", axis_x)
-    t_value = _t("tooltip_value", axis_y)
-    t_pred_time = _t("tooltip_predicted_time", axis_x)
-    t_pred_value = _t("tooltip_predicted_value", axis_y)
+    # Localized labels
+    t_rounded  = _t("tooltip_time_rounded", "Rounded time")
+    t_exact    = _t("tooltip_time_exact",   "Exact time")
+    t_value    = _t("tooltip_value",        "Value")
+    t_pred_time= _t("tooltip_predicted_time", "Predicted time")
+    t_pred_val = _t("tooltip_predicted_value", _t("axis_value", "Value"))
+    axis_x     = _t("axis_timestamp", "Timestamp")
+    axis_y     = _t("axis_value", "Value")
 
-    # Observed/Predicted legend (HTML above chart)
-    show_pred = (col in ["EC Value (us/cm)", "EC Value (g/l)"])
-    _render_obs_pred_legend(show_predicted=show_pred)
-
-    # Observed chart
+    # Observed/Predicted legend: we’ll turn it on only if an overlay is present
     encodings = dict(
         x=alt.X("Timestamp (Rounded):T", title=axis_x),
         y=alt.Y(f"{col}:Q", title=axis_y),
@@ -340,10 +334,14 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
 
-    # Prediction overlays only if we still have usable data
-    if show_pred:
+    # Prediction overlays (only for EC columns)
+    overlay_layers = []
+    show_pred_candidate = (col in ["EC Value (us/cm)", "EC Value (g/l)"])
+    if show_pred_candidate:
         line_df, bands_df = render_predictions(df_filtered, col, resample_freq)
-        if line_df is not None and bands_df is not None and not bands_df.empty:
+
+        # bands (if present)
+        if bands_df is not None and not bands_df.empty:
             band90 = (
                 alt.Chart(bands_df)
                 .mark_area(opacity=0.15, color="red")
@@ -372,6 +370,10 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
+            overlay_layers.extend([band90, band50])
+
+        # median line (even if bands are missing)
+        if line_df is not None and not line_df.empty:
             pred_line = (
                 alt.Chart(line_df)
                 .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
@@ -380,15 +382,19 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     y=alt.Y("median:Q", title=axis_y),
                     tooltip=[
                         alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("median:Q", title=t_pred_value),
+                        alt.Tooltip("median:Q", title=t_pred_val),
                     ],
                 )
             )
-            chart = alt.layer(band90, band50, pred_line, main_chart)
-            st.altair_chart(chart, use_container_width=True)
-            return
+            overlay_layers.append(pred_line)
 
-    st.altair_chart(main_chart, use_container_width=True)
+    # Render legend with or without predicted series
+    _render_obs_pred_legend(show_predicted=bool(overlay_layers))
+
+    if overlay_layers:
+        st.altair_chart(alt.layer(*overlay_layers, main_chart), use_container_width=True)
+    else:
+        st.altair_chart(main_chart, use_container_width=True)
 
 
 
