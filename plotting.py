@@ -141,102 +141,76 @@ def _inject_nans_for_gaps(
     return out
 
 
-def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
+def render_predictions(data: pd.DataFrame, col: str, resample_freq:str):
     """
     Build two frames:
       - line_df  : ['Timestamp','median'] includes last observed + future median.
       - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
-    Works whether 'Aggregation' == 'Median' or 'Max' (prefers Median if available).
     Returns (line_df, bands_df) or (None, None) if unavailable.
     """
-    if data is None or data.empty or col not in data.columns:
+    max_data = data[data["Aggregation"] == "Max"].copy()
+    if max_data.empty or len(max_data) < 2:
         return None, None
 
-    df_in = data.copy()
+    # select timestamp + numeric column
+    max_values_numeric = max_data[["Timestamp (GMT+7)", col]].copy()
 
-    # Prefer Median; fall back to Max; else use whatever is there (unaggregated)
-    if "Aggregation" in df_in.columns:
-        for candidate in ("Median", "Max"):
-            sub = df_in[df_in["Aggregation"] == candidate]
-            if len(sub) >= 2:
-                df_in = sub
-                break
-        else:
-            # not enough history to forecast
-            return None, None
+    # last observed time & value in original units
+    last_timestamp = pd.to_datetime(max_data["Timestamp (Rounded)"].iloc[-1])
+    last_value_orig = float(max_data[col].iloc[-1])
 
-    # Last observed timestamp/value (use the rounded time you already computed)
-    if "Timestamp (Rounded)" not in df_in.columns:
-        return None, None
-    last_timestamp = pd.to_datetime(df_in["Timestamp (Rounded)"].iloc[-1])
-    last_value_orig = float(pd.to_numeric(df_in[col], errors="coerce").iloc[-1])
+    # rename to NeuralForecast expected names
+    max_values_numeric.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
+    max_values_numeric["ds"] = pd.to_datetime(max_values_numeric["ds"])
 
-    # Prepare history for the model
-    hist = df_in[["Timestamp (GMT+7)", col]].copy()
-    hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
-    hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
-
-    # Unit handling for the model
+    # if the model expects a scaled unit for g/l, convert y only
     if col == "EC Value (g/l)":
-        hist["y"] = hist["y"] * 2000.0
+        max_values_numeric["y"] = max_values_numeric["y"] * 2000
 
-    hist["unique_id"] = "Baswap station"
-    nf_input = hist[["unique_id", "ds", "y"]]
+    # required by NeuralForecast
+    max_values_numeric["unique_id"] = "Baswap station"
+    nf_input = max_values_numeric[["unique_id", "ds", "y"]]
 
     preds = make_predictions(nf_input, resample_freq)
-    if preds is None or preds.empty:
+
+    needed = [
+        "AutoNBEATS-median",
+        "AutoNBEATS-lo-50",
+        "AutoNBEATS-hi-50",
+        "AutoNBEATS-lo-90",
+        "AutoNBEATS-hi-90",
+    ]
+    missing = [c for c in needed if c not in preds.columns]
+    if missing:
+        st.caption(f"⚠️ Missing prediction columns: {', '.join(missing)}")
         return None, None
 
-    # Be tolerant to column naming across model versions
-    colmap = {
-        "median": ["AutoNBEATS-median", "median", "yhat", "yhat_median"],
-        "lo50":   ["AutoNBEATS-lo-50", "lo50", "p25"],
-        "hi50":   ["AutoNBEATS-hi-50", "hi50", "p75"],
-        "lo90":   ["AutoNBEATS-lo-90", "lo90", "p05"],
-        "hi90":   ["AutoNBEATS-hi-90", "hi90", "p95"],
-    }
+    preds_df = preds[needed].astype(float).reset_index(drop=True)
 
-    def _pick(name: str) -> pd.Series | None:
-        for c in colmap[name]:
-            if c in preds.columns:
-                return pd.to_numeric(preds[c], errors="coerce")
-        return None
-
-    m   = _pick("median")
-    lo5 = _pick("lo50")
-    hi5 = _pick("hi50")
-    lo9 = _pick("lo90")
-    hi9 = _pick("hi90")
-    if any(x is None for x in (m, lo5, hi5, lo9, hi9)):
-        # Missing expected columns -> cannot render bands/line
-        return None, None
-
-    pred_df = pd.DataFrame({"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9})
-
-    # Convert back to original units if we scaled
+    # convert back to original units if needed
     if col == "EC Value (g/l)":
-        pred_df = pred_df / 2000.0
+        preds_df = preds_df / 2000.0
 
-    # Build timestamps for future horizon
-    n = len(pred_df)
+    # timestamps for future (hourly ahead)
     if resample_freq == "Hour":
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
     elif resample_freq == "Day":
-        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
-    else:
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
+        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(len(preds_df))]
 
+
+    # line df includes last observed + future median
     line_df = pd.DataFrame({
         "Timestamp": [last_timestamp] + pred_times,
-        "median":    [last_value_orig] + pred_df["median"].tolist(),
+        "median":    [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
     })
 
+    # bands df includes ONLY future steps (no NaNs)
     bands_df = pd.DataFrame({
         "Timestamp": pred_times,
-        "lo50": pred_df["lo50"].values,
-        "hi50": pred_df["hi50"].values,
-        "lo90": pred_df["lo90"].values,
-        "hi90": pred_df["hi90"].values,
+        "lo50": preds_df["AutoNBEATS-lo-50"].values,
+        "hi50": preds_df["AutoNBEATS-hi-50"].values,
+        "lo90": preds_df["AutoNBEATS-lo-90"].values,
+        "hi90": preds_df["AutoNBEATS-hi-90"].values,
     })
 
     return line_df, bands_df
