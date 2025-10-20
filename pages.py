@@ -47,7 +47,7 @@ def overview_page(
     texts, side_texts, COL_NAMES, df, dm, 
     BASWAP_NAME, STATION_LOOKUP, OTHER_STATIONS,
     MAP_HEIGHT, TABLE_HEIGHT,
-    lang     # <--- ADD THIS PARAMETER
+    lang
 ):
     from station_data import norm_name, resolve_cols, pick_ec_col
     from map_handler import add_layers, create_map, render_map
@@ -83,11 +83,26 @@ def overview_page(
         except Exception:
             latest_values = {}
 
-        station_names = [s["name"] for s in OTHER_STATIONS]
+        # Fallback current value for BASWAP buoy using the local df if it isn't present in the stations file
+        def _baswap_current_from_df(local_df: pd.DataFrame):
+            for col, mult in [("EC Value (g/l)", 2000.0), ("EC Value (us/cm)", 1.0)]:
+                if col in local_df.columns:
+                    s = pd.to_numeric(local_df[col], errors="coerce").dropna()
+                    if not s.empty:
+                        return float(s.iloc[-1]) * mult
+            return None
+
+        baswap_fallback_val = _baswap_current_from_df(df)
+
+        # Include BASWAP buoy + all OTHER_STATIONS in the table to keep map and table in sync
+        station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         rows = []
         for name in station_names:
             key = norm_name(name)
             val = latest_values.get(key)
+            # If the stations file has no BASWAP entry, use the local df fallback
+            if name == BASWAP_NAME and (val is None or pd.isna(val)):
+                val = baswap_fallback_val
             display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
             rows.append({
                 texts["table_station"]: name,
@@ -108,6 +123,7 @@ def overview_page(
         m = create_map(center, zoom, highlight_location, sel)
         add_layers(m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS)
         map_out = render_map(m, MAP_HEIGHT)
+
     clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
     if clicked_label and clicked_label in STATION_LOOKUP and st.session_state.get("selected_station") != clicked_label:
         st.session_state.selected_station = clicked_label
@@ -127,7 +143,6 @@ def overview_page(
     with sh_right:
         st.empty()
 
-    # FIXED: Use lang argument here!
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
     none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
@@ -229,6 +244,7 @@ def overview_page(
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f"{texts['data_dimensions']} ({filtered_df.shape[0]}, {len(existing)}).")
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 def about_page(lang):
     def _img_src(path: str) -> str:
