@@ -49,17 +49,13 @@ def overview_page(
     MAP_HEIGHT, TABLE_HEIGHT,
     lang
 ):
-    from station_data import norm_name, resolve_cols, pick_ec_col, get_station_list
+    from station_data import norm_name, resolve_cols, pick_ec_col
     from map_handler import add_layers, create_map, render_map
 
     col_left, col_right = st.columns([7, 3], gap="small")
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
-
-        # Use unified list that includes BASWAP and all others
-        station_list = get_station_list(texts)
-
-        station_options_display = [texts["picker_none"]] + [s["name"] for s in station_list]
+        station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
@@ -87,25 +83,20 @@ def overview_page(
         except Exception:
             latest_values = {}
 
-        # Fallback current value for BASWAP buoy using the local df if it isn't present in the stations file
-        def _baswap_current_from_df(local_df: pd.DataFrame):
-            for col, mult in [("EC Value (g/l)", 2000.0), ("EC Value (us/cm)", 1.0)]:
-                if col in local_df.columns:
-                    s = pd.to_numeric(local_df[col], errors="coerce").dropna()
-                    if not s.empty:
-                        return float(s.iloc[-1]) * mult
-            return None
+        # Ensure BASWAP appears and is synced: inject its latest value from the ThingSpeak-backed df
+        try:
+            baswap_ec_gl = pd.to_numeric(df["EC Value (g/l)"], errors="coerce").dropna()
+            if not baswap_ec_gl.empty:
+                latest_values[norm_name(BASWAP_NAME)] = float(baswap_ec_gl.iloc[-1]) * 2000.0
+        except Exception:
+            pass
 
-        baswap_fallback_val = _baswap_current_from_df(df)
-
-        # Build table rows from unified list so map/table stay in sync
+        # Table now includes BASWAP + all other stations
+        station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         rows = []
-        for s in station_list:
-            name = s["name"]
+        for name in station_names:
             key = norm_name(name)
             val = latest_values.get(key)
-            if name == BASWAP_NAME and (val is None or pd.isna(val)):
-                val = baswap_fallback_val
             display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
             rows.append({
                 texts["table_station"]: name,
