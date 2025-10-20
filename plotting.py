@@ -266,11 +266,12 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     ).dt.strftime(disp_fmt)
 
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
+    x_field = "Timestamp (Rounded)"  # <<--- use this for ALL layers
 
     # break the line across long gaps
     df_broken = _inject_nans_for_gaps(
         df_filtered,
-        time_col="Timestamp (Rounded)",
+        time_col=x_field,
         value_col=col,
         cat_col=cat_col,
         max_gap=gap,
@@ -288,7 +289,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     axis_y      = _t("axis_value", "Value")
 
     encodings = dict(
-        x=alt.X("Timestamp (Rounded):T", title=axis_x),
+        x=alt.X(f"{x_field}:T", title=axis_x),
         y=alt.Y(f"{col}:Q", title=axis_y),
         color=alt.value("steelblue"),
         tooltip=[
@@ -315,13 +316,13 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             if {"lo90", "hi90"}.issubset(bands_df.columns):
                 band90 = (
                     alt.Chart(bands_df)
-                    .mark_area(opacity=0.15, color=COLOR_PI90)  # light red
+                    .mark_area(opacity=0.15, color=COLOR_PI90)
                     .encode(
-                        x=alt.X("Timestamp:T", title=axis_x),
+                        x=alt.X(f"{x_field}:T", title=axis_x),  # <<--- was "Timestamp:T"
                         y=alt.Y("lo90:Q", title=axis_y),
                         y2=alt.Y2("hi90:Q"),
                         tooltip=[
-                            alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                            alt.Tooltip(f"{x_field}:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                             alt.Tooltip("lo90:Q", title="P5"),
                             alt.Tooltip("hi90:Q", title="P95"),
                         ],
@@ -332,13 +333,13 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             if {"lo50", "hi50"}.issubset(bands_df.columns):
                 band50 = (
                     alt.Chart(bands_df)
-                    .mark_area(opacity=0.30, color=COLOR_PI50)  # darker red
+                    .mark_area(opacity=0.30, color=COLOR_PI50)
                     .encode(
-                        x=alt.X("Timestamp:T", title=axis_x),
+                        x=alt.X(f"{x_field}:T", title=axis_x),  # <<--- was "Timestamp:T"
                         y=alt.Y("lo50:Q", title=axis_y),
                         y2=alt.Y2("hi50:Q"),
                         tooltip=[
-                            alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                            alt.Tooltip(f"{x_field}:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                             alt.Tooltip("lo50:Q", title="P25"),
                             alt.Tooltip("hi50:Q", title="P75"),
                         ],
@@ -352,10 +353,10 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                 alt.Chart(line_df)
                 .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
                 .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
+                    x=alt.X(f"{x_field}:T", title=axis_x),  # <<--- was "Timestamp:T"
                     y=alt.Y("median:Q", title=axis_y),
                     tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip(f"{x_field}:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
                         alt.Tooltip("median:Q", title=t_pred_val),
                     ],
                 )
@@ -365,7 +366,6 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     _render_obs_pred_legend(show_predicted=bool(pred_line or layers))
 
     if pred_line or layers:
-        # Order: bands (bottom) -> main series -> predicted (top)
         final_layers = [*layers, main_chart]
         if pred_line is not None:
             final_layers.append(pred_line)
