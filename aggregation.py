@@ -27,7 +27,7 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
     if resample_freq == "None":
         return df.copy()
 
-    rule_map = {"Hour": "h", "Day": "d"}
+    rule_map = {"Hour": "H", "Day": "D"}
     valid = {"Min", "Max", "Median"}
     if not set(agg_functions).issubset(valid):
         st.error("Invalid aggregation functions selected.")
@@ -35,7 +35,7 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
 
     dfi = df.copy()
 
-    # tz-naive indexed time for deterministic bins
+    # ensure tz-naive datetime index
     ts = pd.to_datetime(dfi["Timestamp (GMT+7)"], errors="coerce")
     try:
         if getattr(ts.dt, "tz", None) is not None:
@@ -45,19 +45,23 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
     dfi["Timestamp (GMT+7)"] = ts
     dfi = dfi.set_index("Timestamp (GMT+7)").sort_index()
 
-    rule = rule_map[resample_freq]
-    resampler = dfi[target_col].resample(rule, origin="start_day")
+    freq = rule_map[resample_freq]
+    grouper = pd.Grouper(freq=freq)
 
+    s = dfi[target_col]
     agg_results = []
+
     for f in agg_functions:
         if f == "Median":
-            agg_df = resampler.median().reset_index(name=target_col)
+            agg_df = s.groupby(grouper).median().reset_index(name=target_col)
         else:
-            idx_series = (resampler.idxmin() if f == "Min" else resampler.idxmax()).dropna()
-            if idx_series.empty:
+            idx = (s.groupby(grouper).idxmin() if f == "Min" else s.groupby(grouper).idxmax())
+            idx = idx.dropna()
+            if idx.empty:
                 agg_df = pd.DataFrame(columns=["Timestamp (GMT+7)", target_col])
             else:
-                agg_df = dfi.loc[idx_series].reset_index()[["Timestamp (GMT+7)", target_col]]
+                sel = dfi.loc[idx.to_numpy(), [target_col]].reset_index()
+                agg_df = sel[["Timestamp (GMT+7)", target_col]]
         agg_df["Aggregation"] = f
         agg_results.append(agg_df)
 
