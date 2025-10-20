@@ -44,7 +44,7 @@ def show_dash_metrics(t_max, t_min, t_avg, t_std):
         c.metric(label=lab, value="-")
 
 def overview_page(
-    texts, side_texts, COL_NAMES, df, dm, 
+    texts, side_texts, COL_NAMES, df, dm,
     BASWAP_NAME, STATION_LOOKUP, OTHER_STATIONS,
     MAP_HEIGHT, TABLE_HEIGHT,
     lang
@@ -226,6 +226,10 @@ def overview_page(
                         c2.metric(label=t_min, value=f"{vals.min():.2f}")
                         c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
                         c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
+        except Exception:
+            c1, c2, c3, c4 = st.columns(4)
+            for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+                c.metric(label=lab, value="-")
 
     st.divider()
 
@@ -270,6 +274,7 @@ def overview_page(
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 
 def about_page(lang):
