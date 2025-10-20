@@ -24,18 +24,18 @@ def filter_data(df, date_from, date_to):
     return out
 
 def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions):
+    import pandas as pd
+
     if resample_freq == "None":
         return df.copy()
 
     rule_map = {"Hour": "H", "Day": "D"}
     valid = {"Min", "Max", "Median"}
     if not set(agg_functions).issubset(valid):
-        st.error("Invalid aggregation functions selected.")
         return df
 
     dfi = df.copy()
 
-    # ensure tz-naive datetime index
     ts = pd.to_datetime(dfi["Timestamp (GMT+7)"], errors="coerce")
     try:
         if getattr(ts.dt, "tz", None) is not None:
@@ -49,8 +49,14 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
     grouper = pd.Grouper(freq=freq)
 
     s = dfi[target_col]
-    agg_results = []
 
+    # resample any forecast columns by "last" so they survive the binning
+    pred_cols = [c for c in dfi.columns if str(c).lower().startswith("predict")]
+    preds_binned = None
+    if pred_cols:
+        preds_binned = dfi[pred_cols].groupby(grouper).last().reset_index()
+
+    out = []
     for f in agg_functions:
         if f == "Median":
             agg_df = s.groupby(grouper).median().reset_index(name=target_col)
@@ -62,9 +68,12 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
             else:
                 sel = dfi.loc[idx.to_numpy(), [target_col]].reset_index()
                 agg_df = sel[["Timestamp (GMT+7)", target_col]]
-        agg_df["Aggregation"] = f
-        agg_results.append(agg_df)
 
-    if not agg_results:
-        return dfi.reset_index()
-    return pd.concat(agg_results, ignore_index=True)
+        if preds_binned is not None:
+            agg_df = agg_df.merge(preds_binned, on="Timestamp (GMT+7)", how="left")
+
+        agg_df["Aggregation"] = f
+        out.append(agg_df)
+
+    return pd.concat(out, ignore_index=True) if out else dfi.reset_index()
+
