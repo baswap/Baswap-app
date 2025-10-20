@@ -217,11 +217,13 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq:str):
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
-    if col not in df.columns:
-        st.error(f"Column '{col}' not found in DataFrame.")
+    # explicit empty guards to avoid "disappearing" charts
+    if df is None or df.empty or col not in df.columns or df[col].dropna().empty:
+        st.info("No data for this date range.")
         return
 
-    df_filtered = df.copy()
+    df_filtered = df.copy().sort_values("Timestamp (GMT+7)")
+    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
 
     # Round time and choose gap/format
     if resample_freq == "Hour":
@@ -243,8 +245,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
-    # Normalize timestamps
-    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
+    # normalize rounded timestamps and display strings
     df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (Rounded)"])
     df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
         df_filtered["Timestamp (Rounded)"]
@@ -252,7 +253,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     cat_col = "Aggregation" if "Aggregation" in df_filtered.columns else None
 
-    # Break the line across long gaps
+    # break the line across long gaps
     df_broken = _inject_nans_for_gaps(
         df_filtered,
         time_col="Timestamp (Rounded)",
@@ -292,14 +293,13 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
 
-    # Prediction overlays (only for Hourly EC)
+    # Prediction overlays only if we still have usable data
     if show_pred:
         line_df, bands_df = render_predictions(df_filtered, col, resample_freq)
         if line_df is not None and bands_df is not None and not bands_df.empty:
-            # 90% band (light red)
             band90 = (
                 alt.Chart(bands_df)
-                .mark_area(opacity=0.15, color="red")  # <-- original style
+                .mark_area(opacity=0.15, color="red")
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo90:Q", title=axis_y),
@@ -311,11 +311,9 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-
-            # 50% band (darker red)
             band50 = (
                 alt.Chart(bands_df)
-                .mark_area(opacity=0.30, color="red")  # <-- original style
+                .mark_area(opacity=0.30, color="red")
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("lo50:Q", title=axis_y),
@@ -327,8 +325,6 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-
-            # Median dashed line (connects to last observed)
             pred_line = (
                 alt.Chart(line_df)
                 .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
@@ -341,8 +337,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-
-            chart = alt.layer(band90, band50, pred_line, main_chart)  # <-- no legend layer
+            chart = alt.layer(band90, band50, pred_line, main_chart)
             st.altair_chart(chart, use_container_width=True)
             return
 
