@@ -47,7 +47,7 @@ def overview_page(
     texts, side_texts, COL_NAMES, df, dm, 
     BASWAP_NAME, STATION_LOOKUP, OTHER_STATIONS,
     MAP_HEIGHT, TABLE_HEIGHT,
-    lang     # <--- ADD THIS PARAMETER
+    lang
 ):
     from station_data import norm_name, resolve_cols, pick_ec_col
     from map_handler import add_layers, create_map, render_map
@@ -83,7 +83,16 @@ def overview_page(
         except Exception:
             latest_values = {}
 
-        station_names = [s["name"] for s in OTHER_STATIONS]
+        # Ensure BASWAP appears and is synced: inject its latest value from the ThingSpeak-backed df
+        try:
+            baswap_ec_gl = pd.to_numeric(df["EC Value (g/l)"], errors="coerce").dropna()
+            if not baswap_ec_gl.empty:
+                latest_values[norm_name(BASWAP_NAME)] = float(baswap_ec_gl.iloc[-1]) * 2000.0
+        except Exception:
+            pass
+
+        # Table now includes BASWAP + all other stations
+        station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         rows = []
         for name in station_names:
             key = norm_name(name)
@@ -127,7 +136,6 @@ def overview_page(
     with sh_right:
         st.empty()
 
-    # FIXED: Use lang argument here!
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
     none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
