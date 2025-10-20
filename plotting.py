@@ -142,72 +142,101 @@ def _inject_nans_for_gaps(
 
 
 def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
-    # pick a source slice that exists: prefer Max, else Median, else Min, else all
-    src = data.copy()
-    if "Aggregation" in src.columns:
-        for key in ("Max", "Median", "Min"):
-            if key in src["Aggregation"].unique():
-                src = src[src["Aggregation"] == key]
-                break
-
-    # need at least two points to predict
-    if src.empty or col not in src.columns or src[col].dropna().shape[0] < 2:
+    """
+    Build two frames:
+      - line_df  : ['Timestamp','median'] includes last observed + future median.
+      - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
+    Works whether 'Aggregation' == 'Median' or 'Max' (prefers Median if available).
+    Returns (line_df, bands_df) or (None, None) if unavailable.
+    """
+    if data is None or data.empty or col not in data.columns:
         return None, None
 
-    # we rely on Timestamp (Rounded) added in plot_line_chart
-    last_timestamp = pd.to_datetime(src["Timestamp (Rounded)"].iloc[-1], errors="coerce")
+    df_in = data.copy()
 
-    # build model input from original timestamp/value columns
-    values = src[["Timestamp (GMT+7)", col]].copy()
-    values.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
-    values["ds"] = pd.to_datetime(values["ds"], errors="coerce")
+    # Prefer Median; fall back to Max; else use whatever is there (unaggregated)
+    if "Aggregation" in df_in.columns:
+        for candidate in ("Median", "Max"):
+            sub = df_in[df_in["Aggregation"] == candidate]
+            if len(sub) >= 2:
+                df_in = sub
+                break
+        else:
+            # not enough history to forecast
+            return None, None
 
-    # scale for g/l if required by the model, then unscale later
-    scaled = col == "EC Value (g/l)"
-    if scaled:
-        values["y"] = values["y"] * 2000.0
+    # Last observed timestamp/value (use the rounded time you already computed)
+    if "Timestamp (Rounded)" not in df_in.columns:
+        return None, None
+    last_timestamp = pd.to_datetime(df_in["Timestamp (Rounded)"].iloc[-1])
+    last_value_orig = float(pd.to_numeric(df_in[col], errors="coerce").iloc[-1])
 
-    values["unique_id"] = "Baswap station"
-    nf_input = values[["unique_id", "ds", "y"]]
+    # Prepare history for the model
+    hist = df_in[["Timestamp (GMT+7)", col]].copy()
+    hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
+    hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
+
+    # Unit handling for the model
+    if col == "EC Value (g/l)":
+        hist["y"] = hist["y"] * 2000.0
+
+    hist["unique_id"] = "Baswap station"
+    nf_input = hist[["unique_id", "ds", "y"]]
 
     preds = make_predictions(nf_input, resample_freq)
-
-    needed = [
-        "AutoNBEATS-median",
-        "AutoNBEATS-lo-50",
-        "AutoNBEATS-hi-50",
-        "AutoNBEATS-lo-90",
-        "AutoNBEATS-hi-90",
-    ]
-    if any(c not in preds.columns for c in needed):
+    if preds is None or preds.empty:
         return None, None
 
-    preds_df = preds[needed].astype(float).reset_index(drop=True)
-    if scaled:
-        preds_df = preds_df / 2000.0
+    # Be tolerant to column naming across model versions
+    colmap = {
+        "median": ["AutoNBEATS-median", "median", "yhat", "yhat_median"],
+        "lo50":   ["AutoNBEATS-lo-50", "lo50", "p25"],
+        "hi50":   ["AutoNBEATS-hi-50", "hi50", "p75"],
+        "lo90":   ["AutoNBEATS-lo-90", "lo90", "p05"],
+        "hi90":   ["AutoNBEATS-hi-90", "hi90", "p95"],
+    }
 
-    # construct future timestamps aligned to the resampling
+    def _pick(name: str) -> pd.Series | None:
+        for c in colmap[name]:
+            if c in preds.columns:
+                return pd.to_numeric(preds[c], errors="coerce")
+        return None
+
+    m   = _pick("median")
+    lo5 = _pick("lo50")
+    hi5 = _pick("hi50")
+    lo9 = _pick("lo90")
+    hi9 = _pick("hi90")
+    if any(x is None for x in (m, lo5, hi5, lo9, hi9)):
+        # Missing expected columns -> cannot render bands/line
+        return None, None
+
+    pred_df = pd.DataFrame({"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9})
+
+    # Convert back to original units if we scaled
+    if col == "EC Value (g/l)":
+        pred_df = pred_df / 2000.0
+
+    # Build timestamps for future horizon
+    n = len(pred_df)
     if resample_freq == "Hour":
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
     elif resample_freq == "Day":
-        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(len(preds_df))]
+        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
     else:
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
-
-    # last observed value (in original units)
-    last_value_orig = float(src[col].iloc[-1])
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
 
     line_df = pd.DataFrame({
         "Timestamp": [last_timestamp] + pred_times,
-        "median":    [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
+        "median":    [last_value_orig] + pred_df["median"].tolist(),
     })
 
     bands_df = pd.DataFrame({
         "Timestamp": pred_times,
-        "lo50": preds_df["AutoNBEATS-lo-50"].values,
-        "hi50": preds_df["AutoNBEATS-hi-50"].values,
-        "lo90": preds_df["AutoNBEATS-lo-90"].values,
-        "hi90": preds_df["AutoNBEATS-hi-90"].values,
+        "lo50": pred_df["lo50"].values,
+        "hi50": pred_df["hi50"].values,
+        "lo90": pred_df["lo90"].values,
+        "hi90": pred_df["hi90"].values,
     })
 
     return line_df, bands_df
