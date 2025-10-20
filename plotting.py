@@ -143,61 +143,61 @@ def _inject_nans_for_gaps(
 
 def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     """
-    Returns two dataframes:
-      - line_df: ['Timestamp','median'] -> last observed point + future medians
-      - bands_df: ['Timestamp','lo50','hi50','lo90','hi90'] -> starts at last observed time
-
-    Fixes:
-    - Drops NaNs before forecasting
-    - Anchors prediction at the last NON-NULL observed value
-    - Adds an anchor row to bands at the last observed timestamp (so no 1-step lag)
+    Returns:
+      - line_df:  ['Timestamp','median']  (starts at last non-null observed point)
+      - bands_df: ['Timestamp','lo50','hi50','lo90','hi90'] (includes an anchor at last non-null)
+    Robust to NaNs and duplicate/unsorted timestamps.
     """
     if data is None or data.empty or col not in data.columns:
         return None, None
 
     df_in = data.copy()
 
-    # Prefer aggregated series with enough points
+    # Prefer an aggregated series with enough valid points
     if "Aggregation" in df_in.columns:
         picked = None
-        for candidate in ("Median", "Max"):
-            sub = df_in[df_in["Aggregation"] == candidate].copy()
-            if pd.to_numeric(sub[col], errors="coerce").dropna().shape[0] >= 2:
-                picked = sub
+        for cand in ("Median", "Max"):
+            g = df_in[df_in["Aggregation"] == cand].copy()
+            if pd.to_numeric(g[col], errors="coerce").dropna().shape[0] >= 2:
+                picked = g
                 break
         if picked is None:
             return None, None
         df_in = picked
 
-    # Must have rounded timestamps (created elsewhere in the pipeline)
     if "Timestamp (Rounded)" not in df_in.columns:
         return None, None
 
-    # Last non-null point to anchor predictions
-    y_all = pd.to_numeric(df_in[col], errors="coerce")
-    valid_idx = y_all.dropna().index
+    # ---- KEY CHANGE: find the last NON-NULL observation ----
+    s = pd.to_numeric(df_in[col], errors="coerce")
+    valid_idx = s.dropna().index
     if len(valid_idx) < 2:
         return None, None
-
     last_idx = valid_idx[-1]
     last_timestamp = pd.to_datetime(df_in.loc[last_idx, "Timestamp (Rounded)"])
-    last_value_orig = float(y_all.loc[last_idx])
+    last_value_orig = float(s.loc[last_idx])
 
-    # Clean history up to that point
+    # Build clean history up to that last valid point
     hist = df_in.loc[df_in.index <= last_idx, ["Timestamp (GMT+7)", col]].copy()
     hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
     hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
     hist["y"] = pd.to_numeric(hist["y"], errors="coerce")
-    hist = hist.dropna(subset=["ds", "y"]).sort_values("ds").drop_duplicates(subset=["ds"], keep="last")
+    hist = (
+        hist.dropna(subset=["ds", "y"])
+            .sort_values("ds")
+            .drop_duplicates(subset=["ds"], keep="last")
+    )
+    if hist.shape[0] < 2:
+        return None, None
 
-    # Scale if needed
+    # If model expects µS/cm, scale when the selected column is g/L
     if col == "EC Value (g/l)":
         hist["y"] = hist["y"] * 2000.0
 
     hist["unique_id"] = "Baswap station"
     nf_input = hist[["unique_id", "ds", "y"]]
 
-    # Model call
+    # Predict
     try:
         preds = make_predictions(nf_input, resample_freq)
     except Exception:
@@ -205,23 +205,24 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     if preds is None or preds.empty:
         return None, None
 
-    # Be tolerant to different output column names
-    def pick(names):
+    # Tolerant column picker
+    def _pick(names):
         for n in names:
             if n in preds.columns:
                 return pd.to_numeric(preds[n], errors="coerce")
         return None
 
-    m   = pick(["AutoNBEATS-median", "median", "yhat", "yhat_median"])
-    lo5 = pick(["AutoNBEATS-lo-50", "lo50", "p25"])
-    hi5 = pick(["AutoNBEATS-hi-50", "hi50", "p75"])
-    lo9 = pick(["AutoNBEATS-lo-90", "lo90", "p05"])
-    hi9 = pick(["AutoNBEATS-hi-90", "hi90", "p95"])
-    if any(s is None for s in (m, lo5, hi5, lo9, hi9)):
+    median = _pick(["AutoNBEATS-median", "median", "yhat", "yhat_median"])
+    lo50  = _pick(["AutoNBEATS-lo-50", "lo50", "p25"])
+    hi50  = _pick(["AutoNBEATS-hi-50", "hi50", "p75"])
+    lo90  = _pick(["AutoNBEATS-lo-90", "lo90", "p05"])
+    hi90  = _pick(["AutoNBEATS-hi-90", "hi90", "p95"])
+    if any(x is None for x in (median, lo50, hi50, lo90, hi90)):
         return None, None
 
-    pred_df = pd.DataFrame({"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9})
-    pred_df = pred_df.replace([np.inf, -np.inf], np.nan).dropna()
+    pred_df = pd.DataFrame(
+        {"median": median, "lo50": lo50, "hi50": hi50, "lo90": lo90, "hi90": hi90}
+    ).replace([np.inf, -np.inf], np.nan).dropna()
     if pred_df.empty:
         return None, None
 
@@ -229,36 +230,28 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     if col == "EC Value (g/l)":
         pred_df = pred_df / 2000.0
 
-    # Build future timestamps
-    if resample_freq == "Day":
-        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(len(pred_df))]
-    else:
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(pred_df))]
+    # Future timestamps from the last non-null observed point
+    step = pd.Timedelta(days=1) if resample_freq == "Day" else pd.Timedelta(hours=1)
+    pred_times = [last_timestamp + step * (i + 1) for i in range(len(pred_df))]
 
-    # ---- ALIGNMENT FIX BELOW ----
-    # Predicted line includes the last observed point for continuity
+    # Red dashed line: include the last observed point for continuity
     line_df = pd.DataFrame({
         "Timestamp": [last_timestamp] + pred_times,
         "median":    [last_value_orig] + pred_df["median"].tolist(),
     })
 
-    # Bands: add an anchor at last observed time so shading starts where blue ends
+    # Bands: add an anchor row at the last observed timestamp (no lag)
     anchor = pd.DataFrame({
         "Timestamp": [last_timestamp],
-        "lo50": [last_value_orig],
-        "hi50": [last_value_orig],
-        "lo90": [last_value_orig],
-        "hi90": [last_value_orig],
+        "lo50": [last_value_orig], "hi50": [last_value_orig],
+        "lo90": [last_value_orig], "hi90": [last_value_orig],
     })
     bands_future = pd.DataFrame({
         "Timestamp": pred_times,
-        "lo50": pred_df["lo50"].values,
-        "hi50": pred_df["hi50"].values,
-        "lo90": pred_df["lo90"].values,
-        "hi90": pred_df["hi90"].values,
+        "lo50": pred_df["lo50"].values, "hi50": pred_df["hi50"].values,
+        "lo90": pred_df["lo90"].values, "hi90": pred_df["hi90"].values,
     })
     bands_df = pd.concat([anchor, bands_future], ignore_index=True)
-    # ---- END FIX ----
 
     return line_df, bands_df
 
