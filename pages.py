@@ -245,7 +245,7 @@ def overview_page(
     filtered_df = filter_data(df, date_from, date_to)
 
     with chart_container:
-        st.subheader(f"{target_col}")
+        st.subheader(f"Line: {target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
 
         with tabs[0]:
