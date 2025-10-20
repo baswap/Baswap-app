@@ -310,15 +310,14 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     )
 
     # Localized labels
-    t_rounded  = _t("tooltip_time_rounded", "Rounded time")
-    t_exact    = _t("tooltip_time_exact",   "Exact time")
-    t_value    = _t("tooltip_value",        "Value")
-    t_pred_time= _t("tooltip_predicted_time", "Predicted time")
-    t_pred_val = _t("tooltip_predicted_value", _t("axis_value", "Value"))
-    axis_x     = _t("axis_timestamp", "Timestamp")
-    axis_y     = _t("axis_value", "Value")
+    t_rounded   = _t("tooltip_time_rounded", "Rounded time")
+    t_exact     = _t("tooltip_time_exact",   "Exact time")
+    t_value     = _t("tooltip_value",        "Value")
+    t_pred_time = _t("tooltip_predicted_time", "Predicted time")
+    t_pred_val  = _t("tooltip_predicted_value", _t("axis_value", "Value"))
+    axis_x      = _t("axis_timestamp", "Timestamp")
+    axis_y      = _t("axis_value", "Value")
 
-    # Observed/Predicted legend: we’ll turn it on only if an overlay is present
     encodings = dict(
         x=alt.X("Timestamp (Rounded):T", title=axis_x),
         y=alt.Y(f"{col}:Q", title=axis_y),
@@ -335,44 +334,50 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
 
     # Prediction overlays (only for EC columns)
-    overlay_layers = []
+    layers = []
     show_pred_candidate = (col in ["EC Value (us/cm)", "EC Value (g/l)"])
+    pred_line = None
+
     if show_pred_candidate:
         line_df, bands_df = render_predictions(df_filtered, col, resample_freq)
 
-        # bands (if present)
+        # bands (conditionally add if available)
         if bands_df is not None and not bands_df.empty:
-            band90 = (
-                alt.Chart(bands_df)
-                .mark_area(opacity=0.15, color="red")
-                .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y("lo90:Q", title=axis_y),
-                    y2=alt.Y2("hi90:Q"),
-                    tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("lo90:Q", title="P5"),
-                        alt.Tooltip("hi90:Q", title="P95"),
-                    ],
+            if {"lo90", "hi90"}.issubset(bands_df.columns):
+                band90 = (
+                    alt.Chart(bands_df)
+                    .mark_area(opacity=0.15, color=COLOR_PI90)  # light red
+                    .encode(
+                        x=alt.X("Timestamp:T", title=axis_x),
+                        y=alt.Y("lo90:Q", title=axis_y),
+                        y2=alt.Y2("hi90:Q"),
+                        tooltip=[
+                            alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                            alt.Tooltip("lo90:Q", title="P5"),
+                            alt.Tooltip("hi90:Q", title="P95"),
+                        ],
+                    )
                 )
-            )
-            band50 = (
-                alt.Chart(bands_df)
-                .mark_area(opacity=0.30, color="red")
-                .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y("lo50:Q", title=axis_y),
-                    y2=alt.Y2("hi50:Q"),
-                    tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("lo50:Q", title="P25"),
-                        alt.Tooltip("hi50:Q", title="P75"),
-                    ],
-                )
-            )
-            overlay_layers.extend([band90, band50])
+                layers.append(band90)
 
-        # median line (even if bands are missing)
+            if {"lo50", "hi50"}.issubset(bands_df.columns):
+                band50 = (
+                    alt.Chart(bands_df)
+                    .mark_area(opacity=0.30, color=COLOR_PI50)  # darker red
+                    .encode(
+                        x=alt.X("Timestamp:T", title=axis_x),
+                        y=alt.Y("lo50:Q", title=axis_y),
+                        y2=alt.Y2("hi50:Q"),
+                        tooltip=[
+                            alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                            alt.Tooltip("lo50:Q", title="P25"),
+                            alt.Tooltip("hi50:Q", title="P75"),
+                        ],
+                    )
+                )
+                layers.append(band50)
+
+        # median line (draw on TOP of everything)
         if line_df is not None and not line_df.empty:
             pred_line = (
                 alt.Chart(line_df)
@@ -386,15 +391,19 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-            overlay_layers.append(pred_line)
 
     # Render legend with or without predicted series
-    _render_obs_pred_legend(show_predicted=bool(overlay_layers))
+    _render_obs_pred_legend(show_predicted=bool(pred_line or layers))
 
-    if overlay_layers:
-        st.altair_chart(alt.layer(*overlay_layers, main_chart), use_container_width=True)
+    if pred_line or layers:
+        # Order: bands (bottom) -> main series -> predicted (top)
+        final_layers = [*layers, main_chart]
+        if pred_line is not None:
+            final_layers.append(pred_line)
+        st.altair_chart(alt.layer(*final_layers), use_container_width=True)
     else:
         st.altair_chart(main_chart, use_container_width=True)
+
 
 
 
@@ -405,7 +414,19 @@ def display_statistics(df: pd.DataFrame, target_col: str) -> None:
     t_std = _t("stats_std", "Std Dev")
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric(label=t_max, value=f"{df[target_col].max():.2f}")
-    col2.metric(label=t_min, value=f"{df[target_col].min():.2f}")
-    col3.metric(label=t_avg, value=f"{df[target_col].mean():.2f}")
-    col4.metric(label=t_std, value=f"{df[target_col].std():.2f}")
+
+    if df is None or df.empty or target_col not in df.columns:
+        for c, lbl in zip((col1, col2, col3, col4), (t_max, t_min, t_avg, t_std)):
+            c.metric(label=lbl, value="-")
+        return
+
+    s = pd.to_numeric(df[target_col], errors="coerce").dropna()
+    if s.empty:
+        for c, lbl in zip((col1, col2, col3, col4), (t_max, t_min, t_avg, t_std)):
+            c.metric(label=lbl, value="-")
+        return
+
+    col1.metric(label=t_max, value=f"{s.max():.2f}")
+    col2.metric(label=t_min, value=f"{s.min():.2f}")
+    col3.metric(label=t_avg, value=f"{s.mean():.2f}")
+    col4.metric(label=t_std, value=f"{s.std(ddof=1):.2f}")
