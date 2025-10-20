@@ -48,12 +48,11 @@ OTHER_STATIONS = [
 BASWAP_LATLON = (10.099833, 106.208306)
 
 def get_station_lookup(texts):
-    """Create a lookup dict for station coordinates; includes BASWAP."""
-    stations = get_station_list(texts)
-    station_lookup = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in stations}
-    baswap_name = texts["baswap_name"]
-    return station_lookup, baswap_name
-
+    """Create a lookup dictionary for station coordinates"""
+    BASWAP_NAME = texts["baswap_name"]
+    station_lookup = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in OTHER_STATIONS}
+    station_lookup[BASWAP_NAME] = BASWAP_LATLON
+    return station_lookup, BASWAP_NAME
 
 def norm_name(name: str) -> str:
     """Normalize station name for comparison"""
@@ -99,13 +98,3 @@ def pick_ec_col(cols):
     if "EC Value (g/l)" in cols:  # exact known BASWAP column
         return "EC Value (g/l)"
     return None
-    
-def get_station_list(texts):
-    """Return a unified station list with BASWAP first, then OTHER_STATIONS."""
-    baswap_name = texts["baswap_name"]
-    baswap = {
-        "name": baswap_name,
-        "lon": float(BASWAP_LATLON[1]),
-        "lat": float(BASWAP_LATLON[0]),
-    }
-    return [baswap] + OTHER_STATIONS
