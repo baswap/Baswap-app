@@ -35,7 +35,7 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
 
     dfi = df.copy()
 
-    # make timestamps tz-naive and set as index
+    # normalize timestamps to tz-naive and ensure non-null
     ts = pd.to_datetime(dfi["Timestamp (GMT+7)"], errors="coerce")
     try:
         if getattr(ts.dt, "tz", None) is not None:
@@ -43,37 +43,45 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
     except Exception:
         pass
     dfi["Timestamp (GMT+7)"] = ts
-    dfi = dfi.sort_values("Timestamp (GMT+7)").set_index("Timestamp (GMT+7)")
+    dfi = dfi.dropna(subset=["Timestamp (GMT+7)"]).sort_values("Timestamp (GMT+7)")
 
     if dfi.empty:
-        return dfi.reset_index()
+        return dfi
 
     rule = rule_map[resample_freq]
-    # bin each row to the start of its hour/day; group on those bins
-    bin_index = dfi.index.floor(rule)
+    # assign each row to its hour/day bin
+    bin_col = dfi["Timestamp (GMT+7)"].dt.floor(rule)
 
     out_frames = []
     for f in agg_functions:
         if f == "Median":
-            agg_df = dfi.groupby(bin_index)[target_col].median().reset_index()
-            # name the time column
-            agg_df.rename(columns={agg_df.columns[0]: "Timestamp (GMT+7)"}, inplace=True)
+            agg_df = (
+                dfi.assign(_bin=bin_col)
+                   .groupby("_bin")[target_col]
+                   .median()
+                   .reset_index()
+                   .rename(columns={"_bin": "Timestamp (GMT+7)", target_col: target_col})
+            )
         else:
-            # use GroupBy.idxmin/idxmax (available on GroupBy, not Resampler)
+            # pick the original row at min/max within each bin
             idx = (
-                dfi.groupby(bin_index)[target_col].idxmin()
-                if f == "Min"
-                else dfi.groupby(bin_index)[target_col].idxmax()
+                dfi.assign(_bin=bin_col)
+                   .groupby("_bin")[target_col]
+                   .idxmin() if f == "Min" else
+                dfi.assign(_bin=bin_col)
+                   .groupby("_bin")[target_col]
+                   .idxmax()
             ).dropna()
 
-            if idx.empty:
+            if len(idx) == 0:
                 agg_df = pd.DataFrame(columns=["Timestamp (GMT+7)", target_col])
             else:
-                agg_df = dfi.loc[idx, [target_col]].reset_index()
-                agg_df.rename(columns={"index": "Timestamp (GMT+7)"}, inplace=True)
+                agg_df = (
+                    dfi.loc[idx, ["Timestamp (GMT+7)", target_col]]
+                       .reset_index(drop=True)
+                )
 
         agg_df["Aggregation"] = f
         out_frames.append(agg_df)
 
     return pd.concat(out_frames, ignore_index=True)
-
