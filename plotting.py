@@ -246,9 +246,10 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
 
     line_df = pd.DataFrame({
-        "Timestamp": [last_timestamp] + pred_times,
-        "median":    [last_value_orig] + pred_df["median"].tolist(),
-    })
+    "Timestamp": pred_times,
+    "median":    pred_df["median"].values,
+})
+
     bands_df = pd.DataFrame({
         "Timestamp": pred_times,
         "lo50": pred_df["lo50"].values,
