@@ -142,18 +142,22 @@ def _inject_nans_for_gaps(
 
 def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     """
-    Builds two frames aligned in time:
+    Build two frames for overlays:
+
       - line_df  : ['Timestamp','median'] includes last observed + future median.
       - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
 
-    Robust to NaNs and guarantees bands start at the same step as the dashed line.
+    Robust to NaNs in the selected date range:
+    - Drops NaNs before calling the model
+    - Anchors on the last NON-NULL observed value
+    - Returns (None, None) if there isn't enough clean history
     """
     if data is None or data.empty or col not in data.columns:
         return None, None
 
     df_in = data.copy()
 
-    # Prefer aggregated 'Median' (fallback to 'Max') with ≥2 valid points
+    # Prefer aggregated Median; else Max; else raw — but require ≥2 non-null points
     if "Aggregation" in df_in.columns:
         picked = None
         for candidate in ("Median", "Max"):
@@ -165,31 +169,35 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
             return None, None
         df_in = picked
 
-    # Anchor on the last NON-NULL observed value and its rounded timestamp
+    # We need a rounded timestamp column (your pipeline creates it earlier)
     if "Timestamp (Rounded)" not in df_in.columns:
         return None, None
+
+    # Find the last NON-NULL observed value to anchor predictions
     y_all = pd.to_numeric(df_in[col], errors="coerce")
     valid_idx = y_all.dropna().index
     if len(valid_idx) < 2:
-        return None, None
+        return None, None  # not enough clean history
     last_idx = valid_idx[-1]
     last_timestamp = pd.to_datetime(df_in.loc[last_idx, "Timestamp (Rounded)"])
     last_value_orig = float(y_all.loc[last_idx])
 
-    # History for the model up to the last valid point
+    # Build clean history up to that last valid point
     hist = df_in.loc[df_in.index <= last_idx, ["Timestamp (GMT+7)", col]].copy()
     hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
     hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
     hist["y"] = pd.to_numeric(hist["y"], errors="coerce")
     hist = hist.dropna(subset=["ds", "y"]).sort_values("ds").drop_duplicates(subset=["ds"], keep="last")
 
-    # Unit conversion for the model if needed
+    # If your model expects µS/cm, scale when the selected column is g/L
     if col == "EC Value (g/l)":
         hist["y"] = hist["y"] * 2000.0
 
+    # NeuroForecast input
     hist["unique_id"] = "Baswap station"
     nf_input = hist[["unique_id", "ds", "y"]]
 
+    # Call the model safely
     try:
         preds = make_predictions(nf_input, resample_freq)
     except Exception:
@@ -197,7 +205,7 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     if preds is None or preds.empty:
         return None, None
 
-    # Tolerant column picking (works across model variants)
+    # Column picking tolerant to different model outputs
     colmap = {
         "median": ["AutoNBEATS-median", "median", "yhat", "yhat_median"],
         "lo50":   ["AutoNBEATS-lo-50", "lo50", "p25"],
@@ -205,7 +213,8 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         "lo90":   ["AutoNBEATS-lo-90", "lo90", "p05"],
         "hi90":   ["AutoNBEATS-hi-90", "hi90", "p95"],
     }
-    def _pick(name: str):
+
+    def _pick(name: str) -> pd.Series | None:
         for c in colmap[name]:
             if c in preds.columns:
                 return pd.to_numeric(preds[c], errors="coerce")
@@ -220,22 +229,19 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         return None, None
 
     pred_df = pd.DataFrame({"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9})
-
-    # Back to original units if we scaled
-    if col == "EC Value (g/l)":
-        pred_df = pred_df / 2000.0
-
-    # 🔧 KEY STEP: drop rows where ANY band is NaN/inf, so bands & median align
-    pred_df = pred_df.replace([np.inf, -np.inf], np.nan)
-    pred_df = pred_df.dropna(subset=["median", "lo50", "hi50", "lo90", "hi90"]).reset_index(drop=True)
+    pred_df = pred_df.replace([np.inf, -np.inf], np.nan).dropna()
     if pred_df.empty:
         return None, None
 
-    # Build future timestamps for the remaining rows
+    # Convert back to g/L if we scaled
+    if col == "EC Value (g/l)":
+        pred_df = pred_df / 2000.0
+
+    # Build future timestamps
     n = len(pred_df)
     if resample_freq == "Day":
         pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
-    else:
+    else:  # default Hour
         pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
 
     line_df = pd.DataFrame({
@@ -250,6 +256,7 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         "hi90": pred_df["hi90"].values,
     })
     return line_df, bands_df
+
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
