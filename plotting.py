@@ -140,31 +140,38 @@ def _inject_nans_for_gaps(
     out = out.sort_values(by=[time_col], kind="mergesort").reset_index(drop=True)
     return out
 
+
 def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     """
-    Build two frames:
-      - line_df  : ['Timestamp','median','is_future'] includes last observed anchor + future median.
-      - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
-    Works whether 'Aggregation' == 'Median' or 'Max' (prefers Median if available).
-    Returns (line_df, bands_df) or (None, None) if unavailable.
+    Returns two frames for plotting:
+      - line_df  : columns ['Timestamp', 'median'] including last observed + future median.
+      - bands_df : columns ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
+
+    Fixes:
+      - Robust to NaNs in selection (drops NaNs before modeling).
+      - Uses the last NON-NULL point as the anchor.
+      - Aligns timestamps to the model output if available.
+      - Does NOT drop the first horizon when some band values are NaN; instead fills minimally
+        so the bands start at the same timestamp as the first median prediction.
     """
     if data is None or data.empty or col not in data.columns:
         return None, None
 
     df_in = data.copy()
 
-    # Prefer Median; fall back to Max; else use whatever is there (unaggregated)
+    # Prefer aggregated series with the richest signal
     if "Aggregation" in df_in.columns:
-        for candidate in ("Median", "Max"):
-            sub = df_in[df_in["Aggregation"] == candidate]
-            if len(sub) >= 2:
-                df_in = sub
+        picked = None
+        for candidate in ("Median", "Max", "Min"):
+            sub = df_in[df_in["Aggregation"] == candidate].copy()
+            if pd.to_numeric(sub[col], errors="coerce").dropna().shape[0] >= 2:
+                picked = sub
                 break
-        else:
-            # not enough history to forecast
+        if picked is None:
             return None, None
+        df_in = picked
 
-    # Last observed timestamp/value (use the rounded time you already computed)
+    # Need a rounded timestamp column for a clean anchor
     if "Timestamp (Rounded)" not in df_in.columns:
         return None, None
 
@@ -177,79 +184,108 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     last_timestamp = pd.to_datetime(df_in.loc[last_idx, "Timestamp (Rounded)"])
     last_value_orig = float(y_all.loc[last_idx])
 
-    # Prepare history for the model (up to last non-null)
+    # Clean history up to that anchor
     hist = df_in.loc[df_in.index <= last_idx, ["Timestamp (GMT+7)", col]].copy()
     hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
     hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
     hist["y"] = pd.to_numeric(hist["y"], errors="coerce")
-    hist = hist.dropna(subset=["ds", "y"]).sort_values("ds").drop_duplicates(subset=["ds"], keep="last")
+    hist = (
+        hist.dropna(subset=["ds", "y"])
+            .sort_values("ds")
+            .drop_duplicates(subset=["ds"], keep="last")
+    )
 
-    # Unit handling for the model
+    # If model expects µS/cm, scale when user selected g/L
+    scaled_to_us = False
     if col == "EC Value (g/l)":
         hist["y"] = hist["y"] * 2000.0
+        scaled_to_us = True
 
+    # NeuroForecast input
     hist["unique_id"] = "Baswap station"
     nf_input = hist[["unique_id", "ds", "y"]]
 
-    preds = make_predictions(nf_input, resample_freq)
+    # Call the model
+    try:
+        preds = make_predictions(nf_input, resample_freq)
+    except Exception:
+        return None, None
     if preds is None or preds.empty:
         return None, None
 
-    # Tolerant to column naming across model versions
-    colmap = {
-        "median": ["AutoNBEATS-median", "median", "yhat", "yhat_median"],
-        "lo50":   ["AutoNBEATS-lo-50", "lo50", "p25"],
-        "hi50":   ["AutoNBEATS-hi-50", "hi50", "p75"],
-        "lo90":   ["AutoNBEATS-lo-90", "lo90", "p05"],
-        "hi90":   ["AutoNBEATS-hi-90", "hi90", "p95"],
-    }
-
-    def _pick(name: str) -> pd.Series | None:
-        for c in colmap[name]:
+    # Pull columns safely
+    def pick(name: str, options: list[str]) -> Optional[pd.Series]:
+        for c in options:
             if c in preds.columns:
                 return pd.to_numeric(preds[c], errors="coerce")
         return None
 
-    m   = _pick("median")
-    lo5 = _pick("lo50")
-    hi5 = _pick("hi50")
-    lo9 = _pick("lo90")
-    hi9 = _pick("hi90")
-    if any(x is None for x in (m, lo5, hi5, lo9, hi9)):
-        return None, None
-
-    pred_df = pd.DataFrame({"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9})
-    pred_df = pred_df.replace([np.inf, -np.inf], np.nan).dropna()
-    if pred_df.empty:
-        return None, None
-
-    # Convert back to original units if we scaled
-    if col == "EC Value (g/l)":
-        pred_df = pred_df / 2000.0
-
-    # Build timestamps for future horizon
-    n = len(pred_df)
-    if resample_freq == "Hour":
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
-    elif resample_freq == "Day":
-        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
+    # Use the model's own timestamps if present; else we synthesize them
+    if "ds" in preds.columns:
+        pred_times = pd.to_datetime(preds["ds"], errors="coerce")
+    elif "time" in preds.columns:
+        pred_times = pd.to_datetime(preds["time"], errors="coerce")
     else:
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
+        # Synthesize from the anchor
+        n = len(preds)
+        if resample_freq == "Day":
+            pred_times = pd.Series([last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)])
+        else:
+            pred_times = pd.Series([last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)])
 
+    median = pick("median", ["AutoNBEATS-median", "median", "yhat", "yhat_median"])
+    lo50   = pick("lo50",   ["AutoNBEATS-lo-50", "lo50", "p25"])
+    hi50   = pick("hi50",   ["AutoNBEATS-hi-50", "hi50", "p75"])
+    lo90   = pick("lo90",   ["AutoNBEATS-lo-90", "lo90", "p05"])
+    hi90   = pick("hi90",   ["AutoNBEATS-hi-90", "hi90", "p95"])
+
+    if median is None:
+        return None, None
+
+    # Build predictions dataframe WITHOUT dropping the first row if some bands are NaN
+    pred_df = pd.DataFrame({
+        "Timestamp": pred_times,
+        "median": median,
+        "lo50": lo50, "hi50": hi50,
+        "lo90": lo90, "hi90": hi90,
+    })
+
+    # Remove rows where *median* is not a number; keep rows even if bands are NaN
+    pred_df = pred_df.replace([np.inf, -np.inf], np.nan)
+    pred_df = pred_df.dropna(subset=["Timestamp", "median"]).reset_index(drop=True)
+
+    # Convert back to g/L if we scaled
+    if scaled_to_us:
+        for c in ("median", "lo50", "hi50", "lo90", "hi90"):
+            if c in pred_df:
+                pred_df[c] = pd.to_numeric(pred_df[c], errors="coerce") / 2000.0
+
+    # --- IMPORTANT: ensure bands exist at the first horizon (no 1-step lag) ---
+    def ensure_first_band(df: pd.DataFrame, lo: str, hi: str):
+        if df.empty:
+            return
+        if pd.isna(df.loc[0, lo]) or pd.isna(df.loc[0, hi]):
+            # try borrowing from the next valid row
+            next_valid = df[[lo, hi]].dropna(how="any").index.min()
+            if pd.notna(next_valid) and next_valid != 0:
+                df.loc[0, [lo, hi]] = df.loc[next_valid, [lo, hi]].values
+            else:
+                # fallback: zero-width band at median
+                m0 = df.loc[0, "median"]
+                df.loc[0, [lo, hi]] = [m0, m0]
+
+    ensure_first_band(pred_df, "lo50", "hi50")
+    ensure_first_band(pred_df, "lo90", "hi90")
+
+    # Prepare outputs for plotting
+    # 1) line_df includes the last observed anchor, followed by future medians
     line_df = pd.DataFrame({
-        "Timestamp": [last_timestamp] + pred_times,
+        "Timestamp": [last_timestamp] + pred_df["Timestamp"].tolist(),
         "median":    [last_value_orig] + pred_df["median"].tolist(),
     })
-    # NEW: tag the anchor so we can hide its dot
-    line_df["is_future"] = [False] + [True] * n
 
-    bands_df = pd.DataFrame({
-        "Timestamp": pred_times,
-        "lo50": pred_df["lo50"].values,
-        "hi50": pred_df["hi50"].values,
-        "lo90": pred_df["lo90"].values,
-        "hi90": pred_df["hi90"].values,
-    })
+    # 2) bands_df is only for future timestamps (same start as first median forecast)
+    bands_df = pred_df[["Timestamp", "lo50", "hi50", "lo90", "hi90"]].copy()
 
     return line_df, bands_df
 
@@ -363,10 +399,9 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-            # dashed path across anchor + future
             pred_line = (
                 alt.Chart(line_df)
-                .mark_line(color="red", strokeDash=[5, 5])
+                .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("median:Q", title=axis_y),
@@ -376,22 +411,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
-            # red dots ONLY for future (avoid anchor dot that causes the 1-step offset)
-            pred_points = (
-                alt.Chart(line_df)
-                .transform_filter(alt.datum.is_future)
-                .mark_point(color="red")
-                .encode(
-                    x=alt.X("Timestamp:T", title=axis_x),
-                    y=alt.Y("median:Q", title=axis_y),
-                    tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
-                        alt.Tooltip("median:Q", title=t_pred_value),
-                    ],
-                )
-            )
-
-            chart = alt.layer(band90, band50, pred_line, pred_points, main_chart)
+            chart = alt.layer(band90, band50, pred_line, main_chart)
             st.altair_chart(chart, use_container_width=True)
             return
 
