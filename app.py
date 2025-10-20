@@ -67,7 +67,7 @@ for k, v in {
     "target_col": COL_NAMES[0],
     "date_from": None,
     "date_to": None,
-    "agg_stats": ["Min", "Max", "Median"],
+    "agg_stats": ["Median"],
     "table_cols": [COL_NAMES[0]],
     "selected_station": None,
 }.items():
