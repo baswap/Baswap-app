@@ -142,53 +142,36 @@ def _inject_nans_for_gaps(
 
 
 def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
-    """
-    Build two frames:
-      - line_df  : ['Timestamp','median'] includes last observed + future median.
-      - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
-    Returns (line_df, bands_df) or (None, None) if unavailable.
-    """
-    # choose a source aggregation present in the data
+    # pick a source slice that exists: prefer Max, else Median, else Min, else all
     src = data.copy()
     if "Aggregation" in src.columns:
-        for a in ("Max", "Median", "Min"):
-            if a in src["Aggregation"].astype(str).unique():
-                src = src[src["Aggregation"] == a].copy()
+        for key in ("Max", "Median", "Min"):
+            if key in src["Aggregation"].unique():
+                src = src[src["Aggregation"] == key]
                 break
-        else:
-            return None, None
 
-    # enforce required columns
-    if "Timestamp (GMT+7)" not in src.columns or col not in src.columns:
+    # need at least two points to predict
+    if src.empty or col not in src.columns or src[col].dropna().shape[0] < 2:
         return None, None
 
-    # clean timestamps and target; remove rows that would make y NaN
-    src["Timestamp (GMT+7)"] = pd.to_datetime(src["Timestamp (GMT+7)"], errors="coerce")
-    src = src.dropna(subset=["Timestamp (GMT+7)"])
-    src[col] = pd.to_numeric(src[col], errors="coerce")
-    src = src.dropna(subset=[col])
+    # we rely on Timestamp (Rounded) added in plot_line_chart
+    last_timestamp = pd.to_datetime(src["Timestamp (Rounded)"].iloc[-1], errors="coerce")
 
-    # sort and keep one value per timestamp
-    src = src.sort_values("Timestamp (GMT+7)").drop_duplicates("Timestamp (GMT+7)", keep="last")
-    if len(src) < 2:
-        return None, None
+    # build model input from original timestamp/value columns
+    values = src[["Timestamp (GMT+7)", col]].copy()
+    values.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
+    values["ds"] = pd.to_datetime(values["ds"], errors="coerce")
 
-    # last observed point (for dashed line start)
-    last_timestamp = src["Timestamp (GMT+7)"].iloc[-1]
-    last_value_orig = float(src[col].iloc[-1])
+    # scale for g/l if required by the model, then unscale later
+    scaled = col == "EC Value (g/l)"
+    if scaled:
+        values["y"] = values["y"] * 2000.0
 
-    # build NeuralForecast input (unique_id, ds, y), scale if needed
-    model_df = src.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"})[["ds", "y"]]
-    model_df["ds"] = pd.to_datetime(model_df["ds"])
-    if col == "EC Value (g/l)":
-        model_df["y"] = model_df["y"] * 2000.0
-    model_df["unique_id"] = "Baswap station"
-    nf_input = model_df[["unique_id", "ds", "y"]]
+    values["unique_id"] = "Baswap station"
+    nf_input = values[["unique_id", "ds", "y"]]
 
-    # run model
     preds = make_predictions(nf_input, resample_freq)
 
-    # required output columns
     needed = [
         "AutoNBEATS-median",
         "AutoNBEATS-lo-50",
@@ -196,31 +179,29 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         "AutoNBEATS-lo-90",
         "AutoNBEATS-hi-90",
     ]
-    missing = [c for c in needed if c not in preds.columns]
-    if missing:
-        st.caption(f"Missing prediction columns: {', '.join(missing)}")
+    if any(c not in preds.columns for c in needed):
         return None, None
 
     preds_df = preds[needed].astype(float).reset_index(drop=True)
-
-    # unscale back if needed
-    if col == "EC Value (g/l)":
+    if scaled:
         preds_df = preds_df / 2000.0
 
-    # generate future timestamps
-    n = len(preds_df)
-    if resample_freq == "Day":
-        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
-    else:  # default Hour
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
+    # construct future timestamps aligned to the resampling
+    if resample_freq == "Hour":
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
+    elif resample_freq == "Day":
+        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(len(preds_df))]
+    else:
+        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(len(preds_df))]
 
-    # line df = last observed + predicted median
+    # last observed value (in original units)
+    last_value_orig = float(src[col].iloc[-1])
+
     line_df = pd.DataFrame({
         "Timestamp": [last_timestamp] + pred_times,
-        "median": [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
+        "median":    [last_value_orig] + preds_df["AutoNBEATS-median"].tolist(),
     })
 
-    # bands df = future intervals only
     bands_df = pd.DataFrame({
         "Timestamp": pred_times,
         "lo50": preds_df["AutoNBEATS-lo-50"].values,
