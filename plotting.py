@@ -140,24 +140,26 @@ def _inject_nans_for_gaps(
     out = out.sort_values(by=[time_col], kind="mergesort").reset_index(drop=True)
     return out
 
-def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
+def render_predictions(data: pd.DataFrame, col: str, resample_freq: str, include_anchor: bool = False):
     """
-    Build two frames for overlays:
+    Returns two DataFrames for plotting:
+      - line_df  : ['Timestamp','median']
+      - bands_df : ['Timestamp','lo50','hi50','lo90','hi90']
 
-      - line_df  : ['Timestamp','median'] includes last observed + future median.
-      - bands_df : ['Timestamp','lo50','hi50','lo90','hi90'] for FUTURE steps only.
-
-    Robust to NaNs in the selected date range:
-    - Drops NaNs before calling the model
-    - Anchors on the last NON-NULL observed value
-    - Returns (None, None) if there isn't enough clean history
+    Behavior:
+      - Robust to NaNs (drops before modeling).
+      - Uses the last NON-NULL observation as the history end.
+      - By default, BOTH line and bands start at the first *future* timestamp.
+      - If include_anchor=True, the last observed point is prepended to BOTH
+        the line and the bands (bands use a zero-width interval at the anchor),
+        so there is no off-by-one visual shift.
     """
     if data is None or data.empty or col not in data.columns:
         return None, None
 
     df_in = data.copy()
 
-    # Prefer aggregated Median; else Max; else raw — but require ≥2 non-null points
+    # Prefer aggregated series if present; require ≥2 clean points
     if "Aggregation" in df_in.columns:
         picked = None
         for candidate in ("Median", "Max"):
@@ -169,35 +171,43 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
             return None, None
         df_in = picked
 
-    # We need a rounded timestamp column (your pipeline creates it earlier)
+    # Need rounded timestamps from your pipeline
     if "Timestamp (Rounded)" not in df_in.columns:
         return None, None
 
-    # Find the last NON-NULL observed value to anchor predictions
+    # Locate last NON-NULL point to anchor history
     y_all = pd.to_numeric(df_in[col], errors="coerce")
     valid_idx = y_all.dropna().index
     if len(valid_idx) < 2:
-        return None, None  # not enough clean history
+        return None, None
     last_idx = valid_idx[-1]
     last_timestamp = pd.to_datetime(df_in.loc[last_idx, "Timestamp (Rounded)"])
     last_value_orig = float(y_all.loc[last_idx])
 
-    # Build clean history up to that last valid point
+    # Clean history up to that point (ds,y)
     hist = df_in.loc[df_in.index <= last_idx, ["Timestamp (GMT+7)", col]].copy()
     hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
     hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
     hist["y"] = pd.to_numeric(hist["y"], errors="coerce")
-    hist = hist.dropna(subset=["ds", "y"]).sort_values("ds").drop_duplicates(subset=["ds"], keep="last")
+    hist = (
+        hist.dropna(subset=["ds", "y"])
+            .sort_values("ds")
+            .drop_duplicates(subset=["ds"], keep="last")
+    )
+    if hist.shape[0] < 2:
+        return None, None
 
-    # If your model expects µS/cm, scale when the selected column is g/L
+    # Scale to µS/cm if the selected column is g/L (model expects µS/cm)
+    scaled_to_us = False
     if col == "EC Value (g/l)":
         hist["y"] = hist["y"] * 2000.0
+        scaled_to_us = True
 
     # NeuroForecast input
     hist["unique_id"] = "Baswap station"
     nf_input = hist[["unique_id", "ds", "y"]]
 
-    # Call the model safely
+    # Run model
     try:
         preds = make_predictions(nf_input, resample_freq)
     except Exception:
@@ -205,7 +215,22 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     if preds is None or preds.empty:
         return None, None
 
-    # Column picking tolerant to different model outputs
+    # If model returns 'ds', use it; otherwise build future timeline
+    ds_col = "ds" if "ds" in preds.columns else None
+    if ds_col:
+        preds["ds"] = pd.to_datetime(preds["ds"], errors="coerce")
+        preds = preds.dropna(subset=["ds"])
+        # keep strictly future rows only
+        preds = preds[preds["ds"] > last_timestamp].copy()
+        if preds.empty:
+            return None, None
+        pred_times = preds["ds"].to_list()
+    else:
+        # fall back: generate timestamps from last_timestamp
+        # (length inferred after extracting prediction columns)
+        pred_times = None
+
+    # Tolerant column picking
     colmap = {
         "median": ["AutoNBEATS-median", "median", "yhat", "yhat_median"],
         "lo50":   ["AutoNBEATS-lo-50", "lo50", "p25"],
@@ -213,8 +238,7 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         "lo90":   ["AutoNBEATS-lo-90", "lo90", "p05"],
         "hi90":   ["AutoNBEATS-hi-90", "hi90", "p95"],
     }
-
-    def _pick(name: str) -> pd.Series | None:
+    def _pick(name: str):
         for c in colmap[name]:
             if c in preds.columns:
                 return pd.to_numeric(preds[c], errors="coerce")
@@ -233,20 +257,23 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
     if pred_df.empty:
         return None, None
 
+    # If we synthesized times, do it now to the same length
+    if pred_times is None:
+        n = len(pred_df)
+        if resample_freq == "Day":
+            pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
+        else:
+            pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
+
     # Convert back to g/L if we scaled
-    if col == "EC Value (g/l)":
+    if scaled_to_us:
         pred_df = pred_df / 2000.0
 
-    # Build future timestamps
-    n = len(pred_df)
-    if resample_freq == "Day":
-        pred_times = [last_timestamp + pd.Timedelta(days=i + 1) for i in range(n)]
-    else:  # default Hour
-        pred_times = [last_timestamp + pd.Timedelta(hours=i + 1) for i in range(n)]
-
+    # === ALIGNMENT FIX ===
+    # Default: both median line and bands start at first FUTURE timestamp.
     line_df = pd.DataFrame({
-        "Timestamp": [last_timestamp] + pred_times,
-        "median":    [last_value_orig] + pred_df["median"].tolist(),
+        "Timestamp": pred_times,
+        "median":    pred_df["median"].values,
     })
     bands_df = pd.DataFrame({
         "Timestamp": pred_times,
@@ -255,7 +282,26 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str):
         "lo90": pred_df["lo90"].values,
         "hi90": pred_df["hi90"].values,
     })
+
+    # Optional: include anchor at the last observed time for a continuous line,
+    # and add a zero-width band at that exact timestamp so there's no 1-step shift.
+    if include_anchor:
+        anchor_row_line = pd.DataFrame({
+            "Timestamp": [last_timestamp],
+            "median":    [last_value_orig if not scaled_to_us else last_value_orig],  # already in selected units
+        })
+        anchor_row_band = pd.DataFrame({
+            "Timestamp": [last_timestamp],
+            "lo50": [last_value_orig],
+            "hi50": [last_value_orig],
+            "lo90": [last_value_orig],
+            "hi90": [last_value_orig],
+        })
+        line_df  = pd.concat([anchor_row_line, line_df], ignore_index=True)
+        bands_df = pd.concat([anchor_row_band, bands_df], ignore_index=True)
+
     return line_df, bands_df
+
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     # explicit empty guards to avoid "disappearing" charts
