@@ -53,7 +53,7 @@ def overview_page(
     from map_handler import add_layers, create_map, render_map
     import pandas as pd
     import streamlit as st
-    from datetime import timedelta
+    from datetime import timedelta, date  # added date
     import base64, mimetypes
     from pathlib import Path
 
@@ -162,13 +162,25 @@ def overview_page(
         st.session_state.selected_station = clicked_label
         st.rerun()
 
+    # dates from data
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
+
+    # original default (one month) — commented out per request
+    # if st.session_state.get("date_from") is None:
+    #     st.session_state.date_from = one_month_ago
+    # if st.session_state.get("date_to") is None:
+    #     st.session_state.date_to = last_date
+
+    # #### HARD-CODED DEFAULT RANGE (remove later) ####
+    HARD_FROM = date(2025, 4, 1)
+    HARD_TO = date(2025, 4, 10)
     if st.session_state.get("date_from") is None:
-        st.session_state.date_from = one_month_ago
+        st.session_state.date_from = HARD_FROM
     if st.session_state.get("date_to") is None:
-        st.session_state.date_to = last_date
+        st.session_state.date_to = HARD_TO
+    # #### END HARD-CODED DEFAULT RANGE ####
 
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
