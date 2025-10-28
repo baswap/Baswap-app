@@ -6,9 +6,10 @@ from streamlit_folium import st_folium
 def add_layers(m, texts, BASWAP_NAME, BASWAP_LATLON, OTHER_STATIONS, station_warnings=None):
     """
     Shared clustering across BASWAP + Other, with separate toggles.
-    Marker color depends on warning level (0..4). Fix slight left-offset of FA icon.
+    Marker color depends on warning level (0..4). Centers FA glyph horizontally and nudges it upward.
     """
     from folium.plugins import MarkerCluster, FeatureGroupSubGroup, BeautifyIcon
+    import folium
 
     station_warnings = station_warnings or {}
 
@@ -29,9 +30,10 @@ def add_layers(m, texts, BASWAP_NAME, BASWAP_LATLON, OTHER_STATIONS, station_war
             return "#f44336"   # red
         return "#9e9e9e"       # fallback gray
 
-    # nudge FA glyph a hair to the right to center it visually
-    NUDGE_PX = 1
-    INNER_ICON_STYLE = f"margin-left: {NUDGE_PX}px;"
+    # Nudge FA glyph for better visual centering (right + up)
+    NUDGE_X = 1   # px to the right
+    NUDGE_Y = 1   # px upward
+    INNER_ICON_STYLE = f"margin-left: {NUDGE_X}px; transform: translateY(-{NUDGE_Y}px);"
 
     # One shared clusterer (hidden from LayerControl)
     shared_cluster = MarkerCluster(name="All stations (clusterer)", control=False)
