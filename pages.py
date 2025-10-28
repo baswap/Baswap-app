@@ -57,6 +57,25 @@ def overview_page(
     import base64, mimetypes
     from pathlib import Path
 
+    # helper: map current measurement -> warning bucket
+    def _calc_warning(v):
+        if v is None or pd.isna(v):
+            return "-"
+        try:
+            x = float(v)
+        except Exception:
+            return "-"
+        if x <= 200:
+            return "0"
+        elif x <= 500:
+            return "1"
+        elif x <= 1000:
+            return "2"
+        elif x <= 2000:
+            return "3"
+        else:
+            return "4"
+
     col_left, col_right = st.columns([7, 3], gap="small")
 
     with col_right:
@@ -103,10 +122,11 @@ def overview_page(
             key = norm_name(name)
             val = latest_values.get(key)
             display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
+            warn = _calc_warning(val)
             rows.append({
                 texts["table_station"]: name,
                 texts["current_measurement"]: display_val,
-                texts["table_warning"]: "-",
+                texts["table_warning"]: warn,
             })
         table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
@@ -274,6 +294,7 @@ def overview_page(
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 
 
