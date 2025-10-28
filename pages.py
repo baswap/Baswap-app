@@ -188,8 +188,8 @@ def overview_page(
     with sh_right:
         st.empty()
 
-    scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Tram")
-    none_label = "None" if lang == "en" else "Chua chon tram"
+    scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
+    none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
     station_name_label = selected_station if selected_station else none_label
 
