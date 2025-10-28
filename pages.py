@@ -60,21 +60,21 @@ def overview_page(
     # helper: map current measurement -> warning bucket
     def _calc_warning(v):
         if v is None or pd.isna(v):
-            return "-"
+            return None
         try:
             x = float(v)
         except Exception:
-            return "-"
+            return None
         if x <= 200:
-            return "0"
+            return 0
         elif x <= 500:
-            return "1"
+            return 1
         elif x <= 1000:
-            return "2"
+            return 2
         elif x <= 2000:
-            return "3"
+            return 3
         else:
-            return "4"
+            return 4
 
     col_left, col_right = st.columns([7, 3], gap="small")
 
@@ -116,17 +116,21 @@ def overview_page(
         except Exception:
             pass
 
+        # build table + warnings dict
         station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         rows = []
+        station_warnings = {}
         for name in station_names:
             key = norm_name(name)
             val = latest_values.get(key)
-            display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
             warn = _calc_warning(val)
+            station_warnings[name] = 0 if warn is None else warn
+            display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
+            display_warn = "-" if warn is None else str(warn)
             rows.append({
                 texts["table_station"]: name,
                 texts["current_measurement"]: display_val,
-                texts["table_warning"]: warn,
+                texts["table_warning"]: display_warn,
             })
         table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
@@ -147,7 +151,10 @@ def overview_page(
             highlight_location = (lat, lon)
 
         m = create_map(center, zoom, highlight_location, sel)
-        add_layers(m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS)
+        add_layers(
+            m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS,
+            station_warnings=station_warnings
+        )
         map_out = render_map(m, MAP_HEIGHT)
 
     clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
@@ -294,6 +301,7 @@ def overview_page(
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     st.dataframe(filtered_df[existing], use_container_width=True)
+
 
 
 
