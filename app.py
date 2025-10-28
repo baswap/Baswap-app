@@ -75,6 +75,17 @@ for k, v in {
 
 # ================== STYLES ==================
 load_styles(MAP_HEIGHT, TABLE_HEIGHT)
+# #### TEMP: bump all fonts by 10% for presentation ####
+st.markdown("""
+<style>
+html, body { font-size: 110% !important; }
+.block-container, .stMarkdown, .stText, .stDataFrame, .stMetric, .stButton,
+.stSelectbox, .stDateInput, .stSlider, .stCheckbox, .stRadio, .stTextInput, .stNumberInput {
+  font-size: 1em !important;
+}
+</style>
+""", unsafe_allow_html=True)
+# #### END TEMP ####
 
 # ================== HEADER ==================
 logo_src = data_uri("img/VGU RANGERS.png")
