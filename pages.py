@@ -167,7 +167,7 @@ def overview_page(
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
 
-    # original default (one month) — commented out per request
+    # original default (one month)
     # if st.session_state.get("date_from") is None:
     #     st.session_state.date_from = one_month_ago
     # if st.session_state.get("date_to") is None:
