@@ -53,9 +53,28 @@ def overview_page(
     from map_handler import add_layers, create_map, render_map
     import pandas as pd
     import streamlit as st
-    from datetime import timedelta
+    from datetime import timedelta, date  # added date
     import base64, mimetypes
     from pathlib import Path
+
+    # helper: map current measurement -> warning bucket
+    def _calc_warning(v):
+        if v is None or pd.isna(v):
+            return None
+        try:
+            x = float(v)
+        except Exception:
+            return None
+        if x <= 200:
+            return 0
+        elif x <= 500:
+            return 1
+        elif x <= 1000:
+            return 2
+        elif x <= 2000:
+            return 3
+        else:
+            return 4
 
     col_left, col_right = st.columns([7, 3], gap="small")
 
@@ -97,16 +116,21 @@ def overview_page(
         except Exception:
             pass
 
+        # build table + warnings dict
         station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
         rows = []
+        station_warnings = {}
         for name in station_names:
             key = norm_name(name)
             val = latest_values.get(key)
+            warn = _calc_warning(val)
+            station_warnings[name] = 0 if warn is None else warn
             display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
+            display_warn = "-" if warn is None else str(warn)
             rows.append({
                 texts["table_station"]: name,
                 texts["current_measurement"]: display_val,
-                texts["table_warning"]: "-",
+                texts["table_warning"]: display_warn,
             })
         table_df = pd.DataFrame(rows)
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
@@ -127,7 +151,10 @@ def overview_page(
             highlight_location = (lat, lon)
 
         m = create_map(center, zoom, highlight_location, sel)
-        add_layers(m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS)
+        add_layers(
+            m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS,
+            station_warnings=station_warnings
+        )
         map_out = render_map(m, MAP_HEIGHT)
 
     clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
@@ -135,13 +162,25 @@ def overview_page(
         st.session_state.selected_station = clicked_label
         st.rerun()
 
+    # dates from data
     first_date = df["Timestamp (GMT+7)"].min().date()
     last_date = df["Timestamp (GMT+7)"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
+
+    # original default (one month)
+    # if st.session_state.get("date_from") is None:
+    #     st.session_state.date_from = one_month_ago
+    # if st.session_state.get("date_to") is None:
+    #     st.session_state.date_to = last_date
+
+    # #### HARD-CODED DEFAULT RANGE (remove later) ####
+    HARD_FROM = date(2025, 4, 1)
+    HARD_TO = date(2025, 4, 10)
     if st.session_state.get("date_from") is None:
-        st.session_state.date_from = one_month_ago
+        st.session_state.date_from = HARD_FROM
     if st.session_state.get("date_to") is None:
-        st.session_state.date_to = last_date
+        st.session_state.date_to = HARD_TO
+    # #### END HARD-CODED DEFAULT RANGE ####
 
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
@@ -149,8 +188,8 @@ def overview_page(
     with sh_right:
         st.empty()
 
-    scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Tram")
-    none_label = "None" if lang == "en" else "Chua chon tram"
+    scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
+    none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
     station_name_label = selected_station if selected_station else none_label
 
@@ -274,6 +313,8 @@ def overview_page(
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     st.dataframe(filtered_df[existing], use_container_width=True)
+
+
 
 
 
