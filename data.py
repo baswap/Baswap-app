@@ -7,7 +7,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from config import GMT7, UTC, THINGSPEAK_URL, COMBINED_ID, SECRET_ACC
+# from config import GMT7, UTC, THINGSPEAK_URL, COMBINED_ID, SECRET_ACC
+from config import GMT7, UTC, THINGSPEAK_URL
 
 # utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils")))
@@ -41,11 +42,13 @@ def _to_bangkok(series: pd.Series) -> pd.Series:
 # ──────────────────────────────────────────────────────────────
 @st.cache_data()
 def combined_data_retrieve() -> pd.DataFrame:
-    drive_handler = DriveManager(SECRET_ACC)
-    df = drive_handler.read_csv_file(COMBINED_ID)
+    # drive_handler = DriveManager(SECRET_ACC)
+    # df = drive_handler.read_csv_file(COMBINED_ID)
 
-    # one clean, canonical conversion – no UTC round-trip
-    df["Timestamp (GMT+7)"] = _to_bangkok(df["Timestamp (GMT+7)"])
+    # # one clean, canonical conversion – no UTC round-trip
+    # df["ds"] = _to_bangkok(df["ds"])
+    df = pd.read_csv("/workspaces/Baswap-app/dataset/merged_all_data.csv")
+    df["ds"] = _to_bangkok(df["ds"])
     return df
 
 
@@ -64,7 +67,7 @@ def fetch_thingspeak_data(results: int) -> list[dict]:
 @st.cache_data()
 def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
     """Append any newer rows from ThingSpeak to *df*."""
-    last_ts: datetime = df["Timestamp (GMT+7)"].iloc[-1]
+    last_ts: datetime = df["ds"].iloc[-1]
 
     for feed in feeds:
         created = feed.get("created_at")
@@ -87,15 +90,15 @@ def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
             ]
 
     # keep timestamps tidy & sorted
-    df["Timestamp (GMT+7)"] = _to_bangkok(df["Timestamp (GMT+7)"])
-    df.sort_values("Timestamp (GMT+7)", inplace=True, ignore_index=True)
+    df["ds"] = _to_bangkok(df["ds"])
+    df.sort_values("ds", inplace=True, ignore_index=True)
     return df
 
 
 def thingspeak_retrieve(df: pd.DataFrame) -> pd.DataFrame:
     """Top-up *df* with fresh ThingSpeak rows."""
     today = datetime.now(GMT7).date()
-    date_diff = max((today - df["Timestamp (GMT+7)"].iloc[-1].date()).days, 0)
+    date_diff = max((today - df["ds"].iloc[-1].date()).days, 0)
 
     # 150 rows per day looks right for your sampling rate
     results = max(150 * date_diff, 1)

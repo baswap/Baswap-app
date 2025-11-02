@@ -10,8 +10,8 @@ THINGSPEAK_URL = "https://api.thingspeak.com/channels/2652379/feeds.json"
 COMBINED_FILENAME = "combined_data.csv"
 
 # Secrets from Streamlit's secrets management
-COMBINED_ID = st.secrets["FILE_ID"]
-SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
+# COMBINED_ID = st.secrets["FILE_ID"]
+# SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
 
 COL_NAMES = [
     "EC Value (us/cm)",

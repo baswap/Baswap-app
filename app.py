@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # App configuration and data imports
-from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
+# from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
+from config import APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 
@@ -81,7 +82,8 @@ logo_src = data_uri("img/VGU RANGERS.png")
 render_header(texts, page, lang, logo_src)
 
 # ================== DATA BACKENDS ==================
-dm = DriveManager(SECRET_ACC)
+# dm = DriveManager(SECRET_ACC)
+dm = None
 
 # ================== STATIONS ==================
 STATION_LOOKUP, BASWAP_NAME = get_station_lookup(texts)
@@ -89,7 +91,8 @@ STATION_LOOKUP, BASWAP_NAME = get_station_lookup(texts)
 # ================== PAGE RENDERING ==================
 if page == "Overview":
     # Get data once for the entire page
-    df = thingspeak_retrieve(combined_data_retrieve())
+    # df = thingspeak_retrieve(combined_data_retrieve())
+    df = combined_data_retrieve()
     
     # Render the overview page with all components
     overview_page(

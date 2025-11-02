@@ -91,7 +91,7 @@ def overview_page(
             latest_values = {}
 
         try:
-            baswap_ec_gl = pd.to_numeric(df["EC Value (g/l)"], errors="coerce").dropna()
+            baswap_ec_gl = pd.to_numeric(df["EC[g/l]"], errors="coerce").dropna()
             if not baswap_ec_gl.empty:
                 latest_values[norm_name(BASWAP_NAME)] = float(baswap_ec_gl.iloc[-1]) * 2000.0
         except Exception:
@@ -135,8 +135,8 @@ def overview_page(
         st.session_state.selected_station = clicked_label
         st.rerun()
 
-    first_date = df["Timestamp (GMT+7)"].min().date()
-    last_date = df["Timestamp (GMT+7)"].max().date()
+    first_date = df["ds"].min().date()
+    last_date = df["ds"].max().date()
     one_month_ago = max(first_date, last_date - timedelta(days=30))
     if st.session_state.get("date_from") is None:
         st.session_state.date_from = one_month_ago
@@ -270,7 +270,7 @@ def overview_page(
         key="table_cols_picker",
     )
     st.session_state.table_cols = list(table_cols_sel)
-    show_cols = ["Timestamp (GMT+7)"] + st.session_state.table_cols
+    show_cols = ["ds"] + st.session_state.table_cols
     existing = [c for c in show_cols if c in filtered_df.columns]
     st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     st.dataframe(filtered_df[existing], use_container_width=True)
