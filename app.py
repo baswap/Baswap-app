@@ -77,6 +77,7 @@ for k, v in {
 # ================== STYLES ==================
 load_styles(MAP_HEIGHT, TABLE_HEIGHT)
 
+
 # ================== HEADER ==================
 logo_src = data_uri("img/VGU RANGERS.png")
 render_header(texts, page, lang, logo_src)
