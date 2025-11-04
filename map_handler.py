@@ -125,7 +125,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         top: 80px;              
         right: 10px;
         z-index: 9999;
-        background-color: transparent;   /* transparent background */
+        background-color: white;   
         padding: 8px 10px;
         border: 1px solid #ccc;          /* border around legend box */
         border-radius: 4px;
