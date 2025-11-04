@@ -122,7 +122,6 @@ def resolve_cols(df_cols):
     stn = pick(stn_candidates)
     tcol = pick(time_candidates)
     ecol = pick(ec_candidates)
-    print(stn, tcol, ecol)
     if not (stn and tcol and ecol):
         raise ValueError("Required columns not found.")
     return stn, tcol, ecol
