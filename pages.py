@@ -81,7 +81,12 @@ def overview_page(
 
     BASWAP_NAMES = [s["name"] for s in BASWAP_STATIONS]
     OTHER_NAMES = [s["name"] for s in OTHER_STATIONS]
-
+    # Hard-coded default station
+    DEFAULT_STATION = "VGU"
+    if "selected_station" not in st.session_state:
+        if DEFAULT_STATION in BASWAP_NAMES or DEFAULT_STATION in OTHER_NAMES:
+            st.session_state.selected_station = DEFAULT_STATION
+    #end
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
