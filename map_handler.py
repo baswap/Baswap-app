@@ -33,7 +33,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         return "#9e9e9e"       # fallback gray
 
     # Nudge FA glyph for better visual centering (right + up)
-    NUDGE_X = -0.8  # px to the right
+    NUDGE_X = -1.8  # px to the right
     NUDGE_Y = 1.8   # px upward
     INNER_ICON_STYLE = f"margin-left: {NUDGE_X}px; transform: translateY(-{NUDGE_Y}px);"
 
