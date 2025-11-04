@@ -6,7 +6,7 @@ GMT7 = pytz.timezone("Asia/Bangkok")
 UTC = pytz.utc
 
 # API URLs and filenames
-THINGSPEAK_URL = "https://api.thingspeak.com/channels/2652379/feeds.json"
+THINGSPEAK_URL = "https://api.thingspeak.com/channels/3040691/feeds.json"
 COMBINED_FILENAME = "combined_data.csv"
 
 # Secrets from Streamlit's secrets management

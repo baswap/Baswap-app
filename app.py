@@ -92,8 +92,8 @@ STATION_LOOKUP = get_station_lookup(texts)
 # ================== PAGE RENDERING ==================
 if page == "Overview":
     # Get data once for the entire page
-    # df = thingspeak_retrieve(combined_data_retrieve())
-    df = combined_data_retrieve()
+    df = thingspeak_retrieve(combined_data_retrieve())
+    # df = combined_data_retrieve()
     
     # Render the overview page with all components
     overview_page(

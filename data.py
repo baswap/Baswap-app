@@ -1,7 +1,7 @@
 import os
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 import requests
@@ -72,7 +72,12 @@ def fetch_thingspeak_data(results: int) -> list[dict]:
 @st.cache_data()
 def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
     """Append any newer rows from ThingSpeak to *df*."""
-    last_ts: datetime = df["ds"].iloc[-1]
+    # last_ts: datetime = df[df["station"] == "VGU"]["ds"].iloc[-1]
+    # define Bangkok timezone (UTC+7)
+    bangkok_tz = timezone(timedelta(hours=7))
+
+    # create timezone-aware datetime
+    last_ts = datetime(2025, 11, 3, tzinfo=bangkok_tz)
 
     for feed in feeds:
         created = feed.get("created_at")
@@ -83,29 +88,34 @@ def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
             datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
         )
 
+        new_row = {
+            "ds": gmt7_time,
+            "station": "VGU",
+            "EC Value (g/l)": float(feed.get("field3", 0)) / 1000,
+            "EC Value (us/cm)": float(feed.get("field3", 0))
+        }
+
+        new_df = pd.DataFrame([new_row])
+
+        new_df["ds"] = _to_bangkok(new_df["ds"])
+
         if gmt7_time > last_ts:
-            df.loc[len(df)] = [
-                gmt7_time,
-                float(feed.get("field1", 0.0)),
-                float(feed.get("field2", 0.0)),
-                int(feed.get("field3", 0)),
-                float(feed.get("field4", 0.0)),
-                float(feed.get("field5", 0.0)),
-                int(feed.get("field3", 0)) / 2000,
-            ]
+            df = pd.concat([df, new_df], ignore_index=True)
+        df["ds"] = _to_bangkok(df["ds"])
 
     # keep timestamps tidy & sorted
-    df["ds"] = _to_bangkok(df["ds"])
-    df.sort_values("ds", inplace=True, ignore_index=True)
+    # df["ds"] = _to_bangkok(df["ds"])
+    # df.sort_values(by=["station", "ds"], inplace=True, ignore_index=True)
     return df
 
 
 def thingspeak_retrieve(df: pd.DataFrame) -> pd.DataFrame:
     """Top-up *df* with fresh ThingSpeak rows."""
-    today = datetime.now(GMT7).date()
-    date_diff = max((today - df["ds"].iloc[-1].date()).days, 0)
+    # today = datetime.now(GMT7).date()
+    # date_diff = max((today - df["ds"].iloc[-1].date()).days, 0)
 
     # 150 rows per day looks right for your sampling rate
-    results = max(150 * date_diff, 1)
+    # results = max(150 * date_diff, 1)
+    results = max(150, 1)
     feeds = fetch_thingspeak_data(results)
     return append_new_data(df, feeds)
