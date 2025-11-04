@@ -179,8 +179,8 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str, include
     last_value_orig = float(y_all.loc[last_idx])
 
     # Clean history for the model
-    hist = df_in.loc[df_in.index <= last_idx, ["Timestamp (GMT+7)", col]].copy()
-    hist.rename(columns={"Timestamp (GMT+7)": "ds", col: "y"}, inplace=True)
+    hist = df_in.loc[df_in.index <= last_idx, ["ds", col]].copy()
+    hist.rename(columns={"ds": "ds", col: "y"}, inplace=True)
     hist["ds"] = pd.to_datetime(hist["ds"], errors="coerce")
     hist["y"] = pd.to_numeric(hist["y"], errors="coerce")
     hist = (
@@ -294,25 +294,25 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         st.info("No data for this date range.")
         return
 
-    df_filtered = df.copy().sort_values("Timestamp (GMT+7)")
-    df_filtered["Timestamp (GMT+7)"] = _coerce_naive_datetime(df_filtered["Timestamp (GMT+7)"])
+    df_filtered = df.copy().sort_values("ds")
+    df_filtered["ds"] = _coerce_naive_datetime(df_filtered["ds"])
 
     # Round time and choose gap/format
     if resample_freq == "Hour":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
-            df_filtered["Timestamp (GMT+7)"], errors="coerce"
+            df_filtered["ds"], errors="coerce"
         ).dt.floor("h")
         gap = pd.Timedelta(hours=3)
         disp_fmt = "%H:%M:%S"
     elif resample_freq == "Day":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
-            df_filtered["Timestamp (GMT+7)"], errors="coerce"
+            df_filtered["ds"], errors="coerce"
         ).dt.floor("d")
         gap = pd.Timedelta(days=3)
         disp_fmt = "%d/%m/%Y"
     else:
         df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-            df_filtered["Timestamp (GMT+7)"]
+            df_filtered["ds"]
         )
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"

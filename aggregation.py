@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
+from station_data import norm_name_capitalize
 
-def filter_data(df, date_from, date_to):
+def filter_data(df, station, date_from, date_to):
+    df = df[df["station"] == norm_name_capitalize(station)].copy()
     # guard inputs
     if date_from is None or date_to is None:
         return df.iloc[0:0].copy()
@@ -10,7 +12,7 @@ def filter_data(df, date_from, date_to):
         date_from, date_to = date_to, date_from
 
     # make timestamps tz-naive for stable comparisons
-    ts = pd.to_datetime(df["Timestamp (GMT+7)"], errors="coerce")
+    ts = pd.to_datetime(df["ds"], errors="coerce")
     try:
         if getattr(ts.dt, "tz", None) is not None:
             ts = ts.dt.tz_localize(None)
@@ -19,31 +21,31 @@ def filter_data(df, date_from, date_to):
 
     mask = (ts.dt.date >= date_from) & (ts.dt.date <= date_to)
     out = df.loc[mask].copy()
-    out["Timestamp (GMT+7)"] = ts[mask]
-    out.sort_values("Timestamp (GMT+7)", inplace=True)
+    out["ds"] = ts[mask]
+    out.sort_values("ds", inplace=True)
     return out
 
-def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions):
+def apply_aggregation(df, target_col, resample_freq, agg_functions):
     import pandas as pd
 
     if resample_freq == "None":
         return df.copy()
 
-    rule_map = {"Hour": "H", "Day": "D"}
+    rule_map = {"Hour": "h", "Day": "d"}
     valid = {"Min", "Max", "Median"}
     if not set(agg_functions).issubset(valid):
         return df
 
     dfi = df.copy()
 
-    ts = pd.to_datetime(dfi["Timestamp (GMT+7)"], errors="coerce")
+    ts = pd.to_datetime(dfi["ds"], errors="coerce")
     try:
         if getattr(ts.dt, "tz", None) is not None:
             ts = ts.dt.tz_localize(None)
     except Exception:
         pass
-    dfi["Timestamp (GMT+7)"] = ts
-    dfi = dfi.set_index("Timestamp (GMT+7)").sort_index()
+    dfi["ds"] = ts
+    dfi = dfi.set_index("ds").sort_index()
 
     freq = rule_map[resample_freq]
     grouper = pd.Grouper(freq=freq)
@@ -64,13 +66,13 @@ def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_function
             idx = (s.groupby(grouper).idxmin() if f == "Min" else s.groupby(grouper).idxmax())
             idx = idx.dropna()
             if idx.empty:
-                agg_df = pd.DataFrame(columns=["Timestamp (GMT+7)", target_col])
+                agg_df = pd.DataFrame(columns=["ds", target_col])
             else:
                 sel = dfi.loc[idx.to_numpy(), [target_col]].reset_index()
-                agg_df = sel[["Timestamp (GMT+7)", target_col]]
+                agg_df = sel[["ds", target_col]]
 
         if preds_binned is not None:
-            agg_df = agg_df.merge(preds_binned, on="Timestamp (GMT+7)", how="left")
+            agg_df = agg_df.merge(preds_binned, on="ds", how="left")
 
         agg_df["Aggregation"] = f
         out.append(agg_df)

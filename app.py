@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # App configuration and data imports
-from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
+# from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
+from config import APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 
 # Component modules
 from ui_components import data_uri, load_styles, render_header, render_footer
-from station_data import OTHER_STATIONS, get_station_lookup
+from station_data import BASWAP_STATIONS, OTHER_STATIONS, get_station_lookup
 from map_handler import add_layers, create_map, render_map
 from pages import overview_page, about_page, settings_panel
 
@@ -82,20 +83,22 @@ logo_src = data_uri("img/VGU RANGERS.png")
 render_header(texts, page, lang, logo_src)
 
 # ================== DATA BACKENDS ==================
-dm = DriveManager(SECRET_ACC)
+# dm = DriveManager(SECRET_ACC)
+dm = None
 
 # ================== STATIONS ==================
-STATION_LOOKUP, BASWAP_NAME = get_station_lookup(texts)
+STATION_LOOKUP = get_station_lookup(texts)
 
 # ================== PAGE RENDERING ==================
 if page == "Overview":
     # Get data once for the entire page
     df = thingspeak_retrieve(combined_data_retrieve())
+    # df = combined_data_retrieve()
     
     # Render the overview page with all components
     overview_page(
         texts, side_texts, COL_NAMES, df, dm,
-        BASWAP_NAME, STATION_LOOKUP, OTHER_STATIONS,
+        STATION_LOOKUP, BASWAP_STATIONS, OTHER_STATIONS,
         MAP_HEIGHT, TABLE_HEIGHT,
         lang
     )
