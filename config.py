@@ -14,7 +14,7 @@ COMBINED_FILENAME = "combined_data.csv"
 # SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
 
 COL_NAMES = [
-    "EC Value (us/cm)",
+    "EC Value (g/l)",
     "EC Value (g/l)",
     # "EC Temperature",
     # "Battery Voltage"
