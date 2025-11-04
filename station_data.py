@@ -37,10 +37,10 @@ OTHER_STATIONS = [
     {"name":"Sông Đốc","lon":104.8336191,"lat":9.040111339},
     {"name":"Vũng Liêm","lon":106.2329204,"lat":10.08355046},
     {"name":"Chù Chí","lon":105.318965,"lat":9.303196225},
-    {"name":"Bạc Liêu","lon":105.7212312,"lat":9.281556339},
+    {"name":"TPBạc Liêu","lon":105.7212312,"lat":9.281556339},
     {"name":"Thới Bình","lon":105.0868866,"lat":9.3479814},
-    {"name":"Luyến Quỳnh","lon":104.9466043,"lat":10.16807224},
-    {"name":"Măng Thít","lon":106.1562281,"lat":10.16149561},
+    {"name":"Luỳnh Quỳnh","lon":104.9466043,"lat":10.16807224},
+    # {"name":"Măng Thít","lon":106.1562281,"lat":10.16149561},
     {"name":"Tám Ngàn","lon":104.8420667,"lat":10.32105},
 ]
 
@@ -88,6 +88,7 @@ def get_station_lookup(texts: dict):
 def norm_name(name: str) -> str:
     """Normalize station name for comparison"""
     import unicodedata, re
+    name = name.replace("Đ", "D").replace("đ", "d")
     s = unicodedata.normalize("NFKD", str(name or ""))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")  # strip accents
     s = re.sub(r"[\W_]+", "", s)  # remove spaces/punct
