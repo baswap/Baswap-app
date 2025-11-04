@@ -33,8 +33,8 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         return "#9e9e9e"       # fallback gray
 
     # Nudge FA glyph for better visual centering (right + up)
-    NUDGE_X = -1.6  # px to the right
-    NUDGE_Y = 1.6  # px upward
+    NUDGE_X = -0.8  # px to the right
+    NUDGE_Y = 1.8   # px upward
     INNER_ICON_STYLE = f"margin-left: {NUDGE_X}px; transform: translateY(-{NUDGE_Y}px);"
 
     # One shared clusterer (hidden from LayerControl)
@@ -122,15 +122,16 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
     {{% macro html(this, kwargs) %}}
     <div style="
         position: absolute;
-        top: 10px;
+        top: 80px;               /* moved down so it does not cover layer control */
         right: 10px;
         z-index: 9999;
-        background-color: white;
+        background-color: transparent;   /* transparent background */
         padding: 8px 10px;
-        border: 1px solid #ccc;
+        border: 1px solid #ccc;          /* border around legend box */
         border-radius: 4px;
         box-shadow: 0 0 4px rgba(0,0,0,0.3);
         font-size: 12px;
+        color: #000;                      /* text color black */
     ">
         <div style="font-weight: bold; margin-bottom: 4px;">{legend_title}</div>
         {rows_html}
