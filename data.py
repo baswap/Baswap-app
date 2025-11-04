@@ -48,7 +48,12 @@ def combined_data_retrieve() -> pd.DataFrame:
     # # one clean, canonical conversion – no UTC round-trip
     # df["ds"] = _to_bangkok(df["ds"])
     df = pd.read_csv("/workspaces/Baswap-app/dataset/merged_all_data.csv")
-    df["ds"] = _to_bangkok(df["ds"])
+    df["ds"] = (
+        pd.to_datetime(df["ds"], errors="coerce")                # parse (yields tz-aware if +07 present)
+        .dt.tz_convert("Asia/Bangkok")                         # ensure local time
+        .dt.tz_localize(None)                                  # drop timezone -> naive datetime64[ns]
+    )
+    # df["ds"] = _to_bangkok(df["ds"])
     return df
 
 

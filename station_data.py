@@ -47,12 +47,43 @@ OTHER_STATIONS = [
 # BASWAP coordinates
 BASWAP_LATLON = (10.099833, 106.208306)
 
-def get_station_lookup(texts):
-    """Create a lookup dictionary for station coordinates"""
-    BASWAP_NAME = texts["baswap_name"]
-    station_lookup = {s["name"]: (float(s["lat"]), float(s["lon"])) for s in OTHER_STATIONS}
-    station_lookup[BASWAP_NAME] = BASWAP_LATLON
-    return station_lookup, BASWAP_NAME
+BASWAP_STATIONS = [
+    {"name":"Vĩnh Long","lon":106.208306,"lat":10.099833},
+    {"name":"Cần Giờ","lon":106.807946,"lat":10.598092}, 
+    {"name":"VGU","lon":106.613894203,"lat":11.108438972}
+]
+
+def get_station_lookup(texts: dict):
+    """
+    Create a lookup dictionary mapping station name -> (lat, lon).
+    Returns (station_lookup, baswap_layer_label).
+
+    - OTHER_STATIONS and BASWAP_STATIONS are expected to be available in the module scope.
+    - texts['baswap_name'] is used as the (localized) layer name for the BASWAP group.
+    """
+    station_lookup = {}
+
+    # Add other stations (skip invalid entries)
+    for s in OTHER_STATIONS:
+        try:
+            name = s["name"]
+            lat = float(s["lat"])
+            lon = float(s["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        station_lookup[name] = (lat, lon)
+
+    # Add all BASWAP stations (supports multiple)
+    for s in BASWAP_STATIONS:
+        try:
+            name = s["name"]
+            lat = float(s["lat"])
+            lon = float(s["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        station_lookup[name] = (lat, lon)
+
+    return station_lookup
 
 def norm_name(name: str) -> str:
     """Normalize station name for comparison"""
@@ -62,6 +93,14 @@ def norm_name(name: str) -> str:
     s = re.sub(r"[\W_]+", "", s)  # remove spaces/punct
     return s.lower()
 
+def norm_name_capitalize(name: str) -> str:
+    """Normalize station name for comparison, keeping capitalization"""
+    import unicodedata, re
+    s = unicodedata.normalize("NFKD", str(name or ""))
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")  # strip accents
+    s = re.sub(r"[\W_]+", "", s)  # remove spaces/punct
+    return s  # keep original capitalization
+
 def norm_col(col: str) -> str:
     """Normalize column name for comparison"""
     import re
@@ -70,19 +109,20 @@ def norm_col(col: str) -> str:
 def resolve_cols(df_cols):
     """Return (station_col, time_col, ec_col) by flexible matching"""
     norm_map = {norm_col(c): c for c in df_cols}
-    stn_candidates = ["stationname", "station", "stationid", "name"]
-    time_candidates = ["measdate", "datetime", "timestamp", "time", "date"]
-    ec_candidates = ["ecgl", "ec", "ecvalue"]  # matches EC(g/l) or EC[g/l]
+    stn_candidates = ["station_name", "station", "name"]
+    time_candidates = ["measdate", "datetime", "timestamp", "time", "date", "ds"]
+    ec_candidates = ["EC Value (g/l)", "EC[g/l]"]  # matches EC(g/l) or EC[g/l]
 
     def pick(cands):
         for k in cands:
-            if k in norm_map:
-                return norm_map[k]
+            if k in df_cols:
+                return k
         return None
 
     stn = pick(stn_candidates)
     tcol = pick(time_candidates)
     ecol = pick(ec_candidates)
+    print(stn, tcol, ecol)
     if not (stn and tcol and ecol):
         raise ValueError("Required columns not found.")
     return stn, tcol, ecol

@@ -16,8 +16,8 @@ COMBINED_FILENAME = "combined_data.csv"
 COL_NAMES = [
     "EC Value (us/cm)",
     "EC Value (g/l)",
-    "EC Temperature",
-    "Battery Voltage"
+    # "EC Temperature",
+    # "Battery Voltage"
 ]
 
 APP_TEXTS = {

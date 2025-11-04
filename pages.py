@@ -4,11 +4,12 @@ from datetime import timedelta
 import base64, mimetypes
 from pathlib import Path
 
+from station_data import norm_name_capitalize
 from config import get_about_html
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
-def settings_panel(side_texts, first_date, last_date, default_from, default_to, COL_NAMES):
+def settings_panel(side_texts, first_date, last_date, COL_NAMES):
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
@@ -17,13 +18,13 @@ def settings_panel(side_texts, first_date, last_date, default_from, default_to, 
     if c1.button(side_texts["sidebar_first_day"]):
         st.session_state.date_from = first_date
     if c2.button(side_texts["sidebar_today"]):
-        st.session_state.date_from = default_to
-        st.session_state.date_to = default_to
-
-    if st.session_state.get("date_from") is None:
-        st.session_state.date_from = default_from
-    if st.session_state.get("date_to") is None:
+        st.session_state.date_from = last_date
         st.session_state.date_to = last_date
+
+    # if st.session_state.get("date_from") is None:
+    st.session_state.date_from = max(first_date, last_date - timedelta(days=30))
+    # if st.session_state.get("date_to") is None:
+    st.session_state.date_to = last_date
 
     st.date_input(
         side_texts["sidebar_start_date"],
@@ -45,7 +46,7 @@ def show_dash_metrics(t_max, t_min, t_avg, t_std):
 
 def overview_page(
     texts, side_texts, COL_NAMES, df, dm,
-    BASWAP_NAME, STATION_LOOKUP, OTHER_STATIONS,
+    STATION_LOOKUP, BASWAP_STATIONS, OTHER_STATIONS,
     MAP_HEIGHT, TABLE_HEIGHT,
     lang
 ):
@@ -78,10 +79,13 @@ def overview_page(
 
     col_left, col_right = st.columns([7, 3], gap="small")
 
+    BASWAP_NAMES = [s["name"] for s in BASWAP_STATIONS]
+    OTHER_NAMES = [s["name"] for s in OTHER_STATIONS]
+
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
-        station_options_display = [texts["picker_none"], BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
+        station_options_display = [texts["picker_none"]] + BASWAP_NAMES + OTHER_NAMES
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
 
@@ -94,30 +98,27 @@ def overview_page(
 
         latest_values = {}
         try:
-            file_id = st.secrets.get("STATIONS_FILE_ID")
-            if file_id:
-                df_all = dm.read_csv_file(file_id)
-                stn_col, time_col, ec_col = resolve_cols(df_all.columns)
-                d = df_all.copy()
-                d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
-                d = d.dropna(subset=[time_col])
-                idx = d.groupby(stn_col)[time_col].idxmax()
-                latest = d.loc[idx, [stn_col, ec_col]].copy()
-                latest["key"] = latest[stn_col].map(norm_name)
-                latest["val"] = pd.to_numeric(latest[ec_col], errors="coerce") * 2000.0
-                latest_values = dict(zip(latest["key"], latest["val"]))
+            stn_col, time_col, ec_col = resolve_cols(df.columns)
+            d = df.copy()
+            d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
+            d = d.dropna(subset=[time_col])
+            idx = d.groupby(stn_col)[time_col].idxmax()
+            latest = d.loc[idx, [stn_col, ec_col]].copy()
+            latest["key"] = latest[stn_col].map(norm_name)
+            latest["val"] = pd.to_numeric(latest[ec_col], errors="coerce")
+            latest_values = dict(zip(latest["key"], latest["val"]))
         except Exception:
             latest_values = {}
 
-        try:
-            baswap_ec_gl = pd.to_numeric(df["EC[g/l]"], errors="coerce").dropna()
-            if not baswap_ec_gl.empty:
-                latest_values[norm_name(BASWAP_NAME)] = float(baswap_ec_gl.iloc[-1]) * 2000.0
-        except Exception:
-            pass
+        # try:
+        #     baswap_ec_gl = pd.to_numeric(df["EC[g/l]"], errors="coerce").dropna()
+        #     if not baswap_ec_gl.empty:
+        #         latest_values[norm_name(BASWAP_NAME)] = float(baswap_ec_gl.iloc[-1]) * 2000.0
+        # except Exception:
+        #     pass
 
         # build table + warnings dict
-        station_names = [BASWAP_NAME] + [s["name"] for s in OTHER_STATIONS]
+        station_names = BASWAP_NAMES + OTHER_NAMES
         rows = []
         station_warnings = {}
         for name in station_names:
@@ -152,7 +153,7 @@ def overview_page(
 
         m = create_map(center, zoom, highlight_location, sel)
         add_layers(
-            m, texts, BASWAP_NAME, STATION_LOOKUP[BASWAP_NAME], OTHER_STATIONS,
+            m, texts, BASWAP_STATIONS, OTHER_STATIONS,
             station_warnings=station_warnings
         )
         map_out = render_map(m, MAP_HEIGHT)
@@ -162,9 +163,8 @@ def overview_page(
         st.session_state.selected_station = clicked_label
         st.rerun()
 
-    first_date = df["ds"].min().date()
-    last_date = df["ds"].max().date()
-    one_month_ago = max(first_date, last_date - timedelta(days=30))
+    first_date = df[df["station"] == norm_name_capitalize(st.session_state.selected_station)]["ds"].min().date() if st.session_state.selected_station is not None else df["ds"].min().date()
+    last_date = df[df["station"] == norm_name_capitalize(st.session_state.selected_station)]["ds"].max().date() if st.session_state.selected_station is not None else df["ds"].max().date()
 
     # original default (one month)
     # if st.session_state.get("date_from") is None:
@@ -172,14 +172,14 @@ def overview_page(
     # if st.session_state.get("date_to") is None:
     #     st.session_state.date_to = last_date
 
-    # #### HARD-CODED DEFAULT RANGE (remove later) ####
-    HARD_FROM = date(2025, 4, 1)
-    HARD_TO = date(2025, 4, 10)
-    if st.session_state.get("date_from") is None:
-        st.session_state.date_from = HARD_FROM
-    if st.session_state.get("date_to") is None:
-        st.session_state.date_to = HARD_TO
-    # #### END HARD-CODED DEFAULT RANGE ####
+    # # #### HARD-CODED DEFAULT RANGE (remove later) ####
+    # HARD_FROM = date(2025, 4, 1)
+    # HARD_TO = date(2025, 4, 10)
+    # if st.session_state.get("date_from") is None:
+    #     st.session_state.date_from = HARD_FROM
+    # if st.session_state.get("date_to") is None:
+    #     st.session_state.date_to = HARD_TO
+    # # #### END HARD-CODED DEFAULT RANGE ####
 
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
@@ -219,81 +219,83 @@ def overview_page(
         c1, c2, c3, c4 = st.columns(4)
         for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
             c.metric(label=lab, value="-")
-    elif selected_station == BASWAP_NAME:
-        stats_df = filter_data(df, st.session_state.date_from, st.session_state.date_to)
+    elif selected_station in BASWAP_NAMES or selected_station in OTHER_NAMES:
+        stats_df = filter_data(df, st.session_state.get("selected_station"), st.session_state.date_from, st.session_state.date_to)
         display_statistics(stats_df, st.session_state.target_col)
     else:
-        try:
-            file_id = st.secrets.get("STATIONS_FILE_ID")
-            if not file_id:
-                c1, c2, c3, c4 = st.columns(4)
-                for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                    c.metric(label=lab, value="-")
-            else:
-                df_all = dm.read_csv_file(file_id)
+        raise RuntimeError("Invalid station's name.")
+    # else:
+    #     try:
+    #         file_id = st.secrets.get("STATIONS_FILE_ID")
+    #         if not file_id:
+    #             c1, c2, c3, c4 = st.columns(4)
+    #             for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+    #                 c.metric(label=lab, value="-")
+    #         else:
+    #             df_all = dm.read_csv_file(file_id)
 
-                def _norm_col2(col: str) -> str:
-                    import re
-                    return re.sub(r"[^a-z0-9]", "", str(col).lower())
+    #             def _norm_col2(col: str) -> str:
+    #                 import re
+    #                 return re.sub(r"[^a-z0-9]", "", str(col).lower())
 
-                norm_map = {_norm_col2(c): c for c in df_all.columns}
-                stn_col = next((norm_map[k] for k in ["stationname", "station", "stationid", "name"] if k in norm_map), None)
-                time_col = next((norm_map[k] for k in ["measdate", "datetime", "timestamp", "time", "date"] if k in norm_map), None)
-                ec_col = pick_ec_col(df_all.columns)
+    #             norm_map = {_norm_col2(c): c for c in df_all.columns}
+    #             stn_col = next((norm_map[k] for k in ["stationname", "station", "stationid", "name"] if k in norm_map), None)
+    #             time_col = next((norm_map[k] for k in ["measdate", "datetime", "timestamp", "time", "date"] if k in norm_map), None)
+    #             ec_col = pick_ec_col(df_all.columns)
 
-                if not (stn_col and time_col and ec_col):
-                    c1, c2, c3, c4 = st.columns(4)
-                    for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                        c.metric(label=lab, value="-")
-                else:
-                    d = df_all[[stn_col, time_col, ec_col]].copy()
-                    d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
-                    d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
-                    d = d.dropna(subset=[time_col, ec_col])
-                    sel_key = norm_name(selected_station)
-                    mask = d[stn_col].map(norm_name) == sel_key
-                    sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
-                    if sd.empty:
-                        c1, c2, c3, c4 = st.columns(4)
-                        for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                            c.metric(label=lab, value="-")
-                    else:
-                        vals = sd[ec_col] * 2000.0
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric(label=t_max, value=f"{vals.max():.2f}")
-                        c2.metric(label=t_min, value=f"{vals.min():.2f}")
-                        c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
-                        c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
-        except Exception:
-            c1, c2, c3, c4 = st.columns(4)
-            for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-                c.metric(label=lab, value="-")
+    #             if not (stn_col and time_col and ec_col):
+    #                 c1, c2, c3, c4 = st.columns(4)
+    #                 for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+    #                     c.metric(label=lab, value="-")
+    #             else:
+    #                 d = df_all[[stn_col, time_col, ec_col]].copy()
+    #                 d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
+    #                 d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
+    #                 d = d.dropna(subset=[time_col, ec_col])
+    #                 sel_key = norm_name(selected_station)
+    #                 mask = d[stn_col].map(norm_name) == sel_key
+    #                 sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
+    #                 if sd.empty:
+    #                     c1, c2, c3, c4 = st.columns(4)
+    #                     for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+    #                         c.metric(label=lab, value="-")
+    #                 else:
+    #                     vals = sd[ec_col] * 2000.0
+    #                     c1, c2, c3, c4 = st.columns(4)
+    #                     c1.metric(label=t_max, value=f"{vals.max():.2f}")
+    #                     c2.metric(label=t_min, value=f"{vals.min():.2f}")
+    #                     c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
+    #                     c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
+    #     except Exception:
+    #         c1, c2, c3, c4 = st.columns(4)
+    #         for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
+    #             c.metric(label=lab, value="-")
 
     st.divider()
 
     chart_container = st.container()
     settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
     with st.expander(settings_label, expanded=False):
-        settings_panel(side_texts, first_date, last_date, one_month_ago, last_date, COL_NAMES)
+        settings_panel(side_texts, first_date, last_date, COL_NAMES)
 
     date_from = st.session_state.date_from
     date_to = st.session_state.date_to
     target_col = st.session_state.target_col
 
-    filtered_df = filter_data(df, date_from, date_to)
+    filtered_df = filter_data(df, st.session_state.get("selected_station"), date_from, date_to)
 
     with chart_container:
         st.subheader(f"{target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
 
         with tabs[0]:
-            hourly = apply_aggregation(filtered_df, COL_NAMES, target_col, "Hour", ["Median"])
+            hourly = apply_aggregation(filtered_df, target_col, "Hour", ["Median"])
             if "Aggregation" in hourly.columns:
                 hourly = hourly.loc[hourly["Aggregation"] == "Median"]
             plot_line_chart(hourly, target_col, "Hour")
 
         with tabs[1]:
-            daily = apply_aggregation(filtered_df, COL_NAMES, target_col, "Day", ["Median"])
+            daily = apply_aggregation(filtered_df, target_col, "Day", ["Median"])
             if "Aggregation" in daily.columns:
                 daily = daily.loc[daily["Aggregation"] == "Median"]
             plot_line_chart(daily, target_col, "Day")

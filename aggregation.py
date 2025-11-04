@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
+from station_data import norm_name_capitalize
 
-def filter_data(df, date_from, date_to):
+def filter_data(df, station, date_from, date_to):
+    df = df[df["station"] == norm_name_capitalize(station)].copy()
     # guard inputs
     if date_from is None or date_to is None:
         return df.iloc[0:0].copy()
@@ -23,13 +25,13 @@ def filter_data(df, date_from, date_to):
     out.sort_values("ds", inplace=True)
     return out
 
-def apply_aggregation(df, selected_cols, target_col, resample_freq, agg_functions):
+def apply_aggregation(df, target_col, resample_freq, agg_functions):
     import pandas as pd
 
     if resample_freq == "None":
         return df.copy()
 
-    rule_map = {"Hour": "H", "Day": "D"}
+    rule_map = {"Hour": "h", "Day": "d"}
     valid = {"Min", "Max", "Median"}
     if not set(agg_functions).issubset(valid):
         return df

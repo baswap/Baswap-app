@@ -3,7 +3,7 @@ from folium.plugins import MarkerCluster, FeatureGroupSubGroup, BeautifyIcon
 
 from streamlit_folium import st_folium
 
-def add_layers(m, texts, BASWAP_NAME, BASWAP_LATLON, OTHER_STATIONS, station_warnings=None):
+def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None):
     """
     Shared clustering across BASWAP + Other, with separate toggles.
     Marker color depends on warning level (0..4). Centers FA glyph horizontally and nudges it upward.
@@ -45,26 +45,41 @@ def add_layers(m, texts, BASWAP_NAME, BASWAP_LATLON, OTHER_STATIONS, station_war
     m.add_child(baswap_sub)
     m.add_child(other_sub)
 
-    # BASWAP marker
-    b_color = _color_for(station_warnings.get(BASWAP_NAME, 0))
-    folium.Marker(
-        BASWAP_LATLON,
-        tooltip=BASWAP_NAME,
-        icon=BeautifyIcon(
-            icon="tint", prefix="fa",
-            icon_shape="marker",
-            background_color=b_color,
-            border_color="#2c3e50",
-            inner_icon_style=INNER_ICON_STYLE,
-        ),
-    ).add_to(baswap_sub)
+    # --- BASWAP markers (multiple) ---
+    for s in BASWAP_STATIONS:
+        name = s["name"]
+        try:
+            lat = float(s["lat"])
+            lon = float(s["lon"])
+        except (KeyError, ValueError, TypeError):
+            # skip invalid entries
+            continue
 
-    # Other stations
+        b_color = _color_for(station_warnings.get(name, 0))
+        folium.Marker(
+            [lat, lon],
+            tooltip=name,
+            icon=BeautifyIcon(
+                icon="tint", prefix="fa",
+                icon_shape="marker",
+                background_color=b_color,
+                border_color="#2c3e50",
+                inner_icon_style=INNER_ICON_STYLE,
+            ),
+        ).add_to(baswap_sub)
+
+    # --- Other stations ---
     for s in OTHER_STATIONS:
         name = s["name"]
+        try:
+            lat = float(s["lat"])
+            lon = float(s["lon"])
+        except (KeyError, ValueError, TypeError):
+            continue
+
         o_color = _color_for(station_warnings.get(name, 0))
         folium.Marker(
-            [float(s["lat"]), float(s["lon"])],
+            [lat, lon],
             tooltip=name,
             icon=BeautifyIcon(
                 icon="life-ring", prefix="fa",
