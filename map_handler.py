@@ -3,6 +3,7 @@ from folium.plugins import MarkerCluster, FeatureGroupSubGroup, BeautifyIcon
 
 from streamlit_folium import st_folium
 
+
 def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None):
     """
     Shared clustering across BASWAP + Other, with separate toggles.
@@ -10,6 +11,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
     """
     from folium.plugins import MarkerCluster, FeatureGroupSubGroup, BeautifyIcon
     import folium
+    from branca.element import MacroElement, Template
 
     station_warnings = station_warnings or {}
 
@@ -19,7 +21,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         except Exception:
             lv = None
         if lv == 0:
-            return "#a5d6a7"   # green
+            return "#1976d2"   # blue (or change to your soft green here)
         if lv == 1:
             return "#fff59d"   # light yellow
         if lv == 2:
@@ -31,8 +33,8 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         return "#9e9e9e"       # fallback gray
 
     # Nudge FA glyph for better visual centering (right + up)
-    NUDGE_X = -0.6 # px to the right
-    NUDGE_Y = 1.5   # px upward
+    NUDGE_X = -0.8  # px to the right
+    NUDGE_Y = 1.8  # px upward
     INNER_ICON_STYLE = f"margin-left: {NUDGE_X}px; transform: translateY(-{NUDGE_Y}px);"
 
     # One shared clusterer (hidden from LayerControl)
@@ -41,7 +43,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
 
     # Two togglable sub-groups that share the clusterer — names are localized
     baswap_sub = FeatureGroupSubGroup(shared_cluster, name=texts["layer_baswap"], show=True)
-    other_sub  = FeatureGroupSubGroup(shared_cluster, name=texts["layer_other"],  show=True)
+    other_sub = FeatureGroupSubGroup(shared_cluster, name=texts["layer_other"], show=True)
     m.add_child(baswap_sub)
     m.add_child(other_sub)
 
@@ -92,6 +94,54 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
 
     # Exactly two checkboxes (localized group names)
     folium.LayerControl(collapsed=False).add_to(m)
+
+    # ---------- Color legend on the right side ----------
+    legend_items = [
+        (0, "<= 0.5 g/l"),
+        (1, "0.5 – 1 g/l"),
+        (2, "1 – 2 g/l"),
+        (3, "2 – 4 g/l"),
+        (4, "> 4 g/l"),
+    ]
+
+    rows_html = ""
+    for level, label in legend_items:
+        color = _color_for(level)
+        rows_html += (
+            f'<div style="display:flex;align-items:center;margin-bottom:2px;">'
+            f'<span style="display:inline-block;width:12px;height:12px;'
+            f'background:{color};border-radius:50%;margin-right:6px;'
+            f'border:1px solid #555;"></span>'
+            f'<span>{label}</span>'
+            f'</div>'
+        )
+
+    legend_title = texts.get("legend_title", "EC warning levels")
+
+    legend_template = f"""
+    {{% macro html(this, kwargs) %}}
+    <div style="
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 9999;
+        background-color: white;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
+        font-size: 12px;
+    ">
+        <div style="font-weight: bold; margin-bottom: 4px;">{legend_title}</div>
+        {rows_html}
+    </div>
+    {{% endmacro %}}
+    """
+
+    legend = MacroElement()
+    legend._template = Template(legend_template)
+    m.get_root().add_child(legend)
+
 
 
 def create_map(center, zoom, highlight_location=None, selected_station=None):
