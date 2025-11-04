@@ -21,7 +21,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         except Exception:
             lv = None
         if lv == 0:
-            return "#a5d6a7"   # blue (or change to your soft green here)
+            return "#a5d6a7"  
         if lv == 1:
             return "#fff59d"   # light yellow
         if lv == 2:
@@ -122,7 +122,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
     {{% macro html(this, kwargs) %}}
     <div style="
         position: absolute;
-        top: 80px;               /* moved down so it does not cover layer control */
+        top: 80px;              
         right: 10px;
         z-index: 9999;
         background-color: transparent;   /* transparent background */
