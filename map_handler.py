@@ -19,7 +19,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
         except Exception:
             lv = None
         if lv == 0:
-            return "#1976d2"   # blue
+            return "#a5d6a7"   # green
         if lv == 1:
             return "#fff59d"   # light yellow
         if lv == 2:
