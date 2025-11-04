@@ -14,7 +14,7 @@ COMBINED_FILENAME = "combined_data.csv"
 # SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
 
 COL_NAMES = [
-    "EC Value (us/cm)",
+    "EC Value (g/l)",
     "EC Value (g/l)",
     # "EC Temperature",
     # "Battery Voltage"
@@ -45,11 +45,11 @@ APP_TEXTS = {
         "picker_label": "Pick a station",
         "picker_none": "None",
         "baswap_name": "BASWAP stations",
-        "layer_baswap": "BASWAP stations",
+        "layer_baswap": "VGU Rangers",
         "layer_other": "Other stations",
         "table_station": "Station",
         "table_warning": "Warning",
-        "current_measurement": "Current Measurement",
+        "current_measurement": "Current Measurement (g/l)",
         "legend_observed": "Observed",
         "legend_predicted": "Predicted",
         "clear_cache_tooltip": "Clear cached data and fetch the latest data from Thingspeak.",
@@ -60,6 +60,7 @@ APP_TEXTS = {
         "stats_std": "Std Dev",
         "legend_pi90": "90% prediction interval",
         "legend_pi50": "50% prediction interval",
+        "legend_title": "EC warning levels",
         
     },
     "vi": {
@@ -86,11 +87,11 @@ APP_TEXTS = {
         "picker_label": "Chọn trạm",
         "picker_none": "Không chọn",
         "baswap_name": "Trạm BASWAP",
-        "layer_baswap": "Trạm BASWAP",
+        "layer_baswap": "VGU Rangers",
         "layer_other": "Các trạm khác",
         "table_station": "Trạm",
         "table_warning": "Cảnh báo",
-        "current_measurement": "Chỉ số hiện tại",
+        "current_measurement": "Chỉ số hiện tại (g/l)",
         "legend_observed": "Dữ liệu thực đo",
         "legend_predicted": "Dự báo",
         "clear_cache_tooltip": "Xóa bộ nhớ đệm và tải lại dữ liệu mới nhất từ Thingspeak.",
@@ -101,7 +102,7 @@ APP_TEXTS = {
         "stats_std": "Độ lệch chuẩn",
         "legend_pi90": "Khoảng dự báo 90%",
         "legend_pi50": "Khoảng dự báo 50%",
-        
+        "legend_title": "Mức cảnh báo EC",
     }
 }
 

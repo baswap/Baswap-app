@@ -66,13 +66,13 @@ def overview_page(
             x = float(v)
         except Exception:
             return None
-        if x <= 200:
+        if x <= 0.5:
             return 0
-        elif x <= 500:
+        elif x <= 1:
             return 1
-        elif x <= 1000:
+        elif x <= 2:
             return 2
-        elif x <= 2000:
+        elif x <= 4:
             return 3
         else:
             return 4
@@ -81,7 +81,12 @@ def overview_page(
 
     BASWAP_NAMES = [s["name"] for s in BASWAP_STATIONS]
     OTHER_NAMES = [s["name"] for s in OTHER_STATIONS]
-
+    # Hard-coded default station
+    DEFAULT_STATION = "VGU"
+    if "selected_station" not in st.session_state:
+        if DEFAULT_STATION in BASWAP_NAMES or DEFAULT_STATION in OTHER_NAMES:
+            st.session_state.selected_station = DEFAULT_STATION
+    #end
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
