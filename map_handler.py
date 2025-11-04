@@ -32,7 +32,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
 
     # Nudge FA glyph for better visual centering (right + up)
     NUDGE_X = 0.7 # px to the right
-    NUDGE_Y = 1.2   # px upward
+    NUDGE_Y = 1.5   # px upward
     INNER_ICON_STYLE = f"margin-left: {NUDGE_X}px; transform: translateY(-{NUDGE_Y}px);"
 
     # One shared clusterer (hidden from LayerControl)
