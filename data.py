@@ -7,12 +7,11 @@ import pandas as pd
 import requests
 import streamlit as st
 
-# from config import GMT7, UTC, THINGSPEAK_URL, COMBINED_ID, SECRET_ACC
 from config import GMT7, UTC, THINGSPEAK_URL
 
 # utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils")))
-from utils import DriveManager  # noqa: E402  (import after sys.path tweak)
+from utils import DriveManager  
 
 
 # ──────────────────────────────────────────────────────────────
@@ -34,7 +33,7 @@ def _to_bangkok(series: pd.Series) -> pd.Series:
 
     if s.dt.tz is None:                     # tz-naive → localise
         return s.dt.tz_localize("Asia/Bangkok")
-    return s.dt.tz_convert("Asia/Bangkok")  # already aware → convert if needed
+    return s.dt.tz_convert("Asia/Bangkok")  
 
 
 # ──────────────────────────────────────────────────────────────
