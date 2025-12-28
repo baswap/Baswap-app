@@ -10,10 +10,12 @@ from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
 def settings_panel(side_texts, first_date, last_date, COL_NAMES):
+    # Sidebar controls: column picker + date range + aggregation defaults
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
 
+    # Quick date buttons
     c1, c2 = st.columns(2)
     if c1.button(side_texts["sidebar_first_day"]):
         st.session_state.date_from = first_date
@@ -21,9 +23,8 @@ def settings_panel(side_texts, first_date, last_date, COL_NAMES):
         st.session_state.date_from = last_date
         st.session_state.date_to = last_date
 
-    # if st.session_state.get("date_from") is None:
+    # Default range (currently overwrites on rerun)
     st.session_state.date_from = max(first_date, last_date - timedelta(days=30))
-    # if st.session_state.get("date_to") is None:
     st.session_state.date_to = last_date
 
     st.date_input(
@@ -35,7 +36,7 @@ def settings_panel(side_texts, first_date, last_date, COL_NAMES):
         min_value=first_date, max_value=last_date, key="date_to"
     )
 
-    # set default only once; do NOT reset every rerun
+    # Set default only once
     if "agg_stats" not in st.session_state:
         st.session_state.agg_stats = ["Median"]
 
@@ -54,11 +55,11 @@ def overview_page(
     from map_handler import add_layers, create_map, render_map
     import pandas as pd
     import streamlit as st
-    from datetime import timedelta, date  # added date
+    from datetime import timedelta, date
     import base64, mimetypes
     from pathlib import Path
 
-    # helper: map current measurement -> warning bucket
+    # Map an EC reading to a warning bucket (0..4)
     def _calc_warning(v):
         if v is None or pd.isna(v):
             return None
@@ -81,15 +82,17 @@ def overview_page(
 
     BASWAP_NAMES = [s["name"] for s in BASWAP_STATIONS]
     OTHER_NAMES = [s["name"] for s in OTHER_STATIONS]
-    # Hard-coded default station
+
+    # Default selection on first load
     DEFAULT_STATION = "VGU"
     if "selected_station" not in st.session_state:
         if DEFAULT_STATION in BASWAP_NAMES or DEFAULT_STATION in OTHER_NAMES:
             st.session_state.selected_station = DEFAULT_STATION
-    #end
+
     with col_right:
         st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
 
+        # Station picker (includes a "none" option)
         station_options_display = [texts["picker_none"]] + BASWAP_NAMES + OTHER_NAMES
         current_sel = st.session_state.get("selected_station")
         default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
@@ -101,6 +104,7 @@ def overview_page(
         )
         st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
 
+        # Latest EC value per station (used for the table + map coloring)
         latest_values = {}
         try:
             stn_col, time_col, ec_col = resolve_cols(df.columns)
@@ -115,14 +119,7 @@ def overview_page(
         except Exception:
             latest_values = {}
 
-        # try:
-        #     baswap_ec_gl = pd.to_numeric(df["EC[g/l]"], errors="coerce").dropna()
-        #     if not baswap_ec_gl.empty:
-        #         latest_values[norm_name(BASWAP_NAME)] = float(baswap_ec_gl.iloc[-1]) * 2000.0
-        # except Exception:
-        #     pass
-
-        # build table + warnings dict
+        # Build the right-side table and the warning dict for map markers
         station_names = BASWAP_NAMES + OTHER_NAMES
         rows = []
         station_warnings = {}
@@ -142,9 +139,12 @@ def overview_page(
         st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
 
     with col_left:
-        map_title = texts.get("map_title", "Station Map")
-        st.markdown(f'<div class="map-title">{map_title}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="map-title">{texts.get("map_title", "Station Map")}</div>',
+            unsafe_allow_html=True
+        )
 
+        # Map view follows the selected station (fallback is a wide overview)
         center = [10.2, 106.0]
         zoom = 8
         highlight_location = None
@@ -163,28 +163,15 @@ def overview_page(
         )
         map_out = render_map(m, MAP_HEIGHT)
 
+    # Clicking a marker updates the selected station
     clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
     if clicked_label and clicked_label in STATION_LOOKUP and st.session_state.get("selected_station") != clicked_label:
         st.session_state.selected_station = clicked_label
         st.rerun()
 
+    # Date bounds depend on the selected station (or whole dataset if none)
     first_date = df[df["station"] == norm_name_capitalize(st.session_state.selected_station)]["ds"].min().date() if st.session_state.selected_station is not None else df["ds"].min().date()
     last_date = df[df["station"] == norm_name_capitalize(st.session_state.selected_station)]["ds"].max().date() if st.session_state.selected_station is not None else df["ds"].max().date()
-
-    # original default (one month)
-    # if st.session_state.get("date_from") is None:
-    #     st.session_state.date_from = one_month_ago
-    # if st.session_state.get("date_to") is None:
-    #     st.session_state.date_to = last_date
-
-    # # #### HARD-CODED DEFAULT RANGE (remove later) ####
-    # HARD_FROM = date(2025, 4, 1)
-    # HARD_TO = date(2025, 4, 10)
-    # if st.session_state.get("date_from") is None:
-    #     st.session_state.date_from = HARD_FROM
-    # if st.session_state.get("date_to") is None:
-    #     st.session_state.date_to = HARD_TO
-    # # #### END HARD-CODED DEFAULT RANGE ####
 
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
@@ -192,6 +179,7 @@ def overview_page(
     with sh_right:
         st.empty()
 
+    # Stats header shows the current scope (station vs none)
     scope_label = texts.get("scope_label") or ("Station" if lang == "en" else "Trạm")
     none_label = "None" if lang == "en" else "Chưa chọn trạm"
     selected_station = st.session_state.get("selected_station")
@@ -220,6 +208,7 @@ def overview_page(
     t_avg = texts.get("stats_avg", "Average")
     t_std = texts.get("stats_std", "Std Dev")
 
+    # Overall stats for the selected station and date window
     if not selected_station:
         c1, c2, c3, c4 = st.columns(4)
         for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
@@ -229,58 +218,11 @@ def overview_page(
         display_statistics(stats_df, st.session_state.target_col)
     else:
         raise RuntimeError("Invalid station's name.")
-    # else:
-    #     try:
-    #         file_id = st.secrets.get("STATIONS_FILE_ID")
-    #         if not file_id:
-    #             c1, c2, c3, c4 = st.columns(4)
-    #             for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-    #                 c.metric(label=lab, value="-")
-    #         else:
-    #             df_all = dm.read_csv_file(file_id)
-
-    #             def _norm_col2(col: str) -> str:
-    #                 import re
-    #                 return re.sub(r"[^a-z0-9]", "", str(col).lower())
-
-    #             norm_map = {_norm_col2(c): c for c in df_all.columns}
-    #             stn_col = next((norm_map[k] for k in ["stationname", "station", "stationid", "name"] if k in norm_map), None)
-    #             time_col = next((norm_map[k] for k in ["measdate", "datetime", "timestamp", "time", "date"] if k in norm_map), None)
-    #             ec_col = pick_ec_col(df_all.columns)
-
-    #             if not (stn_col and time_col and ec_col):
-    #                 c1, c2, c3, c4 = st.columns(4)
-    #                 for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-    #                     c.metric(label=lab, value="-")
-    #             else:
-    #                 d = df_all[[stn_col, time_col, ec_col]].copy()
-    #                 d[time_col] = pd.to_datetime(d[time_col], errors="coerce")
-    #                 d[ec_col] = pd.to_numeric(d[ec_col], errors="coerce")
-    #                 d = d.dropna(subset=[time_col, ec_col])
-    #                 sel_key = norm_name(selected_station)
-    #                 mask = d[stn_col].map(norm_name) == sel_key
-    #                 sd = d.loc[mask].sort_values(time_col, ascending=False).head(1000)
-    #                 if sd.empty:
-    #                     c1, c2, c3, c4 = st.columns(4)
-    #                     for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-    #                         c.metric(label=lab, value="-")
-    #                 else:
-    #                     vals = sd[ec_col] * 2000.0
-    #                     c1, c2, c3, c4 = st.columns(4)
-    #                     c1.metric(label=t_max, value=f"{vals.max():.2f}")
-    #                     c2.metric(label=t_min, value=f"{vals.min():.2f}")
-    #                     c3.metric(label=t_avg, value=f"{vals.mean():.2f}")
-    #                     c4.metric(label=t_std, value=f"{vals.std(ddof=1):.2f}")
-    #     except Exception:
-    #         c1, c2, c3, c4 = st.columns(4)
-    #         for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
-    #             c.metric(label=lab, value="-")
 
     st.divider()
 
     chart_container = st.container()
-    settings_label = side_texts["sidebar_header"].lstrip("# ").strip()
-    with st.expander(settings_label, expanded=False):
+    with st.expander(side_texts["sidebar_header"].lstrip("# ").strip(), expanded=False):
         settings_panel(side_texts, first_date, last_date, COL_NAMES)
 
     date_from = st.session_state.date_from
@@ -289,6 +231,7 @@ def overview_page(
 
     filtered_df = filter_data(df, st.session_state.get("selected_station"), date_from, date_to)
 
+    # Charts: hourly + daily median
     with chart_container:
         st.subheader(f"{target_col}")
         tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
@@ -307,6 +250,7 @@ def overview_page(
 
     st.divider()
 
+    # Raw data table for the selected columns
     st.subheader(texts["data_table"])
     table_cols_sel = st.multiselect(
         texts["columns_select"],
@@ -320,11 +264,8 @@ def overview_page(
     st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     st.dataframe(filtered_df[existing], use_container_width=True)
 
-
-
-
-
 def about_page(lang):
+    # Render the About page HTML and inline local images as data URIs
     def _img_src(path: str) -> str:
         p = Path(path)
         if not p.exists():
@@ -332,6 +273,7 @@ def about_page(lang):
         mime = mimetypes.guess_type(p.name)[0] or "image/png"
         b64 = base64.b64encode(p.read_bytes()).decode()
         return f"data:{mime};base64,{b64}"
+
     html = get_about_html(lang)
     html = html.replace("__IMG1__", _img_src("img/1.jpg")).replace("__IMG2__", _img_src("img/2.jpg"))
     st.markdown(html, unsafe_allow_html=True)
