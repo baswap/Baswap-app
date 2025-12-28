@@ -11,29 +11,29 @@ def data_uri(path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
-    """Inject the app CSS (header layout, sizing, and responsive tweaks)."""
+    """Inject all app CSS."""
     st.markdown(f"""
     <style>
-      /* Streamlit chrome */
+      /* Hide Streamlit default header */
       header{{visibility:hidden;}}
 
-      /* Fixed header sizing */
+      /* Header height variable */
       :root {{ --header-h: 5rem; }}
       @media (max-width: 768px) {{ :root {{ --header-h: 2.8rem; }} }}
 
-      /* Header */
+      /* Fixed custom header */
       .custom-header{{
         position:fixed; top:0; left:0; right:0; height:var(--header-h);
         display:flex; align-items:center; gap:1rem; padding:0 .75rem;
         background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
       }}
 
-      /* Brand */
+      /* Brand with icon + text */
       .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
       .custom-header .logo img{{ height:calc(var(--header-h) - 1.2rem); width:auto; border-radius:4px; display:block; object-fit:contain; }}
       .custom-header .logo .text{{ font-size:clamp(1.25rem, 6vw, 2.2rem); font-weight:700; line-height:1; }}
 
-      /* Nav */
+      /* Nav links */
       .custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
       .custom-header .nav a{{
         display:inline-flex; align-items:center; line-height:1;
@@ -63,13 +63,13 @@ def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
       .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
       .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-      /* Push content below the fixed header */
+      /* Push content below fixed header */
       body>.main{{ margin-top:var(--header-h); }}
 
-      /* Folium iframe height */
+      /* Ensure folium map height */
       iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
 
-      /* Titles / small UI bits */
+      /* Map title */
       .map-title{{
         margin:.2rem 0 .35rem; font-size:1.7rem; font-weight:600; line-height:1.2;
         display:flex; align-items:center; gap:.5rem;
@@ -97,7 +97,7 @@ def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
         margin: .25rem 0 .6rem;
       }}
 
-      /* Mobile sizing tweaks */
+      /* Mobile overrides */
       @media (max-width: 768px){{
         .custom-header{{ gap:.5rem; padding:0 .5rem; }}
         .custom-header .logo .text{{ font-size:1.155rem; }}
@@ -107,44 +107,40 @@ def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
           padding:.14rem .315rem;
         }}
       }}
-    </style>
-    """, unsafe_allow_html=True)
 
-    # Layout glue: keep footer at bottom and avoid header overlap
-    st.markdown("""
-    <style>
-      html, body, [data-testid="stApp"]{ height:100%; }
-      [data-testid="stApp"]{ display:flex; flex-direction:column; }
+      /* App layout glue / margins */
+      html, body, [data-testid="stApp"]{{ height:100%; }}
+      [data-testid="stApp"]{{ display:flex; flex-direction:column; }}
 
-      [data-testid="stAppViewContainer"] > .main{
+      [data-testid="stAppViewContainer"] > .main{{
         margin-top:var(--header-h) !important;
         display:flex; flex-direction:column;
         flex:1 0 auto;
-      }
+      }}
 
-      .block-container, [data-testid="block-container"]{
+      .block-container, [data-testid="block-container"]{{
         display:flex !important; flex-direction:column !important;
         min-height: calc(100vh - var(--header-h)) !important;
         padding-top: 2.5rem;
         overflow: visible !important;
-      }
+      }}
 
-      .custom-header{ transition: transform .25s ease; will-change: transform; }
-      .custom-header.hide{ transform: translateY(-100%); }
+      .custom-header{{ transition: transform .25s ease; will-change: transform; }}
+      .custom-header.hide{{ transform: translateY(-100%); }}
 
-      .refresh-holder .stButton > button{ transform: translateY(2px); }
+      .refresh-holder .stButton > button{{ transform: translateY(2px); }}
     </style>
     """, unsafe_allow_html=True)
 
 def render_header(texts, page, lang, logo_src):
-    """Top navbar: logo + page links + language picker."""
+    """Top header with nav + language picker."""
     active_overview = "active" if page == "Overview" else ""
     active_about = "active" if page == "About" else ""
-    
+
     LANG_LABEL = {"en": "English", "vi": "Tiếng Việt"}
     current_lang_label = LANG_LABEL.get(lang, "English")
     toggle_tooltip = texts.get("toggle_tooltip", "")
-    
+
     st.markdown(f"""
     <div class="custom-header">
       <div class="logo">
@@ -171,7 +167,7 @@ def render_header(texts, page, lang, logo_src):
     """, unsafe_allow_html=True)
 
 def render_footer():
-    """Footer strip (full-width) with branding and placeholder social link."""
+    """Footer strip."""
     st.markdown("""
     <style>
       .vgu-footer{
@@ -183,9 +179,7 @@ def render_footer():
         background:#000;
       }
 
-      .vgu-footer .vgu-hero{
-        width:100%; min-height:20px; background:#000;
-      }
+      .vgu-footer .vgu-hero{ width:100%; min-height:20px; background:#000; }
 
       .vgu-footer .vgu-meta{
         width:100%; background:#000;
