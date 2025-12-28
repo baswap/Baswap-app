@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # App configuration and data imports
-# from config import SECRET_ACC, APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from config import APP_TEXTS, SIDE_TEXTS, COL_NAMES
 from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
@@ -16,10 +15,8 @@ from station_data import BASWAP_STATIONS, OTHER_STATIONS, get_station_lookup
 from map_handler import add_layers, create_map, render_map
 from pages import overview_page, about_page, settings_panel
 
-# ================== PAGE CONFIG ==================
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
 
-# --- read query params + optional refresh ---
 try:
     params = st.query_params
 except Exception:
@@ -54,16 +51,13 @@ if page not in ("Overview", "About"):
 if lang not in ("en", "vi"):
     lang = "vi"
 
-# ================== CONSTANTS & SETTINGS ==================
 MAP_HEIGHT = 600
 TABLE_HEIGHT = MAP_HEIGHT - 90
 
-# ================== TEXTS / LANG ==================
 texts = APP_TEXTS[lang]
 side_texts = SIDE_TEXTS[lang]
 st.session_state["texts"] = texts
 
-# ================== SESSION DEFAULTS ==================
 for k, v in {
     "target_col": COL_NAMES[0],
     "date_from": None,
@@ -74,26 +68,20 @@ for k, v in {
 }.items():
     st.session_state.setdefault(k, v)
 
-# ================== STYLES ==================
 load_styles(MAP_HEIGHT, TABLE_HEIGHT)
-
 
 # ================== HEADER ==================
 logo_src = data_uri("img/VGU RANGERS.png")
 render_header(texts, page, lang, logo_src)
 
-# ================== DATA BACKENDS ==================
-# dm = DriveManager(SECRET_ACC)
 dm = None
 
-# ================== STATIONS ==================
 STATION_LOOKUP = get_station_lookup(texts)
 
 # ================== PAGE RENDERING ==================
 if page == "Overview":
     # Get data once for the entire page
     df = thingspeak_retrieve(combined_data_retrieve())
-    # df = combined_data_retrieve()
     
     # Render the overview page with all components
     overview_page(
