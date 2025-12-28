@@ -1,4 +1,4 @@
-# Baswap App
+# Baswap WebApp
 
 ## 📑 Table of Contents
 - [Summary](#summary)
@@ -11,8 +11,7 @@
 
 ## 🗒️ Summary
 
-This website is part of our Buoy-based AIoT system for water quality monitor and prediction (BASWAP) project. This repository features a bilingual (English/Việt) Streamlit dashboard that fetches real-time environmental data from our buoy in Vinh Long, and presents in an interactive, user-friendly way. Users can filter by date, measurement type, and aggregation functions, then export to CSV for offline analysis.
-
+This website is part of our BASWAP (Buoy-based AIoT System for Water Quality Monitoring & Prediction) project. This repository features a bilingual (English/Việt) Streamlit dashboard that visualizes multi-station real-time EC (salinity proxy) data on an interactive map, displays station warning levels, and station statistics. For each station, the app also shows observed vs. predicted EC trends with uncertainty intervals, supports hourly/daily views and up-to-date monitoring.
 ## 👥 Team Members
 
 | Name                          | Role                    | Contact |
@@ -23,6 +22,7 @@ This website is part of our Buoy-based AIoT system for water quality monitor and
 | Ton That Nhat Minh            | Software Developer      |         |
 | Chau Hoang Tu                 | Hardware Developer      |         |
 | Ngoc Thao                     | Hardware Developer      |         |
+| Truong Quang Minh             | Front-End Web Developer |         |
 
 ## 🌐 Live Demo
 
@@ -30,7 +30,8 @@ This website is part of our Buoy-based AIoT system for water quality monitor and
 
 ## 🚀 Features
 
-- Real-time data from our buoy in Vinh Long  
+- Real-time data from our buoy in Vinh Long
+- Map shows real-time salinity levels and warnings at monitoring stations
 - Customizable interactive graphs with sliders, dropdowns, and date pickers  
 - Dual-language support: English ⇄ Tiếng Việt  
 - Data export (CSV/PNG) for offline analysis  
