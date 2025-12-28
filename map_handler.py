@@ -6,8 +6,11 @@ from streamlit_folium import st_folium
 
 def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None):
     """
-    Shared clustering across BASWAP + Other, with separate toggles.
-    Marker color depends on warning level (0..4). Centers FA glyph horizontally and nudges it upward.
+    Add clustered station markers + a legend onto an existing Folium map.
+
+    - BASWAP + Other stations share one MarkerCluster, but are toggled separately in LayerControl
+    - Marker color is driven by station_warnings (0..4)
+    - Adds a fixed legend box (top-right) showing the color scale
     """
     from folium.plugins import MarkerCluster, FeatureGroupSubGroup, BeautifyIcon
     import folium
@@ -16,12 +19,13 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
     station_warnings = station_warnings or {}
 
     def _color_for(level):
+        # Map warning level -> marker color (with gray fallback)
         try:
             lv = int(level)
         except Exception:
             lv = None
         if lv == 0:
-            return "#a5d6a7"  
+            return "#a5d6a7"
         if lv == 1:
             return "#fff59d"   # light yellow
         if lv == 2:
@@ -32,28 +36,28 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
             return "#f44336"   # red
         return "#9e9e9e"       # fallback gray
 
+    # Small CSS tweaks to center the FontAwesome glyph inside the marker pin
     NUDGE_X = -1.8  # px to the right
     NUDGE_Y = 1.8   # px upward
     INNER_ICON_STYLE = f"margin-left: {NUDGE_X}px; transform: translateY(-{NUDGE_Y}px);"
 
-    # One shared clusterer (hidden from LayerControl)
+    # Shared clusterer (not shown as a toggle)
     shared_cluster = MarkerCluster(name="All stations (clusterer)", control=False)
     shared_cluster.add_to(m)
 
-    # Two togglable sub-groups that share the clusterer — names are localized
+    # Two togglable sub-groups that still share the same clustering behavior
     baswap_sub = FeatureGroupSubGroup(shared_cluster, name=texts["layer_baswap"], show=True)
     other_sub = FeatureGroupSubGroup(shared_cluster, name=texts["layer_other"], show=True)
     m.add_child(baswap_sub)
     m.add_child(other_sub)
 
-    # --- BASWAP markers (multiple) ---
+    # Add BASWAP markers
     for s in BASWAP_STATIONS:
         name = s["name"]
         try:
             lat = float(s["lat"])
             lon = float(s["lon"])
         except (KeyError, ValueError, TypeError):
-            # skip invalid entries
             continue
 
         b_color = _color_for(station_warnings.get(name, 0))
@@ -69,7 +73,7 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
             ),
         ).add_to(baswap_sub)
 
-    # --- Other stations ---
+    # Add "Other" station markers
     for s in OTHER_STATIONS:
         name = s["name"]
         try:
@@ -91,10 +95,10 @@ def add_layers(m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=None)
             ),
         ).add_to(other_sub)
 
-    # Exactly two checkboxes (localized group names)
+    # Show exactly two toggles (BASWAP / Other)
     folium.LayerControl(collapsed=False).add_to(m)
 
-    # ---------- Color legend on the right side ----------
+    # Build a small HTML legend and inject it as a MacroElement
     legend_items = [
         (0, "<= 0.5 g/l"),
         (1, "0.5 – 1 g/l"),
