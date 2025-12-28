@@ -30,9 +30,9 @@ This website is part of our BASWAP (Buoy-based AIoT System for Water Quality Mon
 
 ## 🚀 Features
 
-- Real-time data from our buoy in Vinh Long
 - Map shows real-time salinity levels and warnings at monitoring stations
-- Customizable interactive graphs with sliders, dropdowns, and date pickers  
+- Per-station analytics (min/max/avg/std dev)
+- Forecasting graph with observed, predicted EC and 50% / 90% prediction intervals
 - Dual-language support: English ⇄ Tiếng Việt  
 - Data export (CSV/PNG) for offline analysis  
 
