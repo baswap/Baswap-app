@@ -26,7 +26,7 @@ This website is part of our BASWAP (Buoy-based AIoT System for Water Quality Mon
 
 ## 🌐 Live Demo
 
-[https://baswap-app.streamlit.app/](https://baswap-app.streamlit.app/)
+[https://baswap-app.streamlit.app/](https://vgu-rangers-monitoring.streamlit.app/)
 
 ## 🚀 Features
 
