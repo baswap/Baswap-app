@@ -3,7 +3,6 @@ from pathlib import Path
 import base64, mimetypes
 
 def data_uri(path: str) -> str:
-    """Convert a file to data URI for embedding in HTML"""
     p = Path(path)
     if not p.exists():
         return ""
@@ -12,29 +11,29 @@ def data_uri(path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
-    """Load all CSS styles for the app"""
+    """Inject the app CSS (header layout, sizing, and responsive tweaks)."""
     st.markdown(f"""
     <style>
-      /* Hide Streamlit default header */
+      /* Streamlit chrome */
       header{{visibility:hidden;}}
 
-      /* Header height variable */
-      :root {{ --header-h: 5rem; }}                         /* desktop/tablet */
-      @media (max-width: 768px) {{ :root {{ --header-h: 2.8rem; }} }}  /* phones */
+      /* Fixed header sizing */
+      :root {{ --header-h: 5rem; }}
+      @media (max-width: 768px) {{ :root {{ --header-h: 2.8rem; }} }}
 
-      /* Fixed custom header */
+      /* Header */
       .custom-header{{
         position:fixed; top:0; left:0; right:0; height:var(--header-h);
         display:flex; align-items:center; gap:1rem; padding:0 .75rem;
         background:#09c; box-shadow:0 1px 2px rgba(0,0,0,.1); z-index:1000;
       }}
 
-      /* Brand with icon + text — responsive sizes */
+      /* Brand */
       .custom-header .logo{{ display:flex; align-items:center; gap:.5rem; color:#fff; }}
       .custom-header .logo img{{ height:calc(var(--header-h) - 1.2rem); width:auto; border-radius:4px; display:block; object-fit:contain; }}
       .custom-header .logo .text{{ font-size:clamp(1.25rem, 6vw, 2.2rem); font-weight:700; line-height:1; }}
 
-      /* Nav links */
+      /* Nav */
       .custom-header .nav{{ display:flex; gap:1rem; align-items:center; }}
       .custom-header .nav a{{
         display:inline-flex; align-items:center; line-height:1;
@@ -64,13 +63,13 @@ def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
       .lang-menu .item {{ display:block; padding:.5rem .65rem; border-radius:.4rem; text-decoration:none; font-weight:500; }}
       .lang-menu .item:hover {{ background:#f2f6ff; }}
 
-      /* Push content below fixed header */
+      /* Push content below the fixed header */
       body>.main{{ margin-top:var(--header-h); }}
 
-      /* Ensure folium map height */
+      /* Folium iframe height */
       iframe[title="streamlit_folium.st_folium"]{{ height:{MAP_HEIGHT}px!important; }}
 
-      /* Map title */
+      /* Titles / small UI bits */
       .map-title{{
         margin:.2rem 0 .35rem; font-size:1.7rem; font-weight:600; line-height:1.2;
         display:flex; align-items:center; gap:.5rem;
@@ -98,26 +97,20 @@ def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
         margin: .25rem 0 .6rem;
       }}
 
-      /* Mobile overrides (≤768px) */
+      /* Mobile sizing tweaks */
       @media (max-width: 768px){{
         .custom-header{{ gap:.5rem; padding:0 .5rem; }}
-
-        /* BASWAP wordmark: +10% (from ~1.05rem → ~1.155rem) */
         .custom-header .logo .text{{ font-size:1.155rem; }}
-
-        /* Overview/About nav: −10% (from .85rem → .765rem) */
         .custom-header .nav a{{ font-size:.765rem; }}
-
-        /* Language control: −30% size */
-        .lang-dd summary{{ 
-          font-size:0.7em;                 /* 70% of parent */
-          padding:.14rem .315rem;          /* 30% less than .2/.45 */
+        .lang-dd summary{{
+          font-size:0.7em;
+          padding:.14rem .315rem;
         }}
       }}
     </style>
     """, unsafe_allow_html=True)
 
-    # App layout glue / margins
+    # Layout glue: keep footer at bottom and avoid header overlap
     st.markdown("""
     <style>
       html, body, [data-testid="stApp"]{ height:100%; }
@@ -144,7 +137,7 @@ def load_styles(MAP_HEIGHT, TABLE_HEIGHT):
     """, unsafe_allow_html=True)
 
 def render_header(texts, page, lang, logo_src):
-    """Render the app header with navigation and language selector"""
+    """Top navbar: logo + page links + language picker."""
     active_overview = "active" if page == "Overview" else ""
     active_about = "active" if page == "About" else ""
     
@@ -178,12 +171,11 @@ def render_header(texts, page, lang, logo_src):
     """, unsafe_allow_html=True)
 
 def render_footer():
-    """Render the app footer"""
+    """Footer strip (full-width) with branding and placeholder social link."""
     st.markdown("""
     <style>
-      /* wrapper: full-bleed without being fixed */
       .vgu-footer{
-        margin-top:auto;              
+        margin-top:auto;
         position:relative;
         left:50%; right:50%;
         margin-left:-50vw; margin-right:-50vw;
@@ -191,18 +183,15 @@ def render_footer():
         background:#000;
       }
 
-      /* small top placeholder so content sits near the divider */
       .vgu-footer .vgu-hero{
         width:100%; min-height:20px; background:#000;
       }
 
-      /* thin divider + meta row */
       .vgu-footer .vgu-meta{
         width:100%; background:#000;
         border-top:1px solid rgba(255,255,255,.08);
       }
 
-      /* constrained inner width; keep text near the divider */
       .vgu-footer .inner{
         max-width:1200px; margin:0 auto;
         padding:6px 16px 10px; box-sizing:border-box;
@@ -212,12 +201,10 @@ def render_footer():
         display:flex; align-items:center; justify-content:space-between; gap:1rem;
       }
 
-      /* thin gray typography on black */
       .vgu-footer .brand{ color:#9ca3af; font-weight:300; letter-spacing:.2px; }
       .vgu-footer .social{ display:flex; align-items:center; gap:.5rem; }
       .vgu-footer .social a{ color:#9ca3af; }
 
-      /* dark theme icon button */
       .vgu-footer .icon-btn{
         display:inline-flex; width:36px; height:36px; border-radius:999px;
         border:1px solid #2a2a2a; background:#0a0a0a;
