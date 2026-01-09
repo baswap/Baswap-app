@@ -14,15 +14,17 @@
 This website is part of our BASWAP (Buoy-based AIoT System for Water Quality Monitoring & Prediction) project. This repository features a bilingual (English/Việt) Streamlit dashboard that visualizes multi-station real-time EC (salinity proxy) data on an interactive map, displays station warning levels, and station statistics. For each station, the app also shows observed vs. predicted EC trends with uncertainty intervals, supports hourly/daily views and up-to-date monitoring.
 ## 👥 Team Members
 
-| Name                          | Role                    | Contact |
-|-------------------------------|-------------------------|---------|
-| Msc. Nguyen Vo That Thuyet    | Mentor                  |         |
-| Dr. Doan Van Binh             | Mentor                  |         |
-| Dr. Nguyen Tuan Cuong         | Mentor                  |         |
-| Ton That Nhat Minh            | Software Developer      |         |
-| Chau Hoang Tu                 | Hardware Developer      |         |
-| Ngoc Thao                     | Hardware Developer      |         |
-| Truong Quang Minh             | Front-End Web Developer |         |
+| Name                          | Role                     | Contact |
+|-------------------------------|--------------------------|---------|
+| Msc. Nguyen Vo That Thuyet    | Mentor                   |         |
+| Dr. Doan Van Binh             | Mentor                   |         |
+| Dr. Nguyen Tuan Cuong         | Mentor                   |         |
+| Ton That Nhat Minh            | Software Developer       |         |
+| Thai Minh Kien                | Software Developer       |         |
+| Chau Hoang Tu                 | Hardware Developer       |         |
+| Phan Ngoc Khue                | Hardware Developer       |         |
+| Truong Quang Minh             | Front-End Web Developer  |         |
+| Nguyen Gia Khiem              | Water Technology Engineer|         |
 
 ## 🌐 Live Demo
 
