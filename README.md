@@ -47,15 +47,13 @@ https://vgu-rangers-monitoring.streamlit.app/
 We would like to express our deepest gratitude to the following individuals whose early contributions and dedication laid the foundation for Baswap. Their hard work, insight, and passion were instrumental in shaping our project during its formative stages:
 
 - **Dr. Vo Bich Hien** — Mentor 
-- **Bui Ngoc Long**
-- **Thai Minh Kien**   
+- **Bui Ngoc Long**   
 - **Le Viet Tin** 
 - **Ho Ngoc Nhu Y** 
-- **Nguyen Gia Khiem** 
 
 Thank you for your guidance, creativity, and unwavering support. 
 
 ## 🛠 Support
-If you need to contact about the project, please reach out via **minhtonthatnhat@gmail.com**.
+If you need to contact about the project, please reach out via **minhtontn@gmail.com**.
 
 
