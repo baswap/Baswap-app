@@ -30,7 +30,7 @@ APP_TEXTS = {
         "raw_view": "Raw Data",
         "hourly_view": "Hourly Data",
         "daily_view": "Daily Data",
-        "data_table": "🔍 Data Table",
+        "data_table": "Data Table",
         "columns_select": "Select columns to display in the table:",
         "data_dimensions": "Data Dimension (row, column):",
         "clear_cache": "Refresh Data",
@@ -53,7 +53,7 @@ APP_TEXTS = {
         "legend_observed": "Observed",
         "legend_predicted": "Predicted",
         "clear_cache_tooltip": "Clear cached data and fetch the latest data from Thingspeak.",
-        "map_title": "🗺️ Station Map",
+        "map_title": "Station Map",
         "stats_max": "Maximum",
         "stats_min": "Minimum",
         "stats_avg": "Average",
@@ -72,7 +72,7 @@ APP_TEXTS = {
         "raw_view": "Biểu đồ dữ liệu gốc",
         "hourly_view": "Biểu đồ dữ liệu theo giờ",
         "daily_view": "Biểu đồ dữ liệu theo ngày",
-        "data_table": "🔍 Bảng Dữ Liệu",
+        "data_table": "Bảng Dữ Liệu",
         "columns_select": "Chọn các cột để hiển thị trong bảng:",
         "data_dimensions": "Kích thước dữ liệu (hàng, cột):",
         "clear_cache": "Cập nhật dữ liệu",
@@ -95,7 +95,7 @@ APP_TEXTS = {
         "legend_observed": "Dữ liệu thực đo",
         "legend_predicted": "Dự báo",
         "clear_cache_tooltip": "Xóa bộ nhớ đệm và tải lại dữ liệu mới nhất từ Thingspeak.",
-        "map_title": "🗺️ Bản đồ trạm đo mặn",
+        "map_title": "Bản đồ trạm đo mặn",
         "stats_max": "Giá trị lớn nhất",
         "stats_min": "Giá trị nhỏ nhất",
         "stats_avg": "Giá trị trung bình",
@@ -108,7 +108,7 @@ APP_TEXTS = {
 
 SIDE_TEXTS = {
     "en": {
-        "sidebar_header": "## ⚙️ Graph Settings",
+        "sidebar_header": "## Graph Settings",
         "sidebar_description": (
             "Use the options below to customize how the data is shown in the charts.\n\n"
             "You can choose what measurement to analyze, set a date range, and select which summary statistics to display in the hourly and daily view."
@@ -121,7 +121,7 @@ SIDE_TEXTS = {
         "sidebar_summary_stats": "Choose summary statistics to calculate (applied in Hourly and Daily views):"
     },
     "vi": {
-        "sidebar_header": "## ⚙️ Điều chỉnh biểu đồ",
+        "sidebar_header": "## Điều chỉnh biểu đồ",
         "sidebar_description": (
             "Sử dụng các tùy chọn bên dưới để tùy chỉnh cách dữ liệu được hiển thị trong các biểu đồ.\n\n"
             "Bạn có thể chọn chỉ số cần phân tích, khoảng thời gian, và chọn các thống kê để hiển thị trong biểu đồ theo giờ và theo ngày."
