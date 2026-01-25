@@ -1,18 +1,18 @@
 # Baswap WebApp
 
-## 📑 Table of Contents
+## Table of Contents
 - [Summary](#summary)
-- [👥 Team Members](#-team-members)  
-- [🌐 Live Demo](#-live-demo)  
-- [🚀 Features](#-features)    
-- [📊 Data Source](#-data-source)  
-- [🙏 Acknowledgements](#-acknowledgements)
-- [🛠 Support](#-support)
+- [Team Members](#-team-members)  
+- [Live Demo](#-live-demo)  
+- [Features](#-features)    
+- [Data Source](#-data-source)  
+- [Acknowledgements](#-acknowledgements)
+- [Support](#-support)
 
-## 🗒️ Summary
+## Summary
 
 This website is part of our BASWAP (Buoy-based AIoT System for Water Quality Monitoring & Prediction) project. This repository features a bilingual (English/Việt) Streamlit dashboard that visualizes multi-station real-time EC (salinity proxy) data on an interactive map, displays station warning levels, and station statistics. For each station, the app also shows observed vs. predicted EC trends with uncertainty intervals, supports hourly/daily views and up-to-date monitoring.
-## 👥 Team Members
+## Team Members
 
 | Name                          | Role                     | Contact |
 |-------------------------------|--------------------------|---------|
@@ -26,11 +26,11 @@ This website is part of our BASWAP (Buoy-based AIoT System for Water Quality Mon
 | Truong Quang Minh             | Front-End Web Developer  |         |
 | Nguyen Gia Khiem              | Water Technology Engineer|         |
 
-## 🌐 Live Demo
+## Live Demo
 
 https://vgu-rangers-monitoring.streamlit.app/
 
-## 🚀 Features
+## Features
 
 - Map shows real-time salinity levels and warnings at monitoring stations
 - Per-station analytics (min/max/avg/std dev)
@@ -38,11 +38,11 @@ https://vgu-rangers-monitoring.streamlit.app/
 - Dual-language support: English ⇄ Tiếng Việt  
 - Data export (CSV/PNG) for offline analysis  
 
-## 📊 Data Source
+## Data Source
 
 - **ThingSpeak Channel:** [https://thingspeak.mathworks.com/channels/2652379](link)
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 We would like to express our deepest gratitude to the following individuals whose early contributions and dedication laid the foundation for Baswap. Their hard work, insight, and passion were instrumental in shaping our project during its formative stages:
 
