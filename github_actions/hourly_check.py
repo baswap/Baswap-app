@@ -23,7 +23,7 @@ logger.addHandler(logger_file_handler)
 if __name__ == "__main__":
 
     # approximately 150 measurements a day
-    url = os.environ("THINGSPEAK_URL") + "?results=1"
+    url = os.environ["THINGSPEAK_URL"] + "?results=1"
 
     response = requests.get(url)
     data = json.loads(response.text)
