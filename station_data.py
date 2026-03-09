@@ -50,7 +50,7 @@ BASWAP_LATLON = (10.099833, 106.208306)
 BASWAP_STATIONS = [
     {"name":"Vĩnh Long","lon":106.208306,"lat":10.099833},
     {"name":"Cần Giờ","lon":106.807946,"lat":10.598092}, 
-    {"name":"VGU","lon":106.613894203,"lat":11.108438972}
+    # {"name":"VGU","lon":106.613894203,"lat":11.108438972}
 ]
 
 def get_station_lookup(texts: dict):
