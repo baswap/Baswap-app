@@ -2,6 +2,9 @@ import os
 import pytz
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
+import dotenv
+
+dotenv.load_dotenv()  # Load environment variables from .env file if present
 
 
 def get_secret(name: str):
@@ -17,12 +20,12 @@ UTC = pytz.utc
 
 # API URLs and filenames
 THINGSPEAK_URL = get_secret("THINGSPEAK_URL")
-
+DATABASE_URL = get_secret("DATABASE_URL")
 
 COMBINED_ID = get_secret("FILE_ID")
 SECRET_ACC = get_secret("SERVICE_ACCOUNT")
 
-COL_NAMES = ["EC", "temperature", "salinity"]
+COL_NAMES = ["ec_gl", "ec_us_cm", "temperature"]
 
 APP_TEXTS = {
     "en": {
