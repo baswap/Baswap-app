@@ -250,19 +250,19 @@ def overview_page(
 
     st.divider()
 
-    # Raw data table for the selected columns
-    st.subheader(texts["data_table"])
-    table_cols_sel = st.multiselect(
-        texts["columns_select"],
-        options=COL_NAMES,
-        default=st.session_state.get("table_cols", [COL_NAMES[0]]),
-        key="table_cols_picker",
-    )
-    st.session_state.table_cols = list(table_cols_sel)
-    show_cols = ["ds"] + st.session_state.table_cols
-    existing = [c for c in show_cols if c in filtered_df.columns]
-    st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
-    st.dataframe(filtered_df[existing], use_container_width=True)
+    # # Raw data table for the selected columns
+    # st.subheader(texts["data_table"])
+    # table_cols_sel = st.multiselect(
+    #     texts["columns_select"],
+    #     options=COL_NAMES,
+    #     default=st.session_state.get("table_cols", [COL_NAMES[0]]),
+    #     key="table_cols_picker",
+    # )
+    # st.session_state.table_cols = list(table_cols_sel)
+    # show_cols = ["ds"] + st.session_state.table_cols
+    # existing = [c for c in show_cols if c in filtered_df.columns]
+    # st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
+    # st.dataframe(filtered_df[existing], use_container_width=True)
 
 def about_page(lang):
     # Render the About page HTML and inline local images as data URIs
