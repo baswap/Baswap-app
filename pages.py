@@ -32,7 +32,7 @@ def settings_panel(side_texts, first_date, last_date, COL_NAMES):
         st.session_state.date_to = last_date
 
     # Default range (currently overwrites on rerun)
-    st.session_state.date_from = max(first_date, last_date - timedelta(days=30))
+    st.session_state.date_from = max(first_date, last_date - timedelta(days=7))
     st.session_state.date_to = last_date
 
     st.date_input(
@@ -102,7 +102,7 @@ def overview_page(
     OTHER_NAMES = [s["name"] for s in OTHER_STATIONS]
 
     # Default selection on first load
-    DEFAULT_STATION = "VGU"
+    DEFAULT_STATION = "Vĩnh Long"
     if "selected_station" not in st.session_state:
         if DEFAULT_STATION in BASWAP_NAMES or DEFAULT_STATION in OTHER_NAMES:
             st.session_state.selected_station = DEFAULT_STATION
