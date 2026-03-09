@@ -4,19 +4,19 @@ import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
 
 
-# Timezone constants
-GMT7 = pytz.timezone("Asia/Bangkok")
-UTC = pytz.utc
-
-# API URLs and filenames
-THINGSPEAK_URL = "https://api.thingspeak.com/channels/3040691/feeds.json"
-
-
 def get_secret(name: str):
     try:
         return st.secrets[name]
     except (KeyError, StreamlitSecretNotFoundError):
         return os.getenv(name)
+
+
+# Timezone constants
+GMT7 = pytz.timezone("Asia/Bangkok")
+UTC = pytz.utc
+
+# API URLs and filenames
+THINGSPEAK_URL = get_secret("THINGSPEAK_URL")
 
 
 COMBINED_ID = get_secret("FILE_ID")
@@ -27,9 +27,9 @@ COL_NAMES = ["EC", "temperature", "salinity"]
 APP_TEXTS = {
     "en": {
         "app_title": " ",
-        "description": """
+        "description": f"""
             This app retrieves water quality data from a buoy-based monitoring system in Vinh Long, Vietnam.
-            * **Data source:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
+            * **Data source:** [Thingspeak]({THINGSPEAK_URL}).
         """,
         "raw_view": "Raw Data",
         "tenmin_view": "10-Minute Data",
@@ -69,9 +69,9 @@ APP_TEXTS = {
     },
     "vi": {
         "app_title": " ",
-        "description": """
+        "description": f"""
             Ứng dụng này truy xuất dữ liệu chất lượng nước từ hệ thống theo dõi trên phao ở Vĩnh Long, Việt Nam.
-            * **Nguồn dữ liệu:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
+            * **Nguồn dữ liệu:** [Thingspeak]({THINGSPEAK_URL}).
         """,
         "raw_view": "Biểu đồ dữ liệu gốc",
         "tenmin_view": "Biểu đồ dữ liệu 10 phút",
