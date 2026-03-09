@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import timedelta
-import base64, mimetypes
+import base64
+import mimetypes
 from pathlib import Path
 
 from station_data import norm_name_capitalize
@@ -9,11 +10,18 @@ from config import get_about_html
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
 
+
 def settings_panel(side_texts, first_date, last_date, COL_NAMES):
     # Sidebar controls: column picker + date range + aggregation defaults
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
     st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
+
+    # Guard against NaT
+    if pd.isna(first_date) or pd.isna(last_date):
+        today = pd.Timestamp.today().date()
+        first_date = today
+        last_date = today
 
     # Quick date buttons
     c1, c2 = st.columns(2)
@@ -29,35 +37,45 @@ def settings_panel(side_texts, first_date, last_date, COL_NAMES):
 
     st.date_input(
         side_texts["sidebar_start_date"],
-        min_value=first_date, max_value=last_date, key="date_from"
+        min_value=first_date,
+        max_value=last_date,
+        key="date_from",
     )
     st.date_input(
         side_texts["sidebar_end_date"],
-        min_value=first_date, max_value=last_date, key="date_to"
+        min_value=first_date,
+        max_value=last_date,
+        key="date_to",
     )
 
     # Set default only once
     if "agg_stats" not in st.session_state:
         st.session_state.agg_stats = ["Median"]
 
+
 def show_dash_metrics(t_max, t_min, t_avg, t_std):
     c1, c2, c3, c4 = st.columns(4)
     for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
         c.metric(label=lab, value="-")
 
+
 def overview_page(
-    texts, side_texts, COL_NAMES, df, dm,
-    STATION_LOOKUP, BASWAP_STATIONS, OTHER_STATIONS,
-    MAP_HEIGHT, TABLE_HEIGHT,
-    lang
+    texts,
+    side_texts,
+    COL_NAMES,
+    df,
+    dm,
+    STATION_LOOKUP,
+    BASWAP_STATIONS,
+    OTHER_STATIONS,
+    MAP_HEIGHT,
+    TABLE_HEIGHT,
+    lang,
 ):
-    from station_data import norm_name, resolve_cols, pick_ec_col
+    from station_data import norm_name, resolve_cols
     from map_handler import add_layers, create_map, render_map
     import pandas as pd
     import streamlit as st
-    from datetime import timedelta, date
-    import base64, mimetypes
-    from pathlib import Path
 
     # Map an EC reading to a warning bucket (0..4)
     def _calc_warning(v):
@@ -90,19 +108,28 @@ def overview_page(
             st.session_state.selected_station = DEFAULT_STATION
 
     with col_right:
-        st.markdown(f'<div class="info-title">{texts["info_panel_title"]}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="info-title">{texts["info_panel_title"]}</div>',
+            unsafe_allow_html=True,
+        )
 
         # Station picker (includes a "none" option)
         station_options_display = [texts["picker_none"]] + BASWAP_NAMES + OTHER_NAMES
         current_sel = st.session_state.get("selected_station")
-        default_label = current_sel if current_sel in station_options_display else texts["picker_none"]
+        default_label = (
+            current_sel
+            if current_sel in station_options_display
+            else texts["picker_none"]
+        )
 
         picked_label = st.selectbox(
             label=texts["picker_label"],
             options=station_options_display,
             index=station_options_display.index(default_label),
         )
-        st.session_state.selected_station = None if picked_label == texts["picker_none"] else picked_label
+        st.session_state.selected_station = (
+            None if picked_label == texts["picker_none"] else picked_label
+        )
 
         # Latest EC value per station (used for the table + map coloring)
         latest_values = {}
@@ -130,18 +157,22 @@ def overview_page(
             station_warnings[name] = 0 if warn is None else warn
             display_val = "-" if val is None or pd.isna(val) else f"{val:.1f}"
             display_warn = "-" if warn is None else str(warn)
-            rows.append({
-                texts["table_station"]: name,
-                texts["current_measurement"]: display_val,
-                texts["table_warning"]: display_warn,
-            })
+            rows.append(
+                {
+                    texts["table_station"]: name,
+                    texts["current_measurement"]: display_val,
+                    texts["table_warning"]: display_warn,
+                }
+            )
         table_df = pd.DataFrame(rows)
-        st.dataframe(table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT)
+        st.dataframe(
+            table_df, use_container_width=True, hide_index=True, height=TABLE_HEIGHT
+        )
 
     with col_left:
         st.markdown(
             f'<div class="map-title">{texts.get("map_title", "Station Map")}</div>',
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
         # Map view follows the selected station (fallback is a wide overview)
@@ -158,20 +189,43 @@ def overview_page(
 
         m = create_map(center, zoom, highlight_location, sel)
         add_layers(
-            m, texts, BASWAP_STATIONS, OTHER_STATIONS,
-            station_warnings=station_warnings
+            m, texts, BASWAP_STATIONS, OTHER_STATIONS, station_warnings=station_warnings
         )
         map_out = render_map(m, MAP_HEIGHT)
 
     # Clicking a marker updates the selected station
-    clicked_label = map_out.get("last_object_clicked_tooltip") if isinstance(map_out, dict) else None
-    if clicked_label and clicked_label in STATION_LOOKUP and st.session_state.get("selected_station") != clicked_label:
+    clicked_label = (
+        map_out.get("last_object_clicked_tooltip")
+        if isinstance(map_out, dict)
+        else None
+    )
+    if (
+        clicked_label
+        and clicked_label in STATION_LOOKUP
+        and st.session_state.get("selected_station") != clicked_label
+    ):
         st.session_state.selected_station = clicked_label
         st.rerun()
 
     # Date bounds depend on the selected station (or whole dataset if none)
-    first_date = df[df["station"] == norm_name_capitalize(st.session_state.selected_station)]["ds"].min().date() if st.session_state.selected_station is not None else df["ds"].min().date()
-    last_date = df[df["station"] == norm_name_capitalize(st.session_state.selected_station)]["ds"].max().date() if st.session_state.selected_station is not None else df["ds"].max().date()
+    station = st.session_state.get("selected_station")
+
+    if station is not None:
+        station_name = norm_name_capitalize(station)
+        df_station = df[df["station"] == station_name]
+    else:
+        df_station = df
+
+    # Check empty dataframe
+    if df_station.empty:
+        first_date = None
+        last_date = None
+    else:
+        first_ts = df_station["ds"].min()
+        last_ts = df_station["ds"].max()
+
+        first_date = first_ts.date() if pd.notna(first_ts) else None
+        last_date = last_ts.date() if pd.notna(last_ts) else None
 
     sh_left, sh_right = st.columns([8, 1], gap="small")
     with sh_left:
@@ -196,7 +250,9 @@ def overview_page(
         if st.button(
             texts["clear_cache"],
             key="clear_cache_btn",
-            help=texts.get("clear_cache_tooltip", "Clear cached data and fetch the latest data."),
+            help=texts.get(
+                "clear_cache_tooltip", "Clear cached data and fetch the latest data."
+            ),
             type="primary",
             use_container_width=True,
         ):
@@ -214,7 +270,12 @@ def overview_page(
         for c, lab in zip((c1, c2, c3, c4), (t_max, t_min, t_avg, t_std)):
             c.metric(label=lab, value="-")
     elif selected_station in BASWAP_NAMES or selected_station in OTHER_NAMES:
-        stats_df = filter_data(df, st.session_state.get("selected_station"), st.session_state.date_from, st.session_state.date_to)
+        stats_df = filter_data(
+            df,
+            st.session_state.get("selected_station"),
+            st.session_state.date_from,
+            st.session_state.date_to,
+        )
         display_statistics(stats_df, st.session_state.target_col)
     else:
         raise RuntimeError("Invalid station's name.")
@@ -229,20 +290,34 @@ def overview_page(
     date_to = st.session_state.date_to
     target_col = st.session_state.target_col
 
-    filtered_df = filter_data(df, st.session_state.get("selected_station"), date_from, date_to)
+    filtered_df = filter_data(
+        df, st.session_state.get("selected_station"), date_from, date_to
+    )
 
-    # Charts: hourly + daily median
+    # Charts: 10min + hourly + daily median
     with chart_container:
         st.subheader(f"{target_col}")
-        tabs = st.tabs([texts["hourly_view"], texts["daily_view"]])
 
+        tabs = st.tabs(
+            [texts["tenmin_view"], texts["hourly_view"], texts["daily_view"]]
+        )
+
+        # 10-minute
         with tabs[0]:
+            tenmin = apply_aggregation(filtered_df, target_col, "10min", ["Median"])
+            if "Aggregation" in tenmin.columns:
+                tenmin = tenmin.loc[tenmin["Aggregation"] == "Median"]
+            plot_line_chart(tenmin, target_col, "10min")
+
+        # Hourly
+        with tabs[1]:
             hourly = apply_aggregation(filtered_df, target_col, "Hour", ["Median"])
             if "Aggregation" in hourly.columns:
                 hourly = hourly.loc[hourly["Aggregation"] == "Median"]
             plot_line_chart(hourly, target_col, "Hour")
 
-        with tabs[1]:
+        # Daily
+        with tabs[2]:
             daily = apply_aggregation(filtered_df, target_col, "Day", ["Median"])
             if "Aggregation" in daily.columns:
                 daily = daily.loc[daily["Aggregation"] == "Median"]
@@ -264,6 +339,7 @@ def overview_page(
     # st.write(f'{texts["data_dimensions"]} ({filtered_df.shape[0]}, {len(existing)}).')
     # st.dataframe(filtered_df[existing], use_container_width=True)
 
+
 def about_page(lang):
     # Render the About page HTML and inline local images as data URIs
     def _img_src(path: str) -> str:
@@ -275,5 +351,7 @@ def about_page(lang):
         return f"data:{mime};base64,{b64}"
 
     html = get_about_html(lang)
-    html = html.replace("__IMG1__", _img_src("img/1.jpg")).replace("__IMG2__", _img_src("img/2.jpg"))
+    html = html.replace("__IMG1__", _img_src("img/1.jpg")).replace(
+        "__IMG2__", _img_src("img/2.jpg")
+    )
     st.markdown(html, unsafe_allow_html=True)

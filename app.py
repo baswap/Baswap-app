@@ -1,19 +1,13 @@
-import re
-import pandas as pd
 import streamlit as st
-from datetime import datetime, timedelta
-from pathlib import Path
 
 # App texts/config (labels, sidebar text, and available data columns)
 from config import APP_TEXTS, SIDE_TEXTS, COL_NAMES
-from utils.drive_handler import DriveManager
 from data import combined_data_retrieve, thingspeak_retrieve
 
 # UI helpers and page modules
 from ui_components import data_uri, load_styles, render_header, render_footer
 from station_data import BASWAP_STATIONS, OTHER_STATIONS, get_station_lookup
-from map_handler import add_layers, create_map, render_map
-from pages import overview_page, about_page, settings_panel
+from pages import overview_page, about_page
 
 # Streamlit page metadata
 st.set_page_config(page_title="BASWAP", page_icon="💧", layout="wide")
@@ -24,11 +18,13 @@ try:
 except Exception:
     params = st.experimental_get_query_params()
 
+
 def _as_scalar(v, default):
     # Streamlit query params can be a list; take the first value.
     if isinstance(v, (list, tuple)):
         return v[0] if v else default
     return v if v is not None else default
+
 
 # Current route + language from URL (with safe defaults)
 page = _as_scalar(params.get("page"), "Overview")
@@ -94,14 +90,21 @@ STATION_LOOKUP = get_station_lookup(texts)
 if page == "Overview":
     # Fetch the merged dataset once, then pass it to the page renderer
     df = thingspeak_retrieve(combined_data_retrieve())
-    
+
     overview_page(
-        texts, side_texts, COL_NAMES, df, dm,
-        STATION_LOOKUP, BASWAP_STATIONS, OTHER_STATIONS,
-        MAP_HEIGHT, TABLE_HEIGHT,
-        lang
+        texts,
+        side_texts,
+        COL_NAMES,
+        df,
+        dm,
+        STATION_LOOKUP,
+        BASWAP_STATIONS,
+        OTHER_STATIONS,
+        MAP_HEIGHT,
+        TABLE_HEIGHT,
+        lang,
     )
-    
+
 elif page == "About":
     about_page(lang)
 

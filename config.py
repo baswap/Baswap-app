@@ -1,5 +1,8 @@
+import os
 import pytz
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
+
 
 # Timezone constants
 GMT7 = pytz.timezone("Asia/Bangkok")
@@ -7,18 +10,19 @@ UTC = pytz.utc
 
 # API URLs and filenames
 THINGSPEAK_URL = "https://api.thingspeak.com/channels/3040691/feeds.json"
-COMBINED_FILENAME = "combined_data.csv"
 
-# Secrets from Streamlit's secrets management
-# COMBINED_ID = st.secrets["FILE_ID"]
-# SECRET_ACC = st.secrets["SERVICE_ACCOUNT"]
 
-COL_NAMES = [
-    "EC Value (g/l)",
-    "EC Value (g/l)",
-    # "EC Temperature",
-    # "Battery Voltage"
-]
+def get_secret(name: str):
+    try:
+        return st.secrets[name]
+    except (KeyError, StreamlitSecretNotFoundError):
+        return os.getenv(name)
+
+
+COMBINED_ID = get_secret("FILE_ID")
+SECRET_ACC = get_secret("SERVICE_ACCOUNT")
+
+COL_NAMES = ["EC", "temperature", "salinity"]
 
 APP_TEXTS = {
     "en": {
@@ -28,19 +32,20 @@ APP_TEXTS = {
             * **Data source:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
         """,
         "raw_view": "Raw Data",
+        "tenmin_view": "10-Minute Data",
         "hourly_view": "Hourly Data",
         "daily_view": "Daily Data",
         "data_table": "Data Table",
         "columns_select": "Select columns to display in the table:",
         "data_dimensions": "Data Dimension (row, column):",
         "clear_cache": "Refresh Data",
-        "toggle_button": "English",  
-        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ", 
+        "toggle_button": "English",
+        "toggle_tooltip": "Nhấn để thay đổi ngôn ngữ",
         "nav_overview": "Overview",
-        "nav_about":    "About",
+        "nav_about": "About",
         "overall_stats_title": "Statistics",
-        "axis_value":    "Value",
-        "axis_timestamp":"Timestamp",
+        "axis_value": "Value",
+        "axis_timestamp": "Timestamp",
         "info_panel_title": "Information",
         "picker_label": "Pick a station",
         "picker_none": "None",
@@ -61,7 +66,6 @@ APP_TEXTS = {
         "legend_pi90": "90% prediction interval",
         "legend_pi50": "50% prediction interval",
         "legend_title": "EC warning levels",
-        
     },
     "vi": {
         "app_title": " ",
@@ -70,19 +74,20 @@ APP_TEXTS = {
             * **Nguồn dữ liệu:** [Thingspeak](https://thingspeak.mathworks.com/channels/2652379).
         """,
         "raw_view": "Biểu đồ dữ liệu gốc",
+        "tenmin_view": "Biểu đồ dữ liệu 10 phút",
         "hourly_view": "Biểu đồ dữ liệu theo giờ",
         "daily_view": "Biểu đồ dữ liệu theo ngày",
         "data_table": "Bảng Dữ Liệu",
         "columns_select": "Chọn các cột để hiển thị trong bảng:",
         "data_dimensions": "Kích thước dữ liệu (hàng, cột):",
         "clear_cache": "Cập nhật dữ liệu",
-        "toggle_button": "Tiếng Việt", 
+        "toggle_button": "Tiếng Việt",
         "toggle_tooltip": "Click to change language",
         "nav_overview": "Tổng quan",
-        "nav_about":    "Giới thiệu",
+        "nav_about": "Giới thiệu",
         "overall_stats_title": "Thống kê",
-        "axis_value":    "Giá trị",
-        "axis_timestamp":"Thời gian",
+        "axis_value": "Giá trị",
+        "axis_timestamp": "Thời gian",
         "info_panel_title": "Thông tin",
         "picker_label": "Chọn trạm",
         "picker_none": "Không chọn",
@@ -103,7 +108,7 @@ APP_TEXTS = {
         "legend_pi90": "Khoảng dự báo 90%",
         "legend_pi50": "Khoảng dự báo 50%",
         "legend_title": "Mức cảnh báo EC",
-    }
+    },
 }
 
 SIDE_TEXTS = {
@@ -118,7 +123,7 @@ SIDE_TEXTS = {
         "sidebar_today": "Last Recorded Day",
         "sidebar_start_date": "Start Date (From):",
         "sidebar_end_date": "End Date (To):",
-        "sidebar_summary_stats": "Choose summary statistics to calculate (applied in Hourly and Daily views):"
+        "sidebar_summary_stats": "Choose summary statistics to calculate (applied in Hourly and Daily views):",
     },
     "vi": {
         "sidebar_header": "## Điều chỉnh biểu đồ",
@@ -131,10 +136,9 @@ SIDE_TEXTS = {
         "sidebar_today": "Ngày đo gần nhất",
         "sidebar_start_date": "Ngày bắt đầu (Từ):",
         "sidebar_end_date": "Ngày kết thúc (Đến):",
-        "sidebar_summary_stats": "Chọn các thống kê tóm tắt để tính (áp dụng cho chế độ theo giờ và ngày):"
-    }
+        "sidebar_summary_stats": "Chọn các thống kê tóm tắt để tính (áp dụng cho chế độ theo giờ và ngày):",
+    },
 }
-
 
 
 ABOUT_HTML_VI = r"""
@@ -235,7 +239,6 @@ ABOUT_HTML_EN = r"""
   </div>
 </div>
 """
-
 
 
 def get_about_html(lang: str) -> str:

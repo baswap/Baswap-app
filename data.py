@@ -11,7 +11,6 @@ from config import GMT7, UTC, THINGSPEAK_URL
 
 # local utils live one level up (keeps imports working when run from /data)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils")))
-from utils import DriveManager  
 
 
 # ------------------------------
@@ -32,9 +31,9 @@ def _to_bangkok(series: pd.Series) -> pd.Series:
     s = pd.to_datetime(series, errors="coerce")
 
     # tz-naive -> localize, tz-aware -> convert
-    if s.dt.tz is None:                     # tz-naive → localise
+    if s.dt.tz is None:  # tz-naive → localise
         return s.dt.tz_localize("Asia/Bangkok")
-    return s.dt.tz_convert("Asia/Bangkok")  
+    return s.dt.tz_convert("Asia/Bangkok")
 
 
 # ------------------------------
@@ -43,13 +42,17 @@ def _to_bangkok(series: pd.Series) -> pd.Series:
 @st.cache_data()
 def combined_data_retrieve() -> pd.DataFrame:
     # Current source: local merged CSV (Drive loading is disabled for now)
-    df = pd.read_csv("dataset/merged_all_data.csv")
+    df = pd.DataFrame()
+
+    df = thingspeak_retrieve(df)
 
     # Parse ds, convert to Bangkok time, then drop tz info for easier filtering/sorting
     df["ds"] = (
-        pd.to_datetime(df["ds"], errors="coerce")                # parse (yields tz-aware if +07 present)
-        .dt.tz_convert("Asia/Bangkok")                         # ensure local time
-        .dt.tz_localize(None)                                  # drop timezone -> naive datetime64[ns]
+        pd.to_datetime(
+            df["ds"], errors="coerce"
+        )  # parse (yields tz-aware if +07 present)
+        .dt.tz_convert("Asia/Bangkok")  # ensure local time
+        .dt.tz_localize(None)  # drop timezone -> naive datetime64[ns]
     )
     return df
 
@@ -65,6 +68,7 @@ def fetch_thingspeak_data(results: int) -> list[dict]:
         return json.loads(r.text).get("feeds", [])
     st.error("Failed to fetch data from ThingSpeak API")
     return []
+
 
 @st.cache_data()
 def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
@@ -86,9 +90,10 @@ def append_new_data(df: pd.DataFrame, feeds: list[dict]) -> pd.DataFrame:
         # Map ThingSpeak fields into our schema
         new_row = {
             "ds": gmt7_time,
-            "station": "VGU",
-            "EC Value (g/l)": float(feed.get("field3", 0)) / 1000,
-            "EC Value (us/cm)": float(feed.get("field3", 0))
+            "station": "VinhLong",
+            "EC": float(feed.get("field1", 0)),
+            "temperature": float(feed.get("field2", 0)),
+            "salinity": float(feed.get("field3", 0)),
         }
 
         new_df = pd.DataFrame([new_row])

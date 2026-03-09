@@ -9,8 +9,9 @@ from typing import Optional
 # from models.lstm_model import make_predictions
 from models.neuroforecast_model import make_predictions
 
-COLOR_PI90 = "#fecaca" 
+COLOR_PI90 = "#fecaca"
 COLOR_PI50 = "#fca5a5"
+
 
 def _t(key: str, default: str) -> str:
     """Translate via st.session_state['texts'] with fallback to `default`."""
@@ -19,16 +20,21 @@ def _t(key: str, default: str) -> str:
 
 def _render_obs_pred_legend(show_predicted: bool = False) -> None:
     """Custom legend shown above the chart (no change to chart colors)."""
-    observed_label  = _t("legend_observed",  "Observed")
+    observed_label = _t("legend_observed", "Observed")
     predicted_label = _t("legend_predicted", "Predicted")
-    pi90_label      = _t("legend_pi90",      "90% prediction interval")
-    pi50_label      = _t("legend_pi50",      "50% prediction interval")
+    pi90_label = _t("legend_pi90", "90% prediction interval")
+    pi50_label = _t("legend_pi50", "50% prediction interval")
 
-    pred_html = f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>" if show_predicted else ""
+    pred_html = (
+        f"<div class='agg-item'><span class='dash'></span>{predicted_label}</div>"
+        if show_predicted
+        else ""
+    )
     pi_html = (
         f"<div class='agg-item'><span class='swatch pi90'></span>{pi90_label}</div>"
         f"<div class='agg-item'><span class='swatch pi50'></span>{pi50_label}</div>"
-        if show_predicted else ""
+        if show_predicted
+        else ""
     )
 
     st.markdown(
@@ -78,9 +84,6 @@ def _render_obs_pred_legend(show_predicted: bool = False) -> None:
         """,
         unsafe_allow_html=True,
     )
-
-
-
 
 
 def _coerce_naive_datetime(s: pd.Series) -> pd.Series:
@@ -139,7 +142,11 @@ def _inject_nans_for_gaps(
     out[time_col] = _coerce_naive_datetime(out[time_col])
     out = out.sort_values(by=[time_col], kind="mergesort").reset_index(drop=True)
     return out
-def render_predictions(data: pd.DataFrame, col: str, resample_freq: str, include_anchor: bool = True):
+
+
+def render_predictions(
+    data: pd.DataFrame, col: str, resample_freq: str, include_anchor: bool = True
+):
     """
     Build two frames for overlays that are always time-aligned:
 
@@ -185,8 +192,8 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str, include
     hist["y"] = pd.to_numeric(hist["y"], errors="coerce")
     hist = (
         hist.dropna(subset=["ds", "y"])
-            .sort_values("ds")
-            .drop_duplicates(subset=["ds"], keep="last")
+        .sort_values("ds")
+        .drop_duplicates(subset=["ds"], keep="last")
     )
     if hist.shape[0] < 2:
         return None, None
@@ -223,22 +230,27 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str, include
     # Pick columns robustly
     colmap = {
         "median": ["AutoNBEATS-median", "median", "yhat", "yhat_median"],
-        "lo50":   ["AutoNBEATS-lo-50", "lo50", "p25"],
-        "hi50":   ["AutoNBEATS-hi-50", "hi50", "p75"],
-        "lo90":   ["AutoNBEATS-lo-90", "lo90", "p05"],
-        "hi90":   ["AutoNBEATS-hi-90", "hi90", "p95"],
+        "lo50": ["AutoNBEATS-lo-50", "lo50", "p25"],
+        "hi50": ["AutoNBEATS-hi-50", "hi50", "p75"],
+        "lo90": ["AutoNBEATS-lo-90", "lo90", "p05"],
+        "hi90": ["AutoNBEATS-hi-90", "hi90", "p95"],
     }
+
     def _pick(name: str):
         for c in colmap[name]:
             if c in preds.columns:
                 return pd.to_numeric(preds[c], errors="coerce")
         return None
 
-    m, lo5, hi5, lo9, hi9 = (_pick(k) for k in ("median","lo50","hi50","lo90","hi90"))
+    m, lo5, hi5, lo9, hi9 = (
+        _pick(k) for k in ("median", "lo50", "hi50", "lo90", "hi90")
+    )
     if any(s is None for s in (m, lo5, hi5, lo9, hi9)):
         return None, None
 
-    pred_df = pd.DataFrame({"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9})
+    pred_df = pd.DataFrame(
+        {"median": m, "lo50": lo5, "hi50": hi5, "lo90": lo9, "hi90": hi9}
+    )
     pred_df = pred_df.replace([np.inf, -np.inf], np.nan).dropna()
     if pred_df.empty:
         return None, None
@@ -256,36 +268,49 @@ def render_predictions(data: pd.DataFrame, col: str, resample_freq: str, include
         pred_df = pred_df / 2000.0
 
     # Start both series at the first FUTURE step
-    line_df = pd.DataFrame({"Timestamp": pred_times, "median": pred_df["median"].values})
-    bands_df = pd.DataFrame({
-        "Timestamp": pred_times,
-        "lo50": pred_df["lo50"].values, "hi50": pred_df["hi50"].values,
-        "lo90": pred_df["lo90"].values, "hi90": pred_df["hi90"].values,
-    })
+    line_df = pd.DataFrame(
+        {"Timestamp": pred_times, "median": pred_df["median"].values}
+    )
+    bands_df = pd.DataFrame(
+        {
+            "Timestamp": pred_times,
+            "lo50": pred_df["lo50"].values,
+            "hi50": pred_df["hi50"].values,
+            "lo90": pred_df["lo90"].values,
+            "hi90": pred_df["hi90"].values,
+        }
+    )
 
     # Include anchor row at the last observed time for BOTH line and bands
     if include_anchor:
-        anchor_line = pd.DataFrame({"Timestamp": [last_timestamp], "median": [last_value_orig]})
-        anchor_band = pd.DataFrame({
-            "Timestamp": [last_timestamp],
-            "lo50": [last_value_orig], "hi50": [last_value_orig],
-            "lo90": [last_value_orig], "hi90": [last_value_orig],
-        })
-        line_df  = pd.concat([anchor_line, line_df], ignore_index=True)
+        anchor_line = pd.DataFrame(
+            {"Timestamp": [last_timestamp], "median": [last_value_orig]}
+        )
+        anchor_band = pd.DataFrame(
+            {
+                "Timestamp": [last_timestamp],
+                "lo50": [last_value_orig],
+                "hi50": [last_value_orig],
+                "lo90": [last_value_orig],
+                "hi90": [last_value_orig],
+            }
+        )
+        line_df = pd.concat([anchor_line, line_df], ignore_index=True)
         bands_df = pd.concat([anchor_band, bands_df], ignore_index=True)
 
     # Clean for Altair
     def _dedup(df, cols):
-        df = df.sort_values("Timestamp").drop_duplicates(subset=["Timestamp"], keep="last")
+        df = df.sort_values("Timestamp").drop_duplicates(
+            subset=["Timestamp"], keep="last"
+        )
         for c in cols:
             df[c] = pd.to_numeric(df[c], errors="coerce")
         return df.dropna(subset=cols + ["Timestamp"])
 
     line_df = _dedup(line_df, ["median"])
-    bands_df = _dedup(bands_df, ["lo50","hi50","lo90","hi90"])
+    bands_df = _dedup(bands_df, ["lo50", "hi50", "lo90", "hi90"])
 
     return line_df, bands_df
-
 
 
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
@@ -311,14 +336,14 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         gap = pd.Timedelta(days=3)
         disp_fmt = "%d/%m/%Y"
     else:
-        df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
-            df_filtered["ds"]
-        )
+        df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["ds"])
         gap = pd.Timedelta(hours=1)
         disp_fmt = "%d/%m/%Y %H:%M:%S"
 
     # normalize rounded timestamps and display strings
-    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["Timestamp (Rounded)"])
+    df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
+        df_filtered["Timestamp (Rounded)"]
+    )
     df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
         df_filtered["Timestamp (Rounded)"]
     ).dt.strftime(disp_fmt)
@@ -346,7 +371,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     t_pred_value = _t("tooltip_predicted_value", axis_y)
 
     # Observed/Predicted legend (HTML above chart)
-    show_pred = (col in ["EC Value (us/cm)", "EC Value (g/l)"])
+    show_pred = col in ["EC Value (us/cm)", "EC Value (g/l)"]
     _render_obs_pred_legend(show_predicted=show_pred)
 
     # Observed chart
@@ -356,18 +381,24 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         color=alt.value("steelblue"),
         tooltip=[
             alt.Tooltip("Timestamp (Rounded Display):N", title=t_rounded),
-            alt.Tooltip("Timestamp (GMT+7):T", title=t_exact, format="%d/%m/%Y %H:%M:%S"),
+            alt.Tooltip(
+                "Timestamp (GMT+7):T", title=t_exact, format="%d/%m/%Y %H:%M:%S"
+            ),
             alt.Tooltip(f"{col}:Q", title=t_value),
         ],
     )
     if cat_col:
         encodings["detail"] = alt.Detail("Aggregation:N")
 
-    main_chart = alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
+    main_chart = (
+        alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
+    )
 
     # Prediction overlays only if we still have usable data
     if show_pred:
-        line_df, bands_df = render_predictions(df_filtered, col, resample_freq, include_anchor=True)
+        line_df, bands_df = render_predictions(
+            df_filtered, col, resample_freq, include_anchor=True
+        )
 
         if line_df is not None and bands_df is not None and not bands_df.empty:
             band90 = (
@@ -378,7 +409,9 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     y=alt.Y("lo90:Q", title=axis_y),
                     y2=alt.Y2("hi90:Q"),
                     tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip(
+                            "Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"
+                        ),
                         alt.Tooltip("lo90:Q", title="P5"),
                         alt.Tooltip("hi90:Q", title="P95"),
                     ],
@@ -392,7 +425,9 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     y=alt.Y("lo50:Q", title=axis_y),
                     y2=alt.Y2("hi50:Q"),
                     tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip(
+                            "Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"
+                        ),
                         alt.Tooltip("lo50:Q", title="P25"),
                         alt.Tooltip("hi50:Q", title="P75"),
                     ],
@@ -400,12 +435,18 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             )
             pred_line = (
                 alt.Chart(line_df)
-                .mark_line(color="red", strokeDash=[5, 5], point=alt.OverlayMarkDef(color="red"))
+                .mark_line(
+                    color="red",
+                    strokeDash=[5, 5],
+                    point=alt.OverlayMarkDef(color="red"),
+                )
                 .encode(
                     x=alt.X("Timestamp:T", title=axis_x),
                     y=alt.Y("median:Q", title=axis_y),
                     tooltip=[
-                        alt.Tooltip("Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"),
+                        alt.Tooltip(
+                            "Timestamp:T", title=t_pred_time, format="%d/%m/%Y %H:%M:%S"
+                        ),
                         alt.Tooltip("median:Q", title=t_pred_value),
                     ],
                 )
@@ -415,7 +456,6 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             return
 
     st.altair_chart(main_chart, use_container_width=True)
-
 
 
 def display_statistics(df: pd.DataFrame, target_col: str) -> None:
