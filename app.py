@@ -69,7 +69,7 @@ for k, v in {
     "date_to": None,
     "agg_stats": ["Median"],
     "table_cols": [COL_NAMES[0]],
-    "selected_station": None,
+    "selected_station": "Vĩnh Long",
 }.items():
     st.session_state.setdefault(k, v)
 
