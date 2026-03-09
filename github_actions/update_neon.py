@@ -14,8 +14,8 @@ dotenv.load_dotenv()  # Load environment variables from .env file if present
 
 # CONFIG (read from env)
 DATABASE_URL = os.environ["DATABASE_URL"] or os.getenv("DATABASE_URL")
-THINGSPEAK_URL = os.environ.get("THINGSPEAK_URL") or os.getenv("THINGSPEAK_URL")
-STATION_NAME = os.environ.get("STATION_NAME", "VinhLong")
+THINGSPEAK_URL = os.environ["THINGSPEAK_URL"] or os.getenv("THINGSPEAK_URL")
+STATION_NAME = os.environ["STATION_NAME"] or os.getenv("STATION_NAME", "VinhLong")
 
 # ---------- helper timezone funcs ----------
 GMT7 = timezone(timedelta(hours=7))
