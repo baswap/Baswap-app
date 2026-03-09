@@ -1,0 +1,28 @@
+name: Update Neon DB
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # every 3 hours
+  workflow_dispatch:
+
+jobs:
+  update-db:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          pip install pandas psycopg2-binary
+
+      - name: Run update script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python update_neon.py
