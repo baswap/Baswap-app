@@ -95,7 +95,7 @@ def feeds_to_resampled_df(
 
     # Resample to sample_minutes, picking the last non-null in each bin
     # We use .last() which picks the last row in each interval (NaNs preserved if none)
-    resampled = df.resample(f"{sample_minutes}T").last()
+    resampled = df.resample(f"{sample_minutes}min").last()
 
     # drop rows where all sensors are NaN
     resampled = resampled.dropna(how="all", subset=["ec_us_cm", "temperature", "ec_gl"])
