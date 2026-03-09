@@ -25,4 +25,4 @@ jobs:
       - name: Run update script
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python update_neon.py
+        run: python github_actions/update_neon.py
