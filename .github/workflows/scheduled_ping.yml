@@ -1,0 +1,41 @@
+name: Streamlit Keepalive Ping
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print start time
+        run: |
+          echo "Starting Streamlit ping"
+          date -u
+
+      - name: Ping Streamlit health endpoint
+        run: |
+          URL="https://vgu-rangers-monitoring.streamlit.app/?ping=1"
+
+          for i in {1..5}; do
+            echo "Attempt $i..."
+
+            HTTP_CODE=$(curl -s -o response.txt -w "%{http_code}" $URL)
+
+            echo "Status: $HTTP_CODE"
+            cat response.txt
+
+            if [ "$HTTP_CODE" -eq 200 ]; then
+              echo "Ping success"
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+      - name: Print completion time
+        run: |
+          echo "Ping completed"
+          date -u
