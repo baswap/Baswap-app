@@ -89,7 +89,7 @@ STATION_LOOKUP = get_station_lookup(texts)
 # Route to the selected page
 if page == "Overview":
     # Fetch the merged dataset once, then pass it to the page renderer
-    df = thingspeak_retrieve(combined_data_retrieve())
+    df = combined_data_retrieve()
 
     overview_page(
         texts,
