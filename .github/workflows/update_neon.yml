@@ -25,4 +25,5 @@ jobs:
       - name: Run update script
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          THINGSPEAK_URL: ${{ secrets.THINGSPEAK_URL }}
         run: python github_actions/update_neon.py

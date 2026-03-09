@@ -15,7 +15,7 @@ dotenv.load_dotenv()  # Load environment variables from .env file if present
 # CONFIG (read from env)
 DATABASE_URL = os.environ["DATABASE_URL"] or os.getenv("DATABASE_URL")
 THINGSPEAK_URL = os.environ["THINGSPEAK_URL"] or os.getenv("THINGSPEAK_URL")
-STATION_NAME = os.environ["STATION_NAME"] or os.getenv("STATION_NAME", "VinhLong")
+STATION_NAME = "VinhLong"
 
 # ---------- helper timezone funcs ----------
 GMT7 = timezone(timedelta(hours=7))
@@ -95,7 +95,7 @@ def feeds_to_resampled_df(
 
     # Resample to sample_minutes, picking the last non-null in each bin
     # We use .last() which picks the last row in each interval (NaNs preserved if none)
-    resampled = df.resample(f"{sample_minutes}T").last()
+    resampled = df.resample(f"{sample_minutes}min").last()
 
     # drop rows where all sensors are NaN
     resampled = resampled.dropna(how="all", subset=["ec_us_cm", "temperature", "ec_gl"])
