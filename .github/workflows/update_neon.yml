@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas psycopg2-binary
+          pip install pandas psycopg2-binary requests
 
       - name: Run update script
         env:
