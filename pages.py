@@ -31,9 +31,12 @@ def settings_panel(side_texts, first_date, last_date, COL_NAMES):
         st.session_state.date_from = last_date
         st.session_state.date_to = last_date
 
-    # Default range (currently overwrites on rerun)
-    st.session_state.date_from = max(first_date, last_date - timedelta(days=7))
-    st.session_state.date_to = last_date
+    # Set default range only once
+    if "date_from" not in st.session_state:
+        st.session_state.date_from = max(first_date, last_date - timedelta(days=7))
+
+    if "date_to" not in st.session_state:
+        st.session_state.date_to = last_date
 
     st.date_input(
         side_texts["sidebar_start_date"],
