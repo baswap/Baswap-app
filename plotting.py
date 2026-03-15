@@ -8,6 +8,7 @@ from typing import Optional
 
 # from models.lstm_model import make_predictions
 from models.neuroforecast_model import make_predictions
+from config import METRIC_CONFIG
 
 COLOR_PI90 = "#fecaca"
 COLOR_PI50 = "#fca5a5"
@@ -316,25 +317,44 @@ def render_predictions(
 def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> None:
     # explicit empty guards to avoid "disappearing" charts
     if df is None or df.empty or col not in df.columns or df[col].dropna().empty:
-        st.info("No data for this date range.")
+        st.info(_t("no_data_range", "No data for this date range."))
         return
+
+    # ----- Metric configuration -----
+    lang = st.session_state.get("lang", "vi")
+
+    cfg = METRIC_CONFIG.get(col, {})
+    lang_cfg = cfg.get(lang, {})
+
+    axis_y = lang_cfg.get("y_axis", col)
+
+    show_pred = cfg.get("prediction", False)
 
     df_filtered = df.copy().sort_values("ds")
     df_filtered["ds"] = _coerce_naive_datetime(df_filtered["ds"])
 
     # Round time and choose gap/format
-    if resample_freq == "Hour":
+    if resample_freq == "10min":
+        df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
+            df_filtered["ds"], errors="coerce"
+        ).dt.floor("10min")
+        gap = pd.Timedelta(minutes=30)
+        disp_fmt = "%H:%M"
+
+    elif resample_freq == "Hour":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
             df_filtered["ds"], errors="coerce"
         ).dt.floor("h")
         gap = pd.Timedelta(hours=3)
         disp_fmt = "%H:%M:%S"
+
     elif resample_freq == "Day":
         df_filtered["Timestamp (Rounded)"] = pd.to_datetime(
             df_filtered["ds"], errors="coerce"
         ).dt.floor("d")
         gap = pd.Timedelta(days=3)
         disp_fmt = "%d/%m/%Y"
+
     else:
         df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(df_filtered["ds"])
         gap = pd.Timedelta(hours=1)
@@ -344,6 +364,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
     df_filtered["Timestamp (Rounded)"] = _coerce_naive_datetime(
         df_filtered["Timestamp (Rounded)"]
     )
+
     df_filtered["Timestamp (Rounded Display)"] = pd.to_datetime(
         df_filtered["Timestamp (Rounded)"]
     ).dt.strftime(disp_fmt)
@@ -363,15 +384,15 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
 
     # Localized axis & tooltip labels
     axis_x = _t("axis_timestamp", "Timestamp")
-    axis_y = _t("axis_value", "Value")
+
     t_rounded = _t("tooltip_rounded_time", axis_x)
     t_exact = _t("tooltip_exact_time", axis_x)
-    t_value = _t("tooltip_value", axis_y)
-    t_pred_time = _t("tooltip_predicted_time", axis_x)
-    t_pred_value = _t("tooltip_predicted_value", axis_y)
+    t_value = axis_y
 
-    # Observed/Predicted legend (HTML above chart)
-    show_pred = col in ["EC Value (us/cm)", "EC Value (g/l)"]
+    t_pred_time = _t("tooltip_predicted_time", axis_x)
+    t_pred_value = axis_y
+
+    # Observed/Predicted legend
     _render_obs_pred_legend(show_predicted=show_pred)
 
     # Observed chart
@@ -387,6 +408,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
             alt.Tooltip(f"{col}:Q", title=t_value),
         ],
     )
+
     if cat_col:
         encodings["detail"] = alt.Detail("Aggregation:N")
 
@@ -394,7 +416,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
         alt.Chart(df_broken).mark_line(point=True).encode(**encodings).interactive()
     )
 
-    # Prediction overlays only if we still have usable data
+    # Prediction overlays
     if show_pred:
         line_df, bands_df = render_predictions(
             df_filtered, col, resample_freq, include_anchor=True
@@ -417,6 +439,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
+
             band50 = (
                 alt.Chart(bands_df)
                 .mark_area(opacity=0.30, color="red")
@@ -433,6 +456,7 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
+
             pred_line = (
                 alt.Chart(line_df)
                 .mark_line(
@@ -451,7 +475,9 @@ def plot_line_chart(df: pd.DataFrame, col: str, resample_freq: str = "None") -> 
                     ],
                 )
             )
+
             chart = alt.layer(band90, band50, pred_line, main_chart)
+
             st.altair_chart(chart, use_container_width=True)
             return
 

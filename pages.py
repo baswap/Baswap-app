@@ -9,13 +9,37 @@ from station_data import norm_name_capitalize
 from config import get_about_html
 from aggregation import filter_data, apply_aggregation
 from plotting import plot_line_chart, display_statistics
+from config import METRIC_CONFIG, TITLE_TO_COLUMN
 
 
 def settings_panel(side_texts, first_date, last_date, COL_NAMES):
-    # Sidebar controls: column picker + date range + aggregation defaults
+
     st.markdown(side_texts["sidebar_header"])
     st.markdown(side_texts["sidebar_description"])
-    st.selectbox(side_texts["sidebar_choose_column"], COL_NAMES, key="target_col")
+
+    lang = st.session_state.get("lang", "vi")
+
+    # Build title list for UI
+    column_titles = [
+        METRIC_CONFIG[col][lang]["title"] for col in COL_NAMES if col in METRIC_CONFIG
+    ]
+
+    # Default selection
+    current_col = st.session_state.get("target_col", COL_NAMES[0])
+    current_title = (
+        METRIC_CONFIG.get(current_col, {}).get(lang, {}).get("title", current_col)
+    )
+
+    selected_title = st.selectbox(
+        side_texts["sidebar_choose_column"],
+        column_titles,
+        index=(
+            column_titles.index(current_title) if current_title in column_titles else 0
+        ),
+    )
+
+    # Map title → column name
+    st.session_state.target_col = TITLE_TO_COLUMN[selected_title]
 
     # Guard against NaT
     if pd.isna(first_date) or pd.isna(last_date):
@@ -51,6 +75,7 @@ def settings_panel(side_texts, first_date, last_date, COL_NAMES):
         max_value=last_date,
         key="date_from",
     )
+
     st.date_input(
         side_texts["sidebar_end_date"],
         min_value=first_date,
@@ -304,9 +329,14 @@ def overview_page(
         df, st.session_state.get("selected_station"), date_from, date_to
     )
 
+    cfg = METRIC_CONFIG.get(target_col, {})
+    lang_cfg = cfg.get(lang, {})
+
+    metric_title = lang_cfg.get("title", target_col)
+
     # Charts: 10min + hourly + daily median
     with chart_container:
-        st.subheader(f"{target_col}")
+        st.subheader(f"{metric_title}")
 
         tabs = st.tabs(
             [texts["tenmin_view"], texts["hourly_view"], texts["daily_view"]]

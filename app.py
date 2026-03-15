@@ -2,7 +2,7 @@ import streamlit as st
 
 # App texts/config (labels, sidebar text, and available data columns)
 from config import APP_TEXTS, SIDE_TEXTS, COL_NAMES
-from data import combined_data_retrieve, thingspeak_retrieve
+from data import combined_data_retrieve
 
 # UI helpers and page modules
 from ui_components import data_uri, load_styles, render_header, render_footer
@@ -28,7 +28,31 @@ def _as_scalar(v, default):
 
 # Current route + language from URL (with safe defaults)
 page = _as_scalar(params.get("page"), "Overview")
-lang = _as_scalar(params.get("lang"), "vi")
+
+# Supported languages
+ALLOWED_LANGS = {"en", "vi"}
+DEFAULT_LANG = "vi"
+
+# Read query parameters
+params = st.query_params
+
+# ---- Resolve language ----
+url_lang = params.get("lang")
+
+# 1. If URL provides a valid language, use it
+if url_lang in ALLOWED_LANGS:
+    st.session_state.lang = url_lang
+
+# 2. Otherwise initialize session language if needed
+elif "lang" not in st.session_state or st.session_state.lang not in ALLOWED_LANGS:
+    st.session_state.lang = DEFAULT_LANG
+
+# Final resolved language
+lang = st.session_state.lang
+
+# ---- Keep URL synchronized with session state ----
+if params.get("lang") != lang:
+    st.query_params["lang"] = lang
 
 # Manual refresh: clear cached data, remove the refresh flag from the URL, then rerun
 if _as_scalar(params.get("refresh"), "0") == "1":
@@ -50,8 +74,6 @@ if _as_scalar(params.get("refresh"), "0") == "1":
 # Only allow known pages/languages
 if page not in ("Overview", "About"):
     page = "Overview"
-if lang not in ("en", "vi"):
-    lang = "vi"
 
 # Shared layout sizes
 MAP_HEIGHT = 600

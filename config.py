@@ -25,7 +25,53 @@ DATABASE_URL = get_secret("DATABASE_URL")
 COMBINED_ID = get_secret("FILE_ID")
 SECRET_ACC = get_secret("SERVICE_ACCOUNT")
 
-COL_NAMES = ["ec_gl", "ec_us_cm", "temperature"]
+METRIC_CONFIG = {
+    "ec_gl": {
+        "en": {
+            "title": "Salinity (g/L)",
+            "y_axis": "Salinity Value (g/L)",
+        },
+        "vi": {
+            "title": "Độ mặn (g/L)",
+            "y_axis": "Giá trị độ mặn (g/L)",
+        },
+        "unit": "g/L",
+        "prediction": True,
+    },
+    "ec_us_cm": {
+        "en": {
+            "title": "Electrical Conductivity (EC)",
+            "y_axis": "EC (µS/cm)",
+        },
+        "vi": {
+            "title": "Độ dẫn điện (EC)",
+            "y_axis": "EC (µS/cm)",
+        },
+        "unit": "µS/cm",
+        "prediction": True,
+    },
+    "temperature": {
+        "en": {
+            "title": "Temperature (°C)",
+            "y_axis": "Temperature (°C)",
+        },
+        "vi": {
+            "title": "Nhiệt độ (°C)",
+            "y_axis": "Nhiệt độ (°C)",
+        },
+        "unit": "°C",
+        "prediction": False,
+    },
+}
+
+COL_NAMES = list(METRIC_CONFIG.keys())
+
+TITLE_TO_COLUMN = {
+    cfg[lang]["title"]: col
+    for col, cfg in METRIC_CONFIG.items()
+    for lang in ("en", "vi")
+    if "title" in cfg.get(lang, {})
+}
 
 APP_TEXTS = {
     "en": {
