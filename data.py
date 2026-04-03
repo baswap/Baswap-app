@@ -155,7 +155,10 @@ def thingspeak_retrieve(df: pd.DataFrame) -> pd.DataFrame:
 # ------------------------------
 @st.cache_data(ttl=3 * 3600 + 300)  # cache for 3 hours (data updates every ~3h)
 def load_data_neon() -> pd.DataFrame:
-    """Load recent data for a station from Neon database.
+    """
+    Load recent data from Neon database:
+    - VinhLong: last 14 days
+    - all other stations: last 12 hours
 
     Assumes Neon `ds` is stored in UTC (or as UTC strings). We parse as UTC to get
     tz-aware timestamps and keep them as UTC until final conversion.
@@ -165,6 +168,16 @@ def load_data_neon() -> pd.DataFrame:
         query = """
             SELECT ds, station, ec_us_cm, temperature, ec_gl
             FROM sensor_data
+            WHERE
+                (
+                    station = 'VinhLong'
+                    AND ds >= NOW() - INTERVAL '14 days'
+                )
+                OR
+                (
+                    station <> 'VinhLong'
+                    AND ds >= NOW() - INTERVAL '12 hours'
+                )
             ORDER BY ds DESC
         """
         df = pd.read_sql(query, conn)
